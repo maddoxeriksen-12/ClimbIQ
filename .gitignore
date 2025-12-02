@@ -3,6 +3,8 @@ backend/**/*.pyc
 backend/.venv/
 backend/venv/
 backend/.env
+supabase/.env.local
+supabase/.temp/
 
 frontend/node_modules/
 frontend/dist/
