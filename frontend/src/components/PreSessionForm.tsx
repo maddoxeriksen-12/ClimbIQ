@@ -186,3 +186,6 @@ export function PreSessionForm() {
           Start Climbing Session
         </button>
       </form>
+    </div>
+  )
+}

@@ -113,3 +113,6 @@ export function SubscriptionManager({ currentTier }: SubscriptionManagerProps) {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
