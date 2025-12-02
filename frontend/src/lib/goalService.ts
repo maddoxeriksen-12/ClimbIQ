@@ -1,5 +1,8 @@
 import { supabase } from './supabase'
 
+// Helper type for Supabase queries (tables not in generated types)
+type SupabaseInsert = unknown
+
 // Types for goal data
 export interface ClimbingGoal {
   id: string
@@ -105,7 +108,7 @@ export async function createGoal(input: CreateGoalInput): Promise<{ data: Climbi
     // Deactivate any existing active goals
     await supabase
       .from('climbing_goals')
-      .update({ is_active: false })
+      .update({ is_active: false } as SupabaseInsert)
       .eq('user_id', userData.user.id)
       .eq('is_active', true)
 
@@ -123,23 +126,25 @@ export async function createGoal(input: CreateGoalInput): Promise<{ data: Climbi
         competition_name: input.competition_name,
         custom_details: input.custom_details,
         is_active: true,
-      })
+      } as SupabaseInsert)
       .select()
       .single()
 
     if (error) throw error
 
+    const goalData = data as ClimbingGoal
+
     // Initialize goal progress
     await supabase
       .from('goal_progress')
       .insert({
-        goal_id: data.id,
+        goal_id: goalData.id,
         sessions_completed: 0,
         milestones: [],
         notes: [],
-      })
+      } as SupabaseInsert)
 
-    return { data: data as ClimbingGoal, error: null }
+    return { data: goalData, error: null }
   } catch (err) {
     console.error('Error creating goal:', err)
     return { data: null, error: err as Error }
@@ -237,13 +242,13 @@ export async function setActiveGoal(goalId: string): Promise<{ success: boolean;
     // Deactivate all goals
     await supabase
       .from('climbing_goals')
-      .update({ is_active: false })
+      .update({ is_active: false } as SupabaseInsert)
       .eq('user_id', userData.user.id)
 
     // Activate the selected goal
     const { error } = await supabase
       .from('climbing_goals')
-      .update({ is_active: true })
+      .update({ is_active: true } as SupabaseInsert)
       .eq('id', goalId)
 
     if (error) throw error
@@ -265,7 +270,7 @@ export async function updateGoal(
       .update({
         ...updates,
         updated_at: new Date().toISOString(),
-      })
+      } as SupabaseInsert)
       .eq('id', goalId)
       .select()
       .single()

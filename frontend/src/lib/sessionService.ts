@@ -1,5 +1,8 @@
 import { supabase } from './supabase'
 
+// Helper type for Supabase queries (tables not in generated types)
+type SupabaseInsert = unknown
+
 // Types for session data
 export interface ClimbingSession {
   id: string
@@ -111,7 +114,7 @@ export async function createSession(input: CreateSessionInput): Promise<{ data: 
         pain_location: input.pain_location,
         pain_severity: input.pain_severity,
         notes: input.notes,
-      })
+      } as SupabaseInsert)
       .select()
       .single()
 
@@ -135,7 +138,8 @@ export async function completeSession(input: CompleteSessionInput): Promise<{ da
       .eq('id', input.session_id)
       .single()
 
-    const startTime = input.actual_start_time ?? session?.started_at
+    const sessionData = session as { started_at?: string } | null
+    const startTime = input.actual_start_time ?? sessionData?.started_at
     let actualDuration: number | undefined
     
     if (startTime) {
@@ -164,7 +168,7 @@ export async function completeSession(input: CompleteSessionInput): Promise<{ da
         pain_severity: input.pain_severity,
         notes: input.notes,
         updated_at: new Date().toISOString(),
-      })
+      } as SupabaseInsert)
       .eq('id', input.session_id)
       .select()
       .single()
@@ -182,7 +186,7 @@ export async function cancelSession(sessionId: string): Promise<{ success: boole
   try {
     const { error } = await supabase
       .from('climbing_sessions')
-      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+      .update({ status: 'cancelled', updated_at: new Date().toISOString() } as SupabaseInsert)
       .eq('id', sessionId)
 
     if (error) throw error
