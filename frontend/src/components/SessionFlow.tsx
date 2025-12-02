@@ -5,7 +5,8 @@ import { PostSessionForm } from './PostSessionForm'
 import { AnalysisScreen } from './AnalysisScreen'
 import { RecommendationsScreen } from './RecommendationsScreen'
 import { saveActiveSession, getActiveSession, clearActiveSession } from '../lib/sessionStorage'
-import { getActiveGoal, incrementGoalSessions } from '../lib/goalStorage'
+import { createSession, completeSession } from '../lib/sessionService'
+import { getActiveGoal } from '../lib/goalService'
 import type { ActiveSessionData } from '../lib/sessionStorage'
 
 type SessionPhase = 'pre' | 'analyzing' | 'recommendations' | 'active' | 'post' | 'complete'
@@ -14,15 +15,47 @@ export function SessionFlow() {
   const navigate = useNavigate()
   const [phase, setPhase] = useState<SessionPhase>('pre')
   const [sessionInfo, setSessionInfo] = useState<ActiveSessionData | null>(null)
+  const [dbSessionId, setDbSessionId] = useState<string | null>(null)
 
-  const handlePreSessionComplete = (info: { 
+  const handlePreSessionComplete = async (info: { 
     sessionType: string
     location: string
     isOutdoor?: boolean
     plannedDuration?: number
     preSessionData?: Record<string, unknown>
   }) => {
+    // Get active goal to associate session with it
+    const { data: activeGoal } = await getActiveGoal()
+
+    // Create session in database
+    const { data: dbSession, error } = await createSession({
+      session_type: info.sessionType,
+      location: info.location,
+      is_outdoor: info.isOutdoor,
+      planned_duration_minutes: info.plannedDuration,
+      goal_id: activeGoal?.id,
+      pre_session_data: info.preSessionData,
+      energy_level: info.preSessionData?.energy_level as number,
+      motivation: info.preSessionData?.motivation as number,
+      sleep_quality: info.preSessionData?.sleep_quality as number,
+      stress_level: info.preSessionData?.stress_level as number,
+      had_pain_before: info.preSessionData?.has_pain as boolean,
+      pain_location: info.preSessionData?.pain_location as string,
+      pain_severity: info.preSessionData?.pain_severity as number,
+      notes: info.preSessionData?.notes as string,
+    })
+
+    if (error) {
+      console.error('Failed to create session in database:', error)
+      // Continue anyway with local storage as fallback
+    }
+
+    if (dbSession) {
+      setDbSessionId(dbSession.id)
+    }
+
     const newSession: ActiveSessionData = {
+      sessionId: dbSession?.id,
       sessionType: info.sessionType,
       location: info.location,
       startTime: new Date(),
@@ -40,26 +73,47 @@ export function SessionFlow() {
 
   const handleRecommendationsContinue = () => {
     if (sessionInfo) {
-      // Save the active session so it persists
+      // Save the active session so it persists (includes dbSessionId)
       saveActiveSession(sessionInfo)
     }
     // Navigate to dashboard where user can see their session and access post-form
     navigate('/')
   }
 
-  const handlePostSessionComplete = async () => {
-    // Track session toward active goal
-    const activeGoal = getActiveGoal()
-    if (activeGoal) {
-      incrementGoalSessions(activeGoal.id)
+  const handlePostSessionComplete = async (postData: unknown) => {
+    const data = postData as Record<string, unknown>
+    // Complete session in database
+    if (dbSessionId || sessionInfo?.sessionId) {
+      const sessionId = dbSessionId || sessionInfo?.sessionId
+      const { error } = await completeSession({
+        session_id: sessionId!,
+        post_session_data: data,
+        session_rpe: data.session_rpe as number,
+        satisfaction: data.satisfaction as number,
+        highest_grade_sent: data.highest_grade_sent as string,
+        highest_grade_attempted: data.highest_grade_attempted as string,
+        total_climbs: data.total_climbs as number,
+        total_sends: data.total_sends as number,
+        flash_count: data.flash_count as number,
+        had_pain_after: data.has_new_pain as boolean,
+        pain_location: data.pain_location as string,
+        pain_severity: data.pain_severity as number,
+        notes: data.notes as string,
+        actual_start_time: data.actual_start_time as string,
+        actual_end_time: data.actual_end_time as string,
+      })
+
+      if (error) {
+        console.error('Failed to complete session in database:', error)
+      }
     }
     
-    // Clear the active session
+    // Clear the active session from local storage
     clearActiveSession()
     setPhase('complete')
     // Show success briefly then navigate
     setTimeout(() => {
-      navigate('/sessions')
+      navigate('/')
     }, 2000)
   }
 
@@ -80,7 +134,7 @@ export function SessionFlow() {
         </div>
         <h1 className="text-3xl font-bold mb-4">Session Complete!</h1>
         <p className="text-slate-400 mb-2">Great work out there. Your session has been logged.</p>
-        <p className="text-sm text-slate-500">Redirecting to your session history...</p>
+        <p className="text-sm text-slate-500">Redirecting to your dashboard...</p>
       </div>
     )
   }
@@ -127,17 +181,37 @@ export function CompleteSessionFlow() {
     return null
   }
 
-  const handlePostSessionComplete = async () => {
-    // Track session toward active goal
-    const activeGoal = getActiveGoal()
-    if (activeGoal) {
-      incrementGoalSessions(activeGoal.id)
+  const handlePostSessionComplete = async (postData: unknown) => {
+    const data = postData as Record<string, unknown>
+    // Complete session in database
+    if (activeSession.sessionId) {
+      const { error } = await completeSession({
+        session_id: activeSession.sessionId,
+        post_session_data: data,
+        session_rpe: data.session_rpe as number,
+        satisfaction: data.satisfaction as number,
+        highest_grade_sent: data.highest_grade_sent as string,
+        highest_grade_attempted: data.highest_grade_attempted as string,
+        total_climbs: data.total_climbs as number,
+        total_sends: data.total_sends as number,
+        flash_count: data.flash_count as number,
+        had_pain_after: data.has_new_pain as boolean,
+        pain_location: data.pain_location as string,
+        pain_severity: data.pain_severity as number,
+        notes: data.notes as string,
+        actual_start_time: data.actual_start_time as string,
+        actual_end_time: data.actual_end_time as string,
+      })
+
+      if (error) {
+        console.error('Failed to complete session in database:', error)
+      }
     }
     
     clearActiveSession()
     setPhase('complete')
     setTimeout(() => {
-      navigate('/sessions')
+      navigate('/')
     }, 2000)
   }
 
@@ -155,7 +229,7 @@ export function CompleteSessionFlow() {
         </div>
         <h1 className="text-3xl font-bold mb-4">Session Complete!</h1>
         <p className="text-slate-400 mb-2">Great work out there. Your session has been logged.</p>
-        <p className="text-sm text-slate-500">Redirecting to your session history...</p>
+        <p className="text-sm text-slate-500">Redirecting to your dashboard...</p>
       </div>
     )
   }

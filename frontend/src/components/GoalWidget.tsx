@@ -1,15 +1,51 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { 
-  getActiveGoal, 
-  getGoalProgress, 
+  getActiveGoal as getActiveGoalDb, 
+  getGoalProgress as getGoalProgressDb,
   calculateDaysRemaining, 
   calculateDaysElapsed,
   calculateProgress,
-  GOAL_TYPES 
-} from '../lib/goalStorage'
+  GOAL_TYPES,
+  type ClimbingGoal,
+  type GoalProgress,
+} from '../lib/goalService'
 
 export function GoalWidget() {
-  const activeGoal = getActiveGoal()
+  const [activeGoal, setActiveGoal] = useState<ClimbingGoal | null>(null)
+  const [progress, setProgress] = useState<GoalProgress | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchGoal() {
+      setLoading(true)
+      const { data: goal } = await getActiveGoalDb()
+      setActiveGoal(goal)
+      
+      if (goal) {
+        const { data: progressData } = await getGoalProgressDb(goal.id)
+        setProgress(progressData)
+      }
+      
+      setLoading(false)
+    }
+    
+    fetchGoal()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 animate-pulse">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-white/10" />
+          <div className="flex-1">
+            <div className="h-4 w-32 bg-white/10 rounded mb-2" />
+            <div className="h-3 w-48 bg-white/10 rounded" />
+          </div>
+        </div>
+      </div>
+    )
+  }
   
   if (!activeGoal) {
     return (
@@ -35,11 +71,12 @@ export function GoalWidget() {
     )
   }
 
-  const progress = getGoalProgress(activeGoal.id)
-  const daysRemaining = calculateDaysRemaining(activeGoal.targetDate)
-  const daysElapsed = calculateDaysElapsed(activeGoal.startDate)
-  const progressPercent = calculateProgress(activeGoal.startDate, activeGoal.targetDate)
-  const goalInfo = GOAL_TYPES[activeGoal.type]
+  const daysRemaining = calculateDaysRemaining(activeGoal.target_date)
+  const daysElapsed = calculateDaysElapsed(activeGoal.start_date)
+  const progressPercent = activeGoal.target_date 
+    ? calculateProgress(activeGoal.start_date, activeGoal.target_date) 
+    : 0
+  const goalInfo = GOAL_TYPES[activeGoal.type] || { icon: '🎯', label: activeGoal.type }
 
   // Determine status color
   let statusColor = 'from-fuchsia-500 to-cyan-500'
@@ -47,7 +84,7 @@ export function GoalWidget() {
   if (daysRemaining === 0) {
     statusColor = 'from-emerald-500 to-cyan-500'
     statusText = 'Goal Date!'
-  } else if (daysRemaining < 7) {
+  } else if (daysRemaining !== null && daysRemaining < 7) {
     statusColor = 'from-amber-500 to-orange-500'
     statusText = 'Final Push'
   } else if (progressPercent > 75) {
@@ -76,23 +113,25 @@ export function GoalWidget() {
       </div>
 
       {/* Progress bar */}
-      <div className="mb-4">
-        <div className="flex justify-between text-xs text-slate-500 mb-1.5">
-          <span>Progress</span>
-          <span>{progressPercent}%</span>
+      {activeGoal.target_date && (
+        <div className="mb-4">
+          <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+            <span>Progress</span>
+            <span>{progressPercent}%</span>
+          </div>
+          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+            <div
+              className={`h-full bg-gradient-to-r ${statusColor} rounded-full transition-all duration-500`}
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
         </div>
-        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-          <div
-            className={`h-full bg-gradient-to-r ${statusColor} rounded-full transition-all duration-500`}
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         <div className="p-3 rounded-xl bg-white/5 text-center">
-          <p className="text-xl font-bold">{daysRemaining}</p>
+          <p className="text-xl font-bold">{daysRemaining ?? '∞'}</p>
           <p className="text-[10px] text-slate-500 uppercase tracking-wide">Days Left</p>
         </div>
         <div className="p-3 rounded-xl bg-white/5 text-center">
@@ -100,19 +139,19 @@ export function GoalWidget() {
           <p className="text-[10px] text-slate-500 uppercase tracking-wide">Days In</p>
         </div>
         <div className="p-3 rounded-xl bg-white/5 text-center">
-          <p className="text-xl font-bold">{progress.sessionsCompleted}</p>
+          <p className="text-xl font-bold">{progress?.sessions_completed ?? 0}</p>
           <p className="text-[10px] text-slate-500 uppercase tracking-wide">Sessions</p>
         </div>
       </div>
 
       {/* Target info */}
-      {(activeGoal.targetGrade || activeGoal.projectName || activeGoal.competitionName) && (
+      {(activeGoal.target_grade || activeGoal.project_name || activeGoal.competition_name) && (
         <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-sm text-slate-400">
           <span>🎯</span>
           <span>
-            {activeGoal.targetGrade && `Target: ${activeGoal.targetGrade}`}
-            {activeGoal.projectName && `Project: ${activeGoal.projectName}`}
-            {activeGoal.competitionName && `Event: ${activeGoal.competitionName}`}
+            {activeGoal.target_grade && `Target: ${activeGoal.target_grade}`}
+            {activeGoal.project_name && `Project: ${activeGoal.project_name}`}
+            {activeGoal.competition_name && `Event: ${activeGoal.competition_name}`}
           </span>
         </div>
       )}
@@ -128,7 +167,28 @@ export function GoalWidget() {
 
 // Compact version for sidebar or smaller spaces
 export function GoalWidgetCompact() {
-  const activeGoal = getActiveGoal()
+  const [activeGoal, setActiveGoal] = useState<ClimbingGoal | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchGoal() {
+      const { data } = await getActiveGoalDb()
+      setActiveGoal(data)
+      setLoading(false)
+    }
+    fetchGoal()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 animate-pulse">
+        <div className="w-6 h-6 bg-white/10 rounded" />
+        <div className="flex-1">
+          <div className="h-3 w-24 bg-white/10 rounded" />
+        </div>
+      </div>
+    )
+  }
   
   if (!activeGoal) {
     return (
@@ -142,9 +202,11 @@ export function GoalWidgetCompact() {
     )
   }
 
-  const daysRemaining = calculateDaysRemaining(activeGoal.targetDate)
-  const progressPercent = calculateProgress(activeGoal.startDate, activeGoal.targetDate)
-  const goalInfo = GOAL_TYPES[activeGoal.type]
+  const daysRemaining = calculateDaysRemaining(activeGoal.target_date)
+  const progressPercent = activeGoal.target_date 
+    ? calculateProgress(activeGoal.start_date, activeGoal.target_date) 
+    : 0
+  const goalInfo = GOAL_TYPES[activeGoal.type] || { icon: '🎯', label: activeGoal.type }
 
   return (
     <Link
@@ -161,10 +223,9 @@ export function GoalWidgetCompact() {
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <span className="text-[10px] text-slate-500">{daysRemaining}d</span>
+          <span className="text-[10px] text-slate-500">{daysRemaining ?? '∞'}d</span>
         </div>
       </div>
     </Link>
   )
 }
-

@@ -1,6 +1,7 @@
 // Session storage utilities for persisting active session state
 
 export interface ActiveSessionData {
+  sessionId?: string // Database session ID
   sessionType: string
   location: string
   startTime: Date
