@@ -23,7 +23,7 @@ interface SessionStore {
   setCurrentSession: (session: ClimbingSession | null) => void
 }
 
-export const useSessionStore = create<SessionStore>((set, get) => ({
+export const useSessionStore = create<SessionStore>((set) => ({
   sessions: [],
   currentSession: null,
   loading: false,
