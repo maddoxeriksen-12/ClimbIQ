@@ -1,5 +1,19 @@
+-- Drop tables in reverse dependency order (CASCADE will handle policies and triggers)
+DROP TABLE IF EXISTS custom_variable_entries CASCADE;
+DROP TABLE IF EXISTS custom_variables CASCADE;
+DROP TABLE IF EXISTS goal_progress CASCADE;
+DROP TABLE IF EXISTS climbing_sessions CASCADE;
+DROP TABLE IF EXISTS climbing_goals CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+
+-- Drop functions
+DROP FUNCTION IF EXISTS public.update_goal_progress() CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+
+-- Now create everything fresh
+
 -- Create profiles table to store user profile data
-CREATE TABLE IF NOT EXISTS profiles (
+CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT,
   role TEXT DEFAULT 'athlete' CHECK (role IN ('athlete', 'coach')),
@@ -8,7 +22,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 -- Create climbing_goals table
-CREATE TABLE IF NOT EXISTS climbing_goals (
+CREATE TABLE climbing_goals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   type TEXT NOT NULL,
@@ -26,13 +40,13 @@ CREATE TABLE IF NOT EXISTS climbing_goals (
 );
 
 -- Create climbing_sessions table
-CREATE TABLE IF NOT EXISTS climbing_sessions (
+CREATE TABLE climbing_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   goal_id UUID REFERENCES climbing_goals(id) ON DELETE SET NULL,
   
   -- Session basics
-  session_type TEXT NOT NULL, -- bouldering, lead, trad, sport, training, project, recreational
+  session_type TEXT NOT NULL,
   location TEXT,
   is_outdoor BOOLEAN DEFAULT false,
   
@@ -52,12 +66,12 @@ CREATE TABLE IF NOT EXISTS climbing_sessions (
   post_session_data JSONB DEFAULT '{}',
   
   -- Key metrics (extracted for easy querying)
-  energy_level INTEGER CHECK (energy_level >= 1 AND energy_level <= 10),
-  motivation INTEGER CHECK (motivation >= 1 AND motivation <= 10),
-  sleep_quality INTEGER CHECK (sleep_quality >= 1 AND sleep_quality <= 10),
-  stress_level INTEGER CHECK (stress_level >= 1 AND stress_level <= 10),
-  session_rpe INTEGER CHECK (session_rpe >= 1 AND session_rpe <= 10),
-  satisfaction INTEGER CHECK (satisfaction >= 1 AND satisfaction <= 5),
+  energy_level INTEGER CHECK (energy_level IS NULL OR (energy_level >= 1 AND energy_level <= 10)),
+  motivation INTEGER CHECK (motivation IS NULL OR (motivation >= 1 AND motivation <= 10)),
+  sleep_quality INTEGER CHECK (sleep_quality IS NULL OR (sleep_quality >= 1 AND sleep_quality <= 10)),
+  stress_level INTEGER CHECK (stress_level IS NULL OR (stress_level >= 1 AND stress_level <= 10)),
+  session_rpe INTEGER CHECK (session_rpe IS NULL OR (session_rpe >= 1 AND session_rpe <= 10)),
+  satisfaction INTEGER CHECK (satisfaction IS NULL OR (satisfaction >= 1 AND satisfaction <= 5)),
   
   -- Climbing metrics
   highest_grade_sent TEXT,
@@ -70,7 +84,7 @@ CREATE TABLE IF NOT EXISTS climbing_sessions (
   had_pain_before BOOLEAN DEFAULT false,
   had_pain_after BOOLEAN DEFAULT false,
   pain_location TEXT,
-  pain_severity INTEGER CHECK (pain_severity >= 1 AND pain_severity <= 10),
+  pain_severity INTEGER CHECK (pain_severity IS NULL OR (pain_severity >= 1 AND pain_severity <= 10)),
   
   -- Notes
   notes TEXT,
@@ -80,7 +94,7 @@ CREATE TABLE IF NOT EXISTS climbing_sessions (
 );
 
 -- Create goal_progress table to track sessions per goal
-CREATE TABLE IF NOT EXISTS goal_progress (
+CREATE TABLE goal_progress (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   goal_id UUID NOT NULL REFERENCES climbing_goals(id) ON DELETE CASCADE,
   sessions_completed INTEGER DEFAULT 0,
@@ -93,7 +107,7 @@ CREATE TABLE IF NOT EXISTS goal_progress (
 );
 
 -- Create custom_variables table for user-defined tracking
-CREATE TABLE IF NOT EXISTS custom_variables (
+CREATE TABLE custom_variables (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   coach_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -109,7 +123,7 @@ CREATE TABLE IF NOT EXISTS custom_variables (
 );
 
 -- Create custom_variable_entries table
-CREATE TABLE IF NOT EXISTS custom_variable_entries (
+CREATE TABLE custom_variable_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   variable_id UUID NOT NULL REFERENCES custom_variables(id) ON DELETE CASCADE,
   session_id UUID NOT NULL REFERENCES climbing_sessions(id) ON DELETE CASCADE,
@@ -119,12 +133,12 @@ CREATE TABLE IF NOT EXISTS custom_variable_entries (
 );
 
 -- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON climbing_sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_started_at ON climbing_sessions(started_at DESC);
-CREATE INDEX IF NOT EXISTS idx_sessions_status ON climbing_sessions(status);
-CREATE INDEX IF NOT EXISTS idx_goals_user_id ON climbing_goals(user_id);
-CREATE INDEX IF NOT EXISTS idx_goals_is_active ON climbing_goals(is_active);
-CREATE INDEX IF NOT EXISTS idx_custom_variables_user_id ON custom_variables(user_id);
+CREATE INDEX idx_sessions_user_id ON climbing_sessions(user_id);
+CREATE INDEX idx_sessions_started_at ON climbing_sessions(started_at DESC);
+CREATE INDEX idx_sessions_status ON climbing_sessions(status);
+CREATE INDEX idx_goals_user_id ON climbing_goals(user_id);
+CREATE INDEX idx_goals_is_active ON climbing_goals(is_active);
+CREATE INDEX idx_custom_variables_user_id ON custom_variables(user_id);
 
 -- Enable Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -218,13 +232,13 @@ BEGIN
     NEW.id,
     NEW.raw_user_meta_data->>'full_name',
     COALESCE(NEW.raw_user_meta_data->>'role', 'athlete')
-  );
+  )
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger to create profile on signup
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
@@ -235,10 +249,10 @@ RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.status = 'completed' AND NEW.goal_id IS NOT NULL THEN
     INSERT INTO goal_progress (goal_id, sessions_completed, last_session_date)
-    VALUES (NEW.goal_id, 1, NEW.ended_at)
+    VALUES (NEW.goal_id, 1, COALESCE(NEW.ended_at, NOW()))
     ON CONFLICT (goal_id) DO UPDATE SET
       sessions_completed = goal_progress.sessions_completed + 1,
-      last_session_date = NEW.ended_at,
+      last_session_date = COALESCE(NEW.ended_at, NOW()),
       updated_at = NOW();
   END IF;
   RETURN NEW;
@@ -246,10 +260,17 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger to update goal progress
-DROP TRIGGER IF EXISTS on_session_completed ON climbing_sessions;
 CREATE TRIGGER on_session_completed
   AFTER INSERT OR UPDATE OF status ON climbing_sessions
   FOR EACH ROW
   WHEN (NEW.status = 'completed')
   EXECUTE FUNCTION public.update_goal_progress();
 
+-- Create profiles for existing users (if any)
+INSERT INTO profiles (id, full_name, role)
+SELECT 
+  id, 
+  raw_user_meta_data->>'full_name',
+  COALESCE(raw_user_meta_data->>'role', 'athlete')
+FROM auth.users
+ON CONFLICT (id) DO NOTHING;
