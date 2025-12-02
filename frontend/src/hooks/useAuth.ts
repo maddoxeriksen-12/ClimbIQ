@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
+export type UserRole = 'athlete' | 'coach'
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
@@ -31,12 +33,26 @@ export function useAuth() {
     if (error) throw error
   }
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signInWithGoogle = async (role?: UserRole) => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: role ? { user_role: role } : undefined,
+      },
+    })
+    if (error) throw error
+  }
+
+  const signUp = async (email: string, password: string, fullName: string, role: UserRole = 'athlete') => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName },
+        data: { 
+          full_name: fullName,
+          role: role,
+        },
       },
     })
     if (error) throw error
@@ -47,5 +63,30 @@ export function useAuth() {
     if (error) throw error
   }
 
-  return { user, session, loading, signIn, signUp, signOut }
+  const updateUserRole = async (role: UserRole) => {
+    const { error } = await supabase.auth.updateUser({
+      data: { role }
+    })
+    if (error) throw error
+  }
+
+  // Helper to get user role
+  const getUserRole = (): UserRole => {
+    return user?.user_metadata?.role || 'athlete'
+  }
+
+  const isCoach = () => getUserRole() === 'coach'
+
+  return { 
+    user, 
+    session, 
+    loading, 
+    signIn, 
+    signInWithGoogle, 
+    signUp, 
+    signOut,
+    updateUserRole,
+    getUserRole,
+    isCoach,
+  }
 }

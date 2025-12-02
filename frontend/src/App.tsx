@@ -1,49 +1,167 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuth } from './hooks/useAuth'
-import { PreSessionForm } from './components/PreSessionForm'
-import { SubscriptionManager } from './components/SubscriptionManager'
+import { Layout } from './components/Layout'
+import { CoachLayout } from './components/CoachLayout'
+import { SessionFlow, CompleteSessionFlow } from './components/SessionFlow'
 import { Login } from './pages/Login'
 import { SignUp } from './pages/SignUp'
+import { Dashboard } from './pages/Dashboard'
+import { CoachDashboard } from './pages/CoachDashboard'
+import { AthleteDetail } from './pages/AthleteDetail'
+import { Settings } from './pages/Settings'
+import { AcceptInvitation } from './pages/AcceptInvitation'
+import { SessionReview } from './pages/SessionReview'
+import { Goals } from './pages/Goals'
+import { NewGoal } from './pages/NewGoal'
 
 const queryClient = new QueryClient()
 
-function Dashboard() {
+function NewSession() {
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
-      <PreSessionForm />
+    <div className="p-8">
+      <SessionFlow />
     </div>
   )
 }
 
-function NewSession() {
-  return <PreSessionForm />
+function CompleteSession() {
+  return (
+    <div className="p-8">
+      <CompleteSessionFlow />
+    </div>
+  )
 }
 
 function SessionHistory() {
-  return <div>Session history TODO</div>
+  return (
+    <div className="p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Session History</h1>
+        <p className="text-slate-400">View and analyze your past climbing sessions.</p>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-12 text-center">
+        <span className="text-6xl mb-4 block">📅</span>
+        <h2 className="text-xl font-semibold mb-2">No sessions yet</h2>
+        <p className="text-slate-400 mb-6">Start logging your climbing sessions to see them here.</p>
+        <a
+          href="/session/new"
+          className="inline-flex px-6 py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-medium hover:from-fuchsia-500 hover:to-cyan-500 transition-all"
+        >
+          Log Your First Session
+        </a>
+      </div>
+    </div>
+  )
 }
 
 function Recommendations() {
-  return <div>Recommendations page TODO</div>
+  const tips = [
+    { icon: '💪', title: 'Focus on finger strength', desc: 'Your data suggests hangboard training could boost your max grade.', confidence: 87 },
+    { icon: '🎯', title: 'Try more overhangs', desc: 'You climb vertical terrain well but steep problems are a weakness.', confidence: 72 },
+    { icon: '😴', title: 'Prioritize recovery', desc: 'Your performance dips after 3 consecutive climbing days.', confidence: 91 },
+    { icon: '🧘', title: 'Add mobility work', desc: 'Hip flexibility could help you reach further on technical routes.', confidence: 65 },
+  ]
+
+  return (
+    <div className="p-8">
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <h1 className="text-3xl font-bold">AI Insights</h1>
+          <span className="px-2 py-1 rounded-full bg-fuchsia-500/20 text-fuchsia-300 text-xs font-medium">Beta</span>
+        </div>
+        <p className="text-slate-400">Personalized recommendations based on your climbing data.</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {tips.map((tip, i) => (
+          <div key={i} className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6 hover:bg-white/[0.07] transition-colors">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-fuchsia-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center text-2xl">
+                {tip.icon}
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold mb-1">{tip.title}</h3>
+                <p className="text-sm text-slate-400 mb-3">{tip.desc}</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-cyan-500"
+                      style={{ width: `${tip.confidence}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-slate-500">{tip.confidence}% confidence</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-8 p-6 rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/5">
+        <div className="flex items-start gap-4">
+          <span className="text-3xl">✨</span>
+          <div>
+            <h3 className="font-semibold mb-1">Unlock more insights</h3>
+            <p className="text-sm text-slate-400 mb-4">
+              Upgrade to Premium for unlimited AI recommendations, advanced analytics, and personalized training plans.
+            </p>
+            <a
+              href="/settings"
+              className="inline-flex px-4 py-2 rounded-lg bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white text-sm font-medium hover:from-fuchsia-500 hover:to-cyan-500 transition-all"
+            >
+              View Plans
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
-function Settings() {
-  return <div>Settings page TODO</div>
-}
-
-function Subscription() {
-  return <SubscriptionManager currentTier="free" />
+// Smart dashboard that shows the right view based on user role
+function SmartDashboard() {
+  const { isCoach } = useAuth()
+  return isCoach() ? <CoachDashboard /> : <Dashboard />
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
 
-  if (loading) return <div>Loading...</div>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0f0d] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full border-2 border-fuchsia-500 border-t-transparent animate-spin" />
+          <p className="text-slate-400">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
   if (!user) return <Navigate to="/login" />
 
-  return <>{children}</>
+  return <Layout>{children}</Layout>
+}
+
+function CoachRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading, isCoach } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0f0d] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full border-2 border-fuchsia-500 border-t-transparent animate-spin" />
+          <p className="text-slate-400">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) return <Navigate to="/login" />
+  if (!isCoach()) return <Navigate to="/" />
+
+  return <CoachLayout>{children}</CoachLayout>
 }
 
 export default function App() {
@@ -54,21 +172,40 @@ export default function App() {
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/accept-invitation/:invitationId" element={<AcceptInvitation />} />
 
-          {/* Protected routes */}
+          {/* Protected routes - Smart routing based on role */}
           <Route
             path="/"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <SmartDashboard />
               </ProtectedRoute>
             }
           />
+          
+          {/* Athlete routes */}
           <Route
             path="/session/new"
             element={
               <ProtectedRoute>
                 <NewSession />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/session/complete"
+            element={
+              <ProtectedRoute>
+                <CompleteSession />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/session/review"
+            element={
+              <ProtectedRoute>
+                <SessionReview />
               </ProtectedRoute>
             }
           />
@@ -97,11 +234,29 @@ export default function App() {
             }
           />
           <Route
-            path="/subscription"
+            path="/goals"
             element={
               <ProtectedRoute>
-                <Subscription />
+                <Goals />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/goals/new"
+            element={
+              <ProtectedRoute>
+                <NewGoal />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Coach-only routes */}
+          <Route
+            path="/athlete/:athleteId"
+            element={
+              <CoachRoute>
+                <AthleteDetail />
+              </CoachRoute>
             }
           />
         </Routes>
