@@ -46,32 +46,6 @@ export function CorrelationWidget({ performanceData = [] }: CorrelationWidgetPro
     return null
   }
 
-  const CorrelationBar = ({ value, trend }: { value: number; trend: 'positive' | 'negative' | 'neutral' }) => {
-    const width = Math.abs(value) * 100
-    const isPositive = value >= 0
-
-    return (
-      <div className="relative h-3 bg-white/10 rounded-full overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-px h-full bg-white/20" />
-        </div>
-        <div
-          className={`absolute h-full rounded-full transition-all duration-500 ${
-            trend === 'positive'
-              ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
-              : trend === 'negative'
-              ? 'bg-gradient-to-r from-rose-500 to-orange-500'
-              : 'bg-white/30'
-          }`}
-          style={{
-            width: `${width}%`,
-            left: isPositive ? '50%' : `${50 - width}%`,
-          }}
-        />
-      </div>
-    )
-  }
-
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
       <div className="flex items-center justify-between mb-6">

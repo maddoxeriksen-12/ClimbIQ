@@ -99,7 +99,7 @@ export function AnalysisScreen({ onComplete }: AnalysisScreenProps) {
 
       {/* Step indicators */}
       <div className="flex gap-2 mt-8">
-        {analysisSteps.map((step, index) => (
+        {analysisSteps.map((_, index) => (
           <div
             key={index}
             className={`w-2 h-2 rounded-full transition-all duration-300 ${

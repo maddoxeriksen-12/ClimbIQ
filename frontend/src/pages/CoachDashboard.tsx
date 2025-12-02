@@ -25,7 +25,6 @@ interface PendingInvitation {
 export function CoachDashboard() {
   const { user } = useAuth()
   const coachName = user?.user_metadata?.full_name?.split(' ')[0] || 'Coach'
-  const coachFullName = user?.user_metadata?.full_name || 'Coach'
 
   const [searchQuery, setSearchQuery] = useState('')
   const [showInviteModal, setShowInviteModal] = useState(false)

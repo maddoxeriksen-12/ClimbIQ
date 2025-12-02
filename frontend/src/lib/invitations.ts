@@ -11,6 +11,23 @@ export interface TeamInvitation {
   coach_name?: string
 }
 
+// Type for database rows
+interface TeamInvitationRow {
+  id: string
+  coach_id: string
+  athlete_email: string
+  status: string
+  created_at: string
+  expires_at: string
+  accepted_at?: string
+  profiles?: { full_name?: string }
+}
+
+interface CoachAthleteRow {
+  coach_id: string
+  athlete_id: string
+}
+
 export async function sendTeamInvitation(athleteEmail: string, coachId: string, coachName: string): Promise<{ success: boolean; error?: string }> {
   try {
     // Check if invitation already exists
@@ -37,20 +54,22 @@ export async function sendTeamInvitation(athleteEmail: string, coachId: string, 
         athlete_email: athleteEmail.toLowerCase(),
         status: 'pending',
         expires_at: expiresAt.toISOString(),
-      })
+      } as unknown as never)
       .select()
       .single()
 
     if (error) throw error
 
+    const invitationData = data as unknown as TeamInvitationRow
+
     // Send invitation email via Edge Function or backend API
     // For now, we'll call a Supabase Edge Function
     const { error: emailError } = await supabase.functions.invoke('send-team-invitation', {
       body: {
-        invitationId: data.id,
+        invitationId: invitationData.id,
         athleteEmail: athleteEmail,
         coachName: coachName,
-        acceptUrl: `${window.location.origin}/accept-invitation/${data.id}`,
+        acceptUrl: `${window.location.origin}/accept-invitation/${invitationData.id}`,
       },
     })
 
@@ -105,20 +124,22 @@ export async function resendInvitation(invitationId: string, coachName: string):
 
     const { data, error } = await supabase
       .from('team_invitations')
-      .update({ expires_at: expiresAt.toISOString() })
+      .update({ expires_at: expiresAt.toISOString() } as unknown as never)
       .eq('id', invitationId)
       .select()
       .single()
 
     if (error) throw error
 
+    const invitationData = data as unknown as TeamInvitationRow
+
     // Resend email
     await supabase.functions.invoke('send-team-invitation', {
       body: {
-        invitationId: data.id,
-        athleteEmail: data.athlete_email,
+        invitationId: invitationData.id,
+        athleteEmail: invitationData.athlete_email,
         coachName: coachName,
-        acceptUrl: `${window.location.origin}/accept-invitation/${data.id}`,
+        acceptUrl: `${window.location.origin}/accept-invitation/${invitationData.id}`,
       },
     })
 
@@ -141,9 +162,17 @@ export async function getInvitationDetails(invitationId: string): Promise<TeamIn
       .single()
 
     if (error) throw error
+    
+    const invitationData = data as unknown as TeamInvitationRow
     return {
-      ...data,
-      coach_name: data.profiles?.full_name,
+      id: invitationData.id,
+      coach_id: invitationData.coach_id,
+      athlete_email: invitationData.athlete_email,
+      status: invitationData.status as TeamInvitation['status'],
+      created_at: invitationData.created_at,
+      expires_at: invitationData.expires_at,
+      accepted_at: invitationData.accepted_at,
+      coach_name: invitationData.profiles?.full_name,
     }
   } catch (error) {
     console.error('Failed to fetch invitation:', error)
@@ -164,11 +193,13 @@ export async function acceptInvitation(invitationId: string, athleteId: string):
       return { success: false, error: 'Invitation not found' }
     }
 
-    if (invitation.status !== 'pending') {
+    const invitationData = invitation as unknown as TeamInvitationRow
+
+    if (invitationData.status !== 'pending') {
       return { success: false, error: 'This invitation has already been used or expired' }
     }
 
-    if (new Date(invitation.expires_at) < new Date()) {
+    if (new Date(invitationData.expires_at) < new Date()) {
       return { success: false, error: 'This invitation has expired' }
     }
 
@@ -178,7 +209,7 @@ export async function acceptInvitation(invitationId: string, athleteId: string):
       .update({
         status: 'accepted',
         accepted_at: new Date().toISOString(),
-      })
+      } as unknown as never)
       .eq('id', invitationId)
 
     if (updateError) throw updateError
@@ -187,9 +218,9 @@ export async function acceptInvitation(invitationId: string, athleteId: string):
     const { error: teamError } = await supabase
       .from('coach_athletes')
       .insert({
-        coach_id: invitation.coach_id,
+        coach_id: invitationData.coach_id,
         athlete_id: athleteId,
-      })
+      } as unknown as never)
 
     if (teamError) throw teamError
 
@@ -204,7 +235,7 @@ export async function declineInvitation(invitationId: string): Promise<boolean> 
   try {
     const { error } = await supabase
       .from('team_invitations')
-      .update({ status: 'declined' })
+      .update({ status: 'declined' } as unknown as never)
       .eq('id', invitationId)
 
     if (error) throw error
@@ -214,4 +245,7 @@ export async function declineInvitation(invitationId: string): Promise<boolean> 
     return false
   }
 }
+
+// Export the row type for use in other files if needed
+export type { TeamInvitationRow, CoachAthleteRow }
 

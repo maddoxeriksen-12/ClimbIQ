@@ -16,7 +16,7 @@ export function SessionReview() {
     return null
   }
 
-  const preData = activeSession.preSessionData || {}
+  const preData = (activeSession.preSessionData || {}) as Record<string, unknown>
 
   // Calculate session duration
   const now = new Date()
@@ -168,7 +168,7 @@ export function SessionReview() {
                   {(preData.muscle_soreness as string) || 'None'}
                 </p>
               </div>
-              {preData.has_pain && (
+              {Boolean(preData.has_pain) && (
                 <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
                   <p className="text-xs text-amber-400">⚠️ Pre-existing Pain</p>
                   <p className="font-medium text-amber-300">Logged injury/pain</p>
@@ -179,10 +179,10 @@ export function SessionReview() {
         </div>
 
         {/* Notes */}
-        {preData.notes && (
+        {Boolean(preData.notes) && (
           <div className="mt-4 p-4 rounded-xl bg-white/5">
             <p className="text-xs text-slate-500 mb-1">Notes</p>
-            <p className="text-sm">{preData.notes as string}</p>
+            <p className="text-sm">{String(preData.notes)}</p>
           </div>
         )}
       </div>
