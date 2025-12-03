@@ -3,35 +3,22 @@ import { useAuth, type UserRole } from '../hooks/useAuth'
 import { SubscriptionManager } from '../components/SubscriptionManager'
 import { CustomVariableManager } from '../components/CustomVariableManager'
 
-type SettingsTab = 'profile' | 'subscription' | 'preferences' | 'tracking' | 'account'
+type SettingsTab = 'subscription' | 'preferences' | 'tracking' | 'account'
 
 export function Settings() {
   const { user, getUserRole, updateUserRole, isCoach } = useAuth()
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
-  const [profileData, setProfileData] = useState({
-    fullName: user?.user_metadata?.full_name || '',
-    email: user?.email || '',
-    climbingStyle: 'bouldering',
-    experience: 'intermediate',
-    homeGym: '',
-  })
+  const [activeTab, setActiveTab] = useState<SettingsTab>('subscription')
   const [isUpdatingRole, setIsUpdatingRole] = useState(false)
   const [roleUpdateSuccess, setRoleUpdateSuccess] = useState(false)
 
   const currentRole = getUserRole()
 
   const tabs: { id: SettingsTab; label: string; icon: string }[] = [
-    { id: 'profile', label: 'Profile', icon: '👤' },
     { id: 'subscription', label: 'Subscription', icon: '💳' },
     { id: 'tracking', label: 'Custom Tracking', icon: '📊' },
     { id: 'preferences', label: 'Preferences', icon: '🎛️' },
     { id: 'account', label: 'Account', icon: '🔧' },
   ]
-
-  const handleProfileSave = async () => {
-    // TODO: Implement profile save via Supabase
-    console.log('Saving profile:', profileData)
-  }
 
   const handleRoleChange = async (newRole: UserRole) => {
     if (newRole === currentRole) return
@@ -81,98 +68,6 @@ export function Settings() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'profile' && (
-        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
-          <h2 className="text-xl font-semibold mb-6">Profile Information</h2>
-          
-          <div className="space-y-6">
-            {/* Avatar */}
-            <div className="flex items-center gap-4">
-              <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${isCoach() ? 'from-amber-500 to-orange-500' : 'from-fuchsia-500 to-violet-500'} flex items-center justify-center text-3xl font-bold`}>
-                {profileData.fullName?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}
-              </div>
-              <div>
-                <button className="px-4 py-2 rounded-lg border border-white/10 text-sm hover:bg-white/5 transition-colors">
-                  Change avatar
-                </button>
-              </div>
-            </div>
-
-            {/* Form fields */}
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">Full Name</label>
-                <input
-                  type="text"
-                  value={profileData.fullName}
-                  onChange={(e) => setProfileData({ ...profileData, fullName: e.target.value })}
-                  className={`w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 ${isCoach() ? 'focus:ring-amber-500/50' : 'focus:ring-fuchsia-500/50'} transition-all`}
-                  placeholder="Your name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">Email</label>
-                <input
-                  type="email"
-                  value={profileData.email}
-                  disabled
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-400 cursor-not-allowed"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">Primary Climbing Style</label>
-                <select
-                  value={profileData.climbingStyle}
-                  onChange={(e) => setProfileData({ ...profileData, climbingStyle: e.target.value })}
-                  className={`w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 ${isCoach() ? 'focus:ring-amber-500/50' : 'focus:ring-fuchsia-500/50'} transition-all`}
-                >
-                  <option value="bouldering">Bouldering</option>
-                  <option value="sport">Sport Climbing</option>
-                  <option value="trad">Trad Climbing</option>
-                  <option value="mixed">Mixed</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">Experience Level</label>
-                <select
-                  value={profileData.experience}
-                  onChange={(e) => setProfileData({ ...profileData, experience: e.target.value })}
-                  className={`w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 ${isCoach() ? 'focus:ring-amber-500/50' : 'focus:ring-fuchsia-500/50'} transition-all`}
-                >
-                  <option value="beginner">Beginner (0-1 years)</option>
-                  <option value="intermediate">Intermediate (1-3 years)</option>
-                  <option value="advanced">Advanced (3-7 years)</option>
-                  <option value="expert">Expert (7+ years)</option>
-                </select>
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-medium text-slate-300">Home Gym</label>
-                <input
-                  type="text"
-                  value={profileData.homeGym}
-                  onChange={(e) => setProfileData({ ...profileData, homeGym: e.target.value })}
-                  className={`w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 ${isCoach() ? 'focus:ring-amber-500/50' : 'focus:ring-fuchsia-500/50'} transition-all`}
-                  placeholder="Where do you climb most often?"
-                />
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-white/10">
-              <button
-                onClick={handleProfileSave}
-                className={`px-6 py-3 rounded-xl bg-gradient-to-r ${isCoach() ? 'from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500' : 'from-fuchsia-600 to-cyan-600 hover:from-fuchsia-500 hover:to-cyan-500'} text-white font-medium transition-all`}
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {activeTab === 'subscription' && (
         <SubscriptionManager currentTier="free" />
       )}

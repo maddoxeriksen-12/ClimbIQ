@@ -15,7 +15,7 @@ export function Layout({ children }: LayoutProps) {
   const textBrightness = 100 // 100% = white
   const bgOpacity = 30 // 30%
   const bgBrightness = 0 // 0% = black
-  const bubbleOpacity = 75 // 75%
+  const bubbleOpacity = 80 // 80% (increased by 5%)
   const bubbleBrightness = 20 // 20% (dark gray)
   
   /* DEBUG SLIDERS - Uncomment to re-enable
@@ -82,14 +82,11 @@ export function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-[#0a0f0d] text-white flex flex-col md:flex-row">
       {/* Mobile Header - Only visible on mobile */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#0a0f0d]/95 backdrop-blur-xl border-b border-white/10">
-        <div className="flex items-center justify-between px-4 py-3">
-          {/* Spacer for centering */}
-          <div className="w-10" />
-
-          {/* Logo - centered, scrolls to top */}
+        <div className="flex items-center justify-center px-4 py-3 relative">
+          {/* Logo - centered */}
           <button 
             onClick={scrollToTop}
-            className="flex items-center gap-2 absolute left-1/2 -translate-x-1/2"
+            className="flex items-center gap-2"
           >
             <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${gradientFrom} ${gradientTo} flex items-center justify-center font-bold text-sm`}>
               C
@@ -99,8 +96,8 @@ export function Layout({ children }: LayoutProps) {
             </span>
           </button>
 
-          {/* Mobile Menu Button */}
-          <div className="mobile-menu-container relative">
+          {/* Mobile Menu Button - positioned absolute right */}
+          <div className="mobile-menu-container absolute right-4">
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -210,9 +207,11 @@ export function Layout({ children }: LayoutProps) {
                 </div>
                 */}
 
-                {/* User Info - same color as bubbles */}
-                <div 
-                  className="px-4 py-4 border-b border-white/20 mx-2 mt-2 rounded-xl"
+                {/* User Info - clickable, links to settings/profile */}
+                <Link 
+                  to="/settings"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-4 mx-2 mt-2 rounded-xl transition-opacity hover:opacity-80"
                   style={{ 
                     backgroundColor: `rgba(${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${bubbleOpacity / 100})`
                   }}
@@ -230,8 +229,9 @@ export function Layout({ children }: LayoutProps) {
                       </p>
                       <p className={`text-xs font-medium ${roleTextColor}`}>{userRole}</p>
                     </div>
+                    <span className="text-white/50 text-sm">→</span>
                   </div>
-                </div>
+                </Link>
 
                 {/* Navigation Items - With bubbles */}
                 <nav className="py-3 px-2 space-y-1">
@@ -265,14 +265,17 @@ export function Layout({ children }: LayoutProps) {
                   })}
                 </nav>
 
-                {/* Sign Out - Free floating */}
-                <div className="py-3 px-2 border-t border-white/20">
+                {/* Sign Out - Same bubble style */}
+                <div className="py-3 px-2">
                   <button
                     onClick={() => {
                       setMobileMenuOpen(false)
                       signOut()
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-red-400 hover:text-red-300 transition-all rounded-xl"
+                    style={{ 
+                      backgroundColor: `rgba(${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${bubbleOpacity / 100})`
+                    }}
                   >
                     <span className="text-xl drop-shadow-sm">🚪</span>
                     Sign out
