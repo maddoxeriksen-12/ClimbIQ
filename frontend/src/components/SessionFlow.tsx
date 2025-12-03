@@ -6,39 +6,61 @@ import { AnalysisScreen } from './AnalysisScreen'
 import { RecommendationsScreen } from './RecommendationsScreen'
 import { getStoredClimbs, clearStoredClimbs } from './LiveClimbTracker'
 import { saveActiveSession, getActiveSession, clearActiveSession } from '../lib/sessionStorage'
-import { createSession, completeSession, canStartNewSession } from '../lib/sessionService'
+import { createSession, completeSession, canStartNewSession, cancelSession } from '../lib/sessionService'
 import { getActiveGoal } from '../lib/goalService'
 import type { ActiveSessionData } from '../lib/sessionStorage'
 
-type SessionPhase = 'pre' | 'analyzing' | 'recommendations' | 'active' | 'post' | 'complete' | 'cooldown'
+type SessionPhase = 'pre' | 'analyzing' | 'recommendations' | 'active' | 'post' | 'complete' | 'cooldown' | 'has_active'
 
 interface CooldownInfo {
   minutesRemaining: number
   lastSessionTime: Date
 }
 
+interface ActiveSessionInfo {
+  sessionId: string
+  startedAt: Date
+}
+
 export function SessionFlow() {
   const navigate = useNavigate()
   const [phase, setPhase] = useState<SessionPhase>('pre')
   const [cooldownInfo, setCooldownInfo] = useState<CooldownInfo | null>(null)
+  const [activeSessionInfo, setActiveSessionInfo] = useState<ActiveSessionInfo | null>(null)
   const [checkingCooldown, setCheckingCooldown] = useState(true)
+  const [isCancelling, setIsCancelling] = useState(false)
 
   // Check if user can start a new session
   useEffect(() => {
     async function checkCooldown() {
       setCheckingCooldown(true)
-      const { canStart, minutesUntilAllowed, lastSessionTime, error } = await canStartNewSession()
+      const result = await canStartNewSession()
       
-      if (error && error.message.includes('active session')) {
-        // User has an active session, redirect to complete it
-        navigate('/session/complete')
+      if (result.error && result.error.message.includes('active session')) {
+        // User has an active session - check if there's local storage data
+        const localSession = getActiveSession()
+        if (localSession && localSession.sessionId) {
+          // They have local data, redirect to complete
+          navigate('/session/complete')
+        } else if (result.activeSessionId && result.activeSessionStartedAt) {
+          // They have a DB session but no local data - show option to cancel or continue
+          setActiveSessionInfo({
+            sessionId: result.activeSessionId,
+            startedAt: new Date(result.activeSessionStartedAt),
+          })
+          setPhase('has_active')
+        } else {
+          // Fallback - just show the form (shouldn't happen)
+          setPhase('pre')
+        }
+        setCheckingCooldown(false)
         return
       }
       
-      if (!canStart && minutesUntilAllowed && lastSessionTime) {
+      if (!result.canStart && result.minutesUntilAllowed && result.lastSessionTime) {
         setCooldownInfo({
-          minutesRemaining: minutesUntilAllowed,
-          lastSessionTime: lastSessionTime,
+          minutesRemaining: result.minutesUntilAllowed,
+          lastSessionTime: result.lastSessionTime,
         })
         setPhase('cooldown')
       }
@@ -47,6 +69,43 @@ export function SessionFlow() {
     checkCooldown()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Handle cancelling an orphaned active session
+  const handleCancelOrphanedSession = async () => {
+    if (!activeSessionInfo) return
+    
+    setIsCancelling(true)
+    try {
+      await cancelSession(activeSessionInfo.sessionId)
+      clearActiveSession()
+      clearStoredClimbs()
+      setActiveSessionInfo(null)
+      setPhase('pre')
+    } catch (err) {
+      console.error('Failed to cancel session:', err)
+      alert('Failed to cancel session. Please try again.')
+    } finally {
+      setIsCancelling(false)
+    }
+  }
+
+  // Handle continuing an orphaned active session
+  const handleContinueOrphanedSession = () => {
+    if (!activeSessionInfo) return
+    
+    // Create local storage data from the active session
+    const localSession: ActiveSessionData = {
+      sessionId: activeSessionInfo.sessionId,
+      sessionType: 'unknown', // We don't have this info
+      location: '',
+      startTime: activeSessionInfo.startedAt,
+      isOutdoor: false,
+      plannedDuration: 90,
+      preSessionData: {},
+    }
+    saveActiveSession(localSession)
+    navigate('/session/complete')
+  }
   const [sessionInfo, setSessionInfo] = useState<ActiveSessionData | null>(null)
   const [dbSessionId, setDbSessionId] = useState<string | null>(null)
 
@@ -238,6 +297,83 @@ export function SessionFlow() {
           <Link
             to="/"
             className="px-6 py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-medium hover:from-fuchsia-500 hover:to-cyan-500 transition-all"
+          >
+            ← Back to Dashboard
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // Has active session screen - user has an incomplete session in the database
+  if (phase === 'has_active' && activeSessionInfo) {
+    const formatDateTime = (date: Date) => {
+      return date.toLocaleString('en-US', { 
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      })
+    }
+
+    return (
+      <div className="max-w-2xl mx-auto text-center py-20">
+        <div className="mb-6">
+          <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 border border-violet-500/30 flex items-center justify-center text-4xl">
+            🧗
+          </div>
+        </div>
+        <h1 className="text-3xl font-bold mb-4">You Have an Active Session</h1>
+        <p className="text-slate-400 mb-6">
+          It looks like you started a session but didn't complete it. What would you like to do?
+        </p>
+        
+        <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-6 mb-8 max-w-md mx-auto">
+          <p className="text-sm text-slate-400 mb-2">Session started:</p>
+          <p className="text-lg font-medium text-violet-300">
+            {formatDateTime(activeSessionInfo.startedAt)}
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-3 max-w-md mx-auto">
+          <button
+            onClick={handleContinueOrphanedSession}
+            className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-medium hover:from-fuchsia-500 hover:to-cyan-500 transition-all"
+          >
+            <span className="flex items-center justify-center gap-2">
+              <span>✅</span> Complete This Session
+            </span>
+            <span className="text-sm opacity-80 block mt-1">Fill out the post-session form</span>
+          </button>
+          
+          <button
+            onClick={handleCancelOrphanedSession}
+            disabled={isCancelling}
+            className="w-full px-6 py-4 rounded-xl border border-red-500/30 text-red-400 font-medium hover:bg-red-500/10 transition-all disabled:opacity-50"
+          >
+            {isCancelling ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Cancelling...
+              </span>
+            ) : (
+              <>
+                <span className="flex items-center justify-center gap-2">
+                  <span>🗑️</span> Cancel & Start Fresh
+                </span>
+                <span className="text-sm opacity-80 block mt-1">Delete this session and start a new one</span>
+              </>
+            )}
+          </button>
+          
+          <Link
+            to="/"
+            className="w-full px-6 py-3 rounded-xl border border-white/10 text-slate-400 font-medium hover:bg-white/5 transition-all"
           >
             ← Back to Dashboard
           </Link>

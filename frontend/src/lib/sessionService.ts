@@ -390,6 +390,8 @@ export async function canStartNewSession(): Promise<{
   canStart: boolean; 
   minutesUntilAllowed?: number;
   lastSessionTime?: Date;
+  activeSessionId?: string;
+  activeSessionStartedAt?: string;
   error: Error | null 
 }> {
   try {
@@ -401,7 +403,7 @@ export async function canStartNewSession(): Promise<{
     // Get the most recent completed session
     const { data, error } = await supabase
       .from('climbing_sessions')
-      .select('started_at, ended_at, status')
+      .select('id, started_at, ended_at, status')
       .eq('user_id', userData.user.id)
       .in('status', ['completed', 'active'])
       .order('started_at', { ascending: false })
@@ -418,13 +420,15 @@ export async function canStartNewSession(): Promise<{
       return { canStart: true, error: null }
     }
 
-    const session = data as { started_at: string; ended_at?: string; status: string }
+    const session = data as { id: string; started_at: string; ended_at?: string; status: string }
     
     // If there's an active session, they can't start another
     if (session.status === 'active') {
       return { 
         canStart: false, 
         minutesUntilAllowed: 0,
+        activeSessionId: session.id,
+        activeSessionStartedAt: session.started_at,
         error: new Error('You already have an active session. Please complete or cancel it first.')
       }
     }
