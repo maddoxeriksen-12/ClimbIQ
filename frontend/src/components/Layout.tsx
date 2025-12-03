@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
@@ -8,6 +9,24 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const { user, signOut, isCoach } = useAuth()
   const location = useLocation()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (mobileMenuOpen && !target.closest('.mobile-menu-container')) {
+        setMobileMenuOpen(false)
+      }
+    }
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [mobileMenuOpen])
 
   // Different nav items based on role
   const athleteNavItems = [
@@ -37,11 +56,118 @@ export function Layout({ children }: LayoutProps) {
   const activeGradientFrom = isCoach() ? 'from-amber-500/20' : 'from-fuchsia-500/20'
   const activeGradientTo = isCoach() ? 'to-orange-500/20' : 'to-cyan-500/20'
   const roleTextColor = isCoach() ? 'text-amber-400' : 'text-fuchsia-400'
+  const borderColor = isCoach() ? 'border-amber-500/30' : 'border-fuchsia-500/30'
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   return (
-    <div className="min-h-screen bg-[#0a0f0d] text-white flex">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-white/10 bg-white/[0.02] backdrop-blur-xl flex flex-col">
+    <div className="min-h-screen bg-[#0a0f0d] text-white flex flex-col md:flex-row">
+      {/* Mobile Header - Only visible on mobile */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#0a0f0d]/95 backdrop-blur-xl border-b border-white/10">
+        <div className="flex items-center justify-between px-4 py-3">
+          {/* Logo - scrolls to top */}
+          <button 
+            onClick={scrollToTop}
+            className="flex items-center gap-2"
+          >
+            <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${gradientFrom} ${gradientTo} flex items-center justify-center font-bold text-sm`}>
+              C
+            </div>
+            <span className={`text-lg font-bold bg-gradient-to-r ${gradientFromText} ${gradientToText} bg-clip-text text-transparent`}>
+              ClimbIQ
+            </span>
+          </button>
+
+          {/* Mobile Menu Button */}
+          <div className="mobile-menu-container relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setMobileMenuOpen(!mobileMenuOpen)
+              }}
+              className={`p-2 rounded-lg border transition-all ${
+                mobileMenuOpen 
+                  ? `bg-gradient-to-r ${activeGradientFrom} ${activeGradientTo} ${borderColor}` 
+                  : 'border-white/10 hover:bg-white/5'
+              }`}
+            >
+              {mobileMenuOpen ? (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+            </button>
+
+            {/* Mobile Dropdown Menu */}
+            {mobileMenuOpen && (
+              <div className="absolute top-full right-0 mt-2 w-64 rounded-2xl border border-white/10 bg-[#0f1412] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                {/* User Info */}
+                <div className="p-4 border-b border-white/10 bg-white/5">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${gradientFrom} ${gradientTo} flex items-center justify-center font-bold`}>
+                      {user?.email?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">
+                        {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+                      </p>
+                      <p className={`text-xs ${roleTextColor}`}>{userRole}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Navigation Items */}
+                <nav className="p-2">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => {
+                        setMobileMenuOpen(false)
+                        if (item.path === location.pathname) {
+                          scrollToTop()
+                        }
+                      }}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                        isActive(item.path)
+                          ? `bg-gradient-to-r ${activeGradientFrom} ${activeGradientTo} text-white`
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="text-lg">{item.icon}</span>
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+
+                {/* Sign Out */}
+                <div className="p-2 pt-0 border-t border-white/10 mt-2">
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false)
+                      signOut()
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-all"
+                  >
+                    <span className="text-lg">🚪</span>
+                    Sign out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Desktop Sidebar - Hidden on mobile */}
+      <aside className="hidden md:flex w-64 border-r border-white/10 bg-white/[0.02] backdrop-blur-xl flex-col fixed h-full">
         {/* Logo */}
         <div className="p-6 border-b border-white/10">
           <Link to="/" className="flex items-center gap-3">
@@ -98,7 +224,7 @@ export function Layout({ children }: LayoutProps) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 md:ml-64 pt-14 md:pt-0 overflow-auto">
         <div className="min-h-full">
           {children}
         </div>
