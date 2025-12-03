@@ -106,9 +106,10 @@ export async function createGoal(input: CreateGoalInput): Promise<{ data: Climbi
     }
 
     // Deactivate any existing active goals
+    // @ts-expect-error - Supabase types not fully generated
     await supabase
       .from('climbing_goals')
-      .update({ is_active: false } as SupabaseData)
+      .update({ is_active: false })
       .eq('user_id', userData.user.id)
       .eq('is_active', true)
 
@@ -240,15 +241,17 @@ export async function setActiveGoal(goalId: string): Promise<{ success: boolean;
     }
 
     // Deactivate all goals
+    // @ts-expect-error - Supabase types not fully generated
     await supabase
       .from('climbing_goals')
-      .update({ is_active: false } as SupabaseData)
+      .update({ is_active: false })
       .eq('user_id', userData.user.id)
 
     // Activate the selected goal
+    // @ts-expect-error - Supabase types not fully generated
     const { error } = await supabase
       .from('climbing_goals')
-      .update({ is_active: true } as SupabaseData)
+      .update({ is_active: true })
       .eq('id', goalId)
 
     if (error) throw error
@@ -265,12 +268,13 @@ export async function updateGoal(
   updates: Partial<CreateGoalInput>
 ): Promise<{ data: ClimbingGoal | null; error: Error | null }> {
   try {
+    // @ts-expect-error - Supabase types not fully generated
     const { data, error } = await supabase
       .from('climbing_goals')
       .update({
         ...updates,
         updated_at: new Date().toISOString(),
-      } as SupabaseData)
+      })
       .eq('id', goalId)
       .select()
       .single()
