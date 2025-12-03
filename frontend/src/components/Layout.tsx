@@ -201,8 +201,13 @@ export function Layout({ children }: LayoutProps) {
                   </div>
                 </div>
 
-                {/* User Info - minimal */}
-                <div className="px-5 py-4 border-b border-white/20">
+                {/* User Info - same color as bubbles */}
+                <div 
+                  className="px-4 py-4 border-b border-white/20 mx-2 mt-2 rounded-xl"
+                  style={{ 
+                    backgroundColor: `rgba(${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${bubbleOpacity / 100})`
+                  }}
+                >
                   <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${gradientFrom} ${gradientTo} flex items-center justify-center font-bold text-sm shadow-lg`}>
                       {user?.email?.charAt(0).toUpperCase() || 'U'}
