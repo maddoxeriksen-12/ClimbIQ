@@ -12,6 +12,7 @@ import { AthleteDetail } from './pages/AthleteDetail'
 import { Settings } from './pages/Settings'
 import { AcceptInvitation } from './pages/AcceptInvitation'
 import { SessionReview } from './pages/SessionReview'
+import { SessionHistory } from './pages/SessionHistory'
 import { Goals } from './pages/Goals'
 import { NewGoal } from './pages/NewGoal'
 
@@ -29,28 +30,6 @@ function CompleteSession() {
   return (
     <div className="p-8">
       <CompleteSessionFlow />
-    </div>
-  )
-}
-
-function SessionHistory() {
-  return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Session History</h1>
-        <p className="text-slate-400">View and analyze your past climbing sessions.</p>
-      </div>
-      <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-12 text-center">
-        <span className="text-6xl mb-4 block">📅</span>
-        <h2 className="text-xl font-semibold mb-2">No sessions yet</h2>
-        <p className="text-slate-400 mb-6">Start logging your climbing sessions to see them here.</p>
-        <a
-          href="/session/new"
-          className="inline-flex px-6 py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-medium hover:from-fuchsia-500 hover:to-cyan-500 transition-all"
-        >
-          Log Your First Session
-        </a>
-      </div>
     </div>
   )
 }
@@ -216,6 +195,10 @@ export default function App() {
                 <SessionHistory />
               </ProtectedRoute>
             }
+          />
+          <Route
+            path="/history"
+            element={<Navigate to="/sessions" replace />}
           />
           <Route
             path="/recommendations"

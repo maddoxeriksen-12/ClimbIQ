@@ -256,7 +256,7 @@ export function Dashboard() {
         <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
           <div className="p-5 border-b border-white/10 flex items-center justify-between">
             <h2 className="font-semibold">Recent Sessions</h2>
-            <Link to="/history" className="text-sm text-fuchsia-400 hover:text-fuchsia-300 transition-colors">
+            <Link to="/sessions" className="text-sm text-fuchsia-400 hover:text-fuchsia-300 transition-colors">
               View all →
             </Link>
           </div>
