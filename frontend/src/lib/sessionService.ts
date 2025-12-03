@@ -478,3 +478,118 @@ export async function deleteSession(sessionId: string): Promise<{ success: boole
   }
 }
 
+// Update session input type
+export interface UpdateSessionInput {
+  session_id: string
+  session_type?: string
+  location?: string
+  is_outdoor?: boolean
+  started_at?: string
+  ended_at?: string
+  planned_duration_minutes?: number
+  actual_duration_minutes?: number
+  pre_session_data?: Record<string, unknown>
+  post_session_data?: Record<string, unknown>
+  energy_level?: number
+  motivation?: number
+  sleep_quality?: number
+  stress_level?: number
+  session_rpe?: number
+  satisfaction?: number
+  highest_grade_sent?: string
+  highest_grade_attempted?: string
+  total_climbs?: number
+  total_sends?: number
+  flash_count?: number
+  had_pain_before?: boolean
+  had_pain_after?: boolean
+  pain_location?: string
+  pain_severity?: number
+  notes?: string
+}
+
+// Update a session (edit session details later)
+export async function updateSession(input: UpdateSessionInput): Promise<{ data: ClimbingSession | null; error: Error | null }> {
+  try {
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) {
+      return { data: null, error: new Error('User not authenticated') }
+    }
+
+    // Build update object only with provided fields
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    }
+
+    if (input.session_type !== undefined) updateData.session_type = input.session_type
+    if (input.location !== undefined) updateData.location = input.location
+    if (input.is_outdoor !== undefined) updateData.is_outdoor = input.is_outdoor
+    if (input.started_at !== undefined) updateData.started_at = input.started_at
+    if (input.ended_at !== undefined) updateData.ended_at = input.ended_at
+    if (input.planned_duration_minutes !== undefined) updateData.planned_duration_minutes = input.planned_duration_minutes
+    if (input.actual_duration_minutes !== undefined) updateData.actual_duration_minutes = input.actual_duration_minutes
+    if (input.pre_session_data !== undefined) updateData.pre_session_data = input.pre_session_data
+    if (input.post_session_data !== undefined) updateData.post_session_data = input.post_session_data
+    if (input.energy_level !== undefined) updateData.energy_level = input.energy_level
+    if (input.motivation !== undefined) updateData.motivation = input.motivation
+    if (input.sleep_quality !== undefined) updateData.sleep_quality = input.sleep_quality
+    if (input.stress_level !== undefined) updateData.stress_level = input.stress_level
+    if (input.session_rpe !== undefined) updateData.session_rpe = input.session_rpe
+    if (input.satisfaction !== undefined) updateData.satisfaction = input.satisfaction
+    if (input.highest_grade_sent !== undefined) updateData.highest_grade_sent = input.highest_grade_sent
+    if (input.highest_grade_attempted !== undefined) updateData.highest_grade_attempted = input.highest_grade_attempted
+    if (input.total_climbs !== undefined) updateData.total_climbs = input.total_climbs
+    if (input.total_sends !== undefined) updateData.total_sends = input.total_sends
+    if (input.flash_count !== undefined) updateData.flash_count = input.flash_count
+    if (input.had_pain_before !== undefined) updateData.had_pain_before = input.had_pain_before
+    if (input.had_pain_after !== undefined) updateData.had_pain_after = input.had_pain_after
+    if (input.pain_location !== undefined) updateData.pain_location = input.pain_location
+    if (input.pain_severity !== undefined) updateData.pain_severity = input.pain_severity
+    if (input.notes !== undefined) updateData.notes = input.notes
+
+    // Recalculate duration if times changed
+    if (input.started_at && input.ended_at) {
+      const start = new Date(input.started_at)
+      const end = new Date(input.ended_at)
+      updateData.actual_duration_minutes = Math.round((end.getTime() - start.getTime()) / 60000)
+    }
+
+    const { data, error } = await (supabase as any)
+      .from('climbing_sessions')
+      .update(updateData)
+      .eq('id', input.session_id)
+      .eq('user_id', userData.user.id) // Ensure user can only update their own sessions
+      .select()
+      .single()
+
+    if (error) throw error
+    return { data: data as ClimbingSession, error: null }
+  } catch (err) {
+    console.error('Error updating session:', err)
+    return { data: null, error: err as Error }
+  }
+}
+
+// Get a single session by ID
+export async function getSessionById(sessionId: string): Promise<{ data: ClimbingSession | null; error: Error | null }> {
+  try {
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) {
+      return { data: null, error: new Error('User not authenticated') }
+    }
+
+    const { data, error } = await supabase
+      .from('climbing_sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .eq('user_id', userData.user.id)
+      .single()
+
+    if (error) throw error
+    return { data: data as ClimbingSession, error: null }
+  } catch (err) {
+    console.error('Error getting session:', err)
+    return { data: null, error: err as Error }
+  }
+}
+

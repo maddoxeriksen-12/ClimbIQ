@@ -14,6 +14,7 @@ import { AcceptInvitation } from './pages/AcceptInvitation'
 import { SessionReview } from './pages/SessionReview'
 import { SessionHistory } from './pages/SessionHistory'
 import { SessionDetail } from './pages/SessionDetail'
+import { EditSession } from './pages/EditSession'
 import { Goals } from './pages/Goals'
 import { NewGoal } from './pages/NewGoal'
 
@@ -202,6 +203,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <SessionDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sessions/:sessionId/edit"
+            element={
+              <ProtectedRoute>
+                <EditSession />
               </ProtectedRoute>
             }
           />

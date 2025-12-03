@@ -161,12 +161,20 @@ export function SessionDetail() {
             </div>
           </div>
           
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="px-4 py-2 rounded-xl border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-colors"
-          >
-            🗑️ Delete
-          </button>
+          <div className="flex gap-2">
+            <Link
+              to={`/sessions/${sessionId}/edit`}
+              className="px-4 py-2 rounded-xl border border-fuchsia-500/30 text-fuchsia-400 text-sm hover:bg-fuchsia-500/10 transition-colors"
+            >
+              ✏️ Edit
+            </Link>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="px-4 py-2 rounded-xl border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-colors"
+            >
+              🗑️ Delete
+            </button>
+          </div>
         </div>
       </div>
 
