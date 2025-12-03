@@ -4,6 +4,7 @@ import { PreSessionForm } from './PreSessionForm'
 import { PostSessionForm } from './PostSessionForm'
 import { AnalysisScreen } from './AnalysisScreen'
 import { RecommendationsScreen } from './RecommendationsScreen'
+import { getStoredClimbs, clearStoredClimbs } from './LiveClimbTracker'
 import { saveActiveSession, getActiveSession, clearActiveSession } from '../lib/sessionStorage'
 import { createSession, completeSession } from '../lib/sessionService'
 import { getActiveGoal } from '../lib/goalService'
@@ -82,19 +83,35 @@ export function SessionFlow() {
 
   const handlePostSessionComplete = async (postData: unknown) => {
     const data = postData as Record<string, unknown>
+    
+    // Get live climb data from tracker
+    const liveClimbs = getStoredClimbs()
+    const totalClimbs = liveClimbs.length || (data.total_climbs as number)
+    const totalSends = liveClimbs.filter(c => c.sent).length || (data.total_sends as number)
+    const flashCount = liveClimbs.filter(c => c.flashed).length || (data.flash_count as number)
+    
+    // Calculate highest grade from live climbs
+    const sentClimbs = liveClimbs.filter(c => c.sent)
+    const highestGradeSent = sentClimbs.length > 0 
+      ? sentClimbs.sort((a, b) => getGradeValue(b.grade) - getGradeValue(a.grade))[0].grade
+      : (data.highest_grade_sent as string)
+    const highestGradeAttempted = liveClimbs.length > 0
+      ? liveClimbs.sort((a, b) => getGradeValue(b.grade) - getGradeValue(a.grade))[0].grade
+      : (data.highest_grade_attempted as string)
+    
     // Complete session in database
     if (dbSessionId || sessionInfo?.sessionId) {
       const sessionId = dbSessionId || sessionInfo?.sessionId
       const { error } = await completeSession({
         session_id: sessionId!,
-        post_session_data: data,
+        post_session_data: { ...data, live_climbs: liveClimbs },
         session_rpe: data.session_rpe as number,
         satisfaction: data.satisfaction as number,
-        highest_grade_sent: data.highest_grade_sent as string,
-        highest_grade_attempted: data.highest_grade_attempted as string,
-        total_climbs: data.total_climbs as number,
-        total_sends: data.total_sends as number,
-        flash_count: data.flash_count as number,
+        highest_grade_sent: highestGradeSent,
+        highest_grade_attempted: highestGradeAttempted,
+        total_climbs: totalClimbs,
+        total_sends: totalSends,
+        flash_count: flashCount,
         had_pain_after: data.has_new_pain as boolean,
         pain_location: data.pain_location as string,
         pain_severity: data.pain_severity as number,
@@ -108,8 +125,9 @@ export function SessionFlow() {
       }
     }
     
-    // Clear the active session from local storage
+    // Clear the active session and climb data from local storage
     clearActiveSession()
+    clearStoredClimbs()
     setPhase('complete')
     // Show success briefly then navigate
     setTimeout(() => {
@@ -183,18 +201,34 @@ export function CompleteSessionFlow() {
 
   const handlePostSessionComplete = async (postData: unknown) => {
     const data = postData as Record<string, unknown>
+    
+    // Get live climb data from tracker
+    const liveClimbs = getStoredClimbs()
+    const totalClimbs = liveClimbs.length || (data.total_climbs as number)
+    const totalSends = liveClimbs.filter(c => c.sent).length || (data.total_sends as number)
+    const flashCount = liveClimbs.filter(c => c.flashed).length || (data.flash_count as number)
+    
+    // Calculate highest grade from live climbs
+    const sentClimbs = liveClimbs.filter(c => c.sent)
+    const highestGradeSent = sentClimbs.length > 0 
+      ? sentClimbs.sort((a, b) => getGradeValue(b.grade) - getGradeValue(a.grade))[0].grade
+      : (data.highest_grade_sent as string)
+    const highestGradeAttempted = liveClimbs.length > 0
+      ? liveClimbs.sort((a, b) => getGradeValue(b.grade) - getGradeValue(a.grade))[0].grade
+      : (data.highest_grade_attempted as string)
+    
     // Complete session in database
     if (activeSession.sessionId) {
       const { error } = await completeSession({
         session_id: activeSession.sessionId,
-        post_session_data: data,
+        post_session_data: { ...data, live_climbs: liveClimbs },
         session_rpe: data.session_rpe as number,
         satisfaction: data.satisfaction as number,
-        highest_grade_sent: data.highest_grade_sent as string,
-        highest_grade_attempted: data.highest_grade_attempted as string,
-        total_climbs: data.total_climbs as number,
-        total_sends: data.total_sends as number,
-        flash_count: data.flash_count as number,
+        highest_grade_sent: highestGradeSent,
+        highest_grade_attempted: highestGradeAttempted,
+        total_climbs: totalClimbs,
+        total_sends: totalSends,
+        flash_count: flashCount,
         had_pain_after: data.has_new_pain as boolean,
         pain_location: data.pain_location as string,
         pain_severity: data.pain_severity as number,
@@ -209,6 +243,7 @@ export function CompleteSessionFlow() {
     }
     
     clearActiveSession()
+    clearStoredClimbs()
     setPhase('complete')
     setTimeout(() => {
       navigate('/')
@@ -245,4 +280,23 @@ export function CompleteSessionFlow() {
       onCancel={handleCancel}
     />
   )
+}
+
+// Helper to get numeric value from grade for sorting
+function getGradeValue(grade: string): number {
+  // Boulder grades
+  const boulderMatch = grade.match(/V(\d+)/)
+  if (boulderMatch) return parseInt(boulderMatch[1])
+  if (grade === 'VB') return -1
+  
+  // YDS grades
+  const ydsMatch = grade.match(/5\.(\d+)([a-d])?/)
+  if (ydsMatch) {
+    const base = parseInt(ydsMatch[1])
+    const letter = ydsMatch[2]
+    const letterValue = letter ? { a: 0, b: 1, c: 2, d: 3 }[letter] ?? 0 : 0
+    return base * 4 + letterValue
+  }
+  
+  return 0
 }

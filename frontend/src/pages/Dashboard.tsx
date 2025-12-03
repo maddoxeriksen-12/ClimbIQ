@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { CorrelationWidget, CorrelationWidgetCompact } from '../components/CorrelationWidget'
 import { GoalWidget } from '../components/GoalWidget'
+import { LiveClimbTracker } from '../components/LiveClimbTracker'
 import { getActiveSession } from '../lib/sessionStorage'
 import { getSessionStats, getRecentSessions, type ClimbingSession, type SessionStats } from '../lib/sessionService'
 
@@ -190,10 +191,10 @@ export function Dashboard() {
               {activeSession.preSessionData && (
                 <>
                   <span className="px-3 py-1 rounded-full bg-white/5 text-xs">
-                    Energy: {(activeSession.preSessionData.energy_level as number) || '?'}/10
+                    Energy: {(activeSession.preSessionData.energy_level as number) || '?'}/8
                   </span>
                   <span className="px-3 py-1 rounded-full bg-white/5 text-xs">
-                    Motivation: {(activeSession.preSessionData.motivation as number) || '?'}/10
+                    Motivation: {(activeSession.preSessionData.motivation as number) || '?'}/8
                   </span>
                   <span className="px-3 py-1 rounded-full bg-white/5 text-xs">
                     Goal: {(activeSession.preSessionData.primary_goal as string)?.replace('_', ' ') || 'Not set'}
@@ -202,6 +203,9 @@ export function Dashboard() {
               )}
             </div>
           </div>
+
+          {/* Live Climb Tracker */}
+          <LiveClimbTracker sessionType={activeSession.sessionType} />
         </div>
       )}
 
