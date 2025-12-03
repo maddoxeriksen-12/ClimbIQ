@@ -233,10 +233,7 @@ export function Layout({ children }: LayoutProps) {
                       {user?.email?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p 
-                        className="text-sm font-semibold truncate"
-                        style={{ color: `rgb(${Math.round(255 * textBrightness / 100)}, ${Math.round(255 * textBrightness / 100)}, ${Math.round(255 * textBrightness / 100)})` }}
-                      >
+                      <p className="text-sm font-semibold truncate text-white">
                         {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
                       </p>
                       <p className={`text-xs font-medium ${roleTextColor}`}>{userRole}</p>
@@ -245,36 +242,30 @@ export function Layout({ children }: LayoutProps) {
                   </div>
                 </Link>
 
-                {/* Navigation Items - With bubbles */}
+                {/* Navigation Items - With bubbles, 100% white text */}
                 <nav className="py-3 px-2 space-y-1">
-                  {navItems.map((item) => {
-                    const textColor = isActive(item.path) 
-                      ? `rgb(${Math.round(255 * textBrightness / 100)}, ${Math.round(255 * textBrightness / 100)}, ${Math.round(255 * textBrightness / 100)})`
-                      : `rgba(${Math.round(255 * textBrightness / 100)}, ${Math.round(255 * textBrightness / 100)}, ${Math.round(255 * textBrightness / 100)}, 0.7)`
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => {
-                          setMobileMenuOpen(false)
-                          if (item.path === location.pathname) {
-                            scrollToTop()
-                          }
-                        }}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-all rounded-xl"
-                        style={{ 
-                          color: textColor,
-                          backgroundColor: `rgba(${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${bubbleOpacity / 100})`
-                        }}
-                      >
-                        <span className="text-xl drop-shadow-sm">{item.icon}</span>
-                        {item.label}
-                        {isActive(item.path) && (
-                          <span className={`ml-auto w-2 h-2 rounded-full bg-gradient-to-r ${gradientFrom} ${gradientTo} shadow-lg`} />
-                        )}
-                      </Link>
-                    )
-                  })}
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => {
+                        setMobileMenuOpen(false)
+                        if (item.path === location.pathname) {
+                          scrollToTop()
+                        }
+                      }}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-all rounded-xl text-white"
+                      style={{ 
+                        backgroundColor: `rgba(${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${bubbleOpacity / 100})`
+                      }}
+                    >
+                      <span className="text-xl drop-shadow-sm">{item.icon}</span>
+                      {item.label}
+                      {isActive(item.path) && (
+                        <span className={`ml-auto w-2 h-2 rounded-full bg-gradient-to-r ${gradientFrom} ${gradientTo} shadow-lg`} />
+                      )}
+                    </Link>
+                  ))}
                 </nav>
 
                 {/* Sign Out - Same bubble style */}

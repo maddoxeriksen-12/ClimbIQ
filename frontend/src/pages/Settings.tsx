@@ -66,31 +66,33 @@ export function Settings() {
   }
 
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="p-8 max-w-4xl overflow-x-hidden">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Settings</h1>
         <p className="text-slate-400">Manage your account and preferences.</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-8 p-1 rounded-xl bg-white/5 border border-white/10 w-fit">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === tab.id
-                ? isCoach()
-                  ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-white'
-                  : 'bg-gradient-to-r from-fuchsia-500/20 to-cyan-500/20 text-white'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <span>{tab.icon}</span>
-            {tab.label}
-          </button>
-        ))}
+      {/* Tabs - Horizontally scrollable with visible scrollbar */}
+      <div className="mb-8 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+        <div className="flex gap-2 p-1 rounded-xl bg-white/5 border border-white/10 w-fit min-w-max">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                activeTab === tab.id
+                  ? isCoach()
+                    ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-white'
+                    : 'bg-gradient-to-r from-fuchsia-500/20 to-cyan-500/20 text-white'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tab Content */}
