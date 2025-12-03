@@ -219,9 +219,9 @@ export function Layout({ children }: LayoutProps) {
                 </div>
                 */}
 
-                {/* User Info - clickable, links to settings/profile */}
+                {/* User Info - clickable, links to profile tab in settings */}
                 <Link 
-                  to="/settings"
+                  to="/settings?tab=profile"
                   onClick={() => setMobileMenuOpen(false)}
                   className="block px-4 py-4 mx-2 mt-2 rounded-xl transition-opacity hover:opacity-80"
                   style={{ 
