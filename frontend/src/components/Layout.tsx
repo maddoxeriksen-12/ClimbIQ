@@ -105,17 +105,17 @@ export function Layout({ children }: LayoutProps) {
               )}
             </button>
 
-            {/* Mobile Dropdown Menu */}
+            {/* Mobile Dropdown Menu - Transparent with floating items */}
             {mobileMenuOpen && (
-              <div className="absolute top-full right-0 mt-2 w-64 rounded-2xl border border-white/10 bg-[#0f1412] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                {/* User Info */}
-                <div className="p-4 border-b border-white/10 bg-white/5">
+              <div className="absolute top-full right-0 mt-2 w-56 rounded-2xl border border-white/10 bg-black/60 backdrop-blur-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                {/* User Info - minimal */}
+                <div className="px-5 py-4 border-b border-white/10">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${gradientFrom} ${gradientTo} flex items-center justify-center font-bold`}>
+                    <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${gradientFrom} ${gradientTo} flex items-center justify-center font-bold text-sm`}>
                       {user?.email?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">
+                      <p className="text-sm font-medium truncate text-white/90">
                         {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
                       </p>
                       <p className={`text-xs ${roleTextColor}`}>{userRole}</p>
@@ -123,8 +123,8 @@ export function Layout({ children }: LayoutProps) {
                   </div>
                 </div>
 
-                {/* Navigation Items */}
-                <nav className="p-2">
+                {/* Navigation Items - Free floating */}
+                <nav className="py-3 px-2">
                   {navItems.map((item) => (
                     <Link
                       key={item.path}
@@ -135,26 +135,29 @@ export function Layout({ children }: LayoutProps) {
                           scrollToTop()
                         }
                       }}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                      className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
                         isActive(item.path)
-                          ? `bg-gradient-to-r ${activeGradientFrom} ${activeGradientTo} text-white`
-                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                          ? 'text-white'
+                          : 'text-white/60 hover:text-white'
                       }`}
                     >
                       <span className="text-lg">{item.icon}</span>
                       {item.label}
+                      {isActive(item.path) && (
+                        <span className={`ml-auto w-1.5 h-1.5 rounded-full bg-gradient-to-r ${gradientFrom} ${gradientTo}`} />
+                      )}
                     </Link>
                   ))}
                 </nav>
 
-                {/* Sign Out */}
-                <div className="p-2 pt-0 border-t border-white/10 mt-2">
+                {/* Sign Out - Free floating */}
+                <div className="py-3 px-2 border-t border-white/10">
                   <button
                     onClick={() => {
                       setMobileMenuOpen(false)
                       signOut()
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-all"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-400/80 hover:text-red-400 transition-colors"
                   >
                     <span className="text-lg">🚪</span>
                     Sign out
