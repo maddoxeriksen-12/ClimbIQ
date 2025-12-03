@@ -256,7 +256,7 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
 
   const [sessionType, setSessionType] = useState('bouldering')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  
+
   // Derive location from gym_name or crag_name
   const location = formData.is_indoor ? formData.gym_name : formData.crag_name
 
@@ -269,13 +269,13 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
     setIsSubmitting(true)
 
     let sessionId = `session_${Date.now()}`
-    
+
     try {
       // Try to save to backend, but don't block on failure
       const session = await createSession({
-        session_date: new Date().toISOString().split('T')[0],
-        session_type: sessionType,
-        location,
+      session_date: new Date().toISOString().split('T')[0],
+      session_type: sessionType,
+      location,
         pre_session: { ...formData, customVariables: customValues },
       })
       if (session?.id) {
@@ -310,7 +310,7 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Start New Session</h1>
         <p className="text-slate-400">Log your pre-climb state for personalized insights.</p>
@@ -384,9 +384,9 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-300">Session Type</label>
-                <select
-                  value={sessionType}
-                  onChange={(e) => setSessionType(e.target.value)}
+          <select
+            value={sessionType}
+            onChange={(e) => setSessionType(e.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50 transition-all"
                 >
                   <option value="bouldering">🪨 Bouldering</option>
@@ -395,15 +395,15 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
                   {formData.is_indoor && <option value="training">🏋️ Training</option>}
                   <option value="project">🎯 Project Session</option>
                   <option value="recreational">🎉 Just Climbing / Fun</option>
-                </select>
-              </div>
+          </select>
+        </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-300">
                   {formData.is_indoor ? 'Gym Name' : 'Crag / Area'}
                 </label>
-                <input
-                  type="text"
+          <input
+            type="text"
                   value={formData.is_indoor ? formData.gym_name : formData.crag_name}
                   onChange={(e) => setFormData({ 
                     ...formData, 
@@ -547,38 +547,38 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
         <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
           <h2 className="font-semibold mb-6">How are you feeling?</h2>
           <div className="space-y-6">
-            <RatingSlider
-              label="Energy Level"
+        <RatingSlider
+          label="Energy Level"
               icon="⚡"
-              value={formData.energy_level}
-              onChange={(v) => setFormData({ ...formData, energy_level: v })}
+          value={formData.energy_level}
+          onChange={(v) => setFormData({ ...formData, energy_level: v })}
               lowLabel="Exhausted"
               highLabel="Fully charged"
-            />
+        />
 
-            <RatingSlider
-              label="Motivation"
+        <RatingSlider
+          label="Motivation"
               icon="🔥"
-              value={formData.motivation}
-              onChange={(v) => setFormData({ ...formData, motivation: v })}
+          value={formData.motivation}
+          onChange={(v) => setFormData({ ...formData, motivation: v })}
               lowLabel="Not feeling it"
               highLabel="Psyched!"
-            />
+        />
 
-            <RatingSlider
-              label="Stress Level"
+        <RatingSlider
+          label="Stress Level"
               icon="😰"
-              value={formData.stress_level}
-              onChange={(v) => setFormData({ ...formData, stress_level: v })}
+          value={formData.stress_level}
+          onChange={(v) => setFormData({ ...formData, stress_level: v })}
               lowLabel="Relaxed"
               highLabel="Very stressed"
-            />
+        />
 
-            <RatingSlider
-              label="Sleep Quality"
+        <RatingSlider
+          label="Sleep Quality"
               icon="😴"
-              value={formData.sleep_quality}
-              onChange={(v) => setFormData({ ...formData, sleep_quality: v })}
+          value={formData.sleep_quality}
+          onChange={(v) => setFormData({ ...formData, sleep_quality: v })}
               lowLabel="Terrible"
               highLabel="Amazing"
             />
@@ -1087,9 +1087,9 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
                   <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
                     <span>#️⃣</span>
                     Session # on this project
-                  </label>
-                  <input
-                    type="number"
+          </label>
+          <input
+            type="number"
                     min="1"
                     value={formData.project_session_number}
                     onChange={(e) => setFormData({ ...formData, project_session_number: parseInt(e.target.value) || 1 })}
@@ -1205,8 +1205,8 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
               type="button"
               onClick={() => {
                 const newHasPain = !formData.has_pain
-                setFormData({
-                  ...formData,
+              setFormData({
+                ...formData,
                   has_pain: newHasPain,
                   injuries: newHasPain && formData.injuries.length === 0 
                     ? [{ location: '', severity: 3, description: '' }] 

@@ -365,7 +365,7 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
     : 100
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto">
       {/* Header with session info */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-2">
