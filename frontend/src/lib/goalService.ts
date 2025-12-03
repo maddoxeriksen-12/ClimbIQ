@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 
-// Helper type for Supabase queries (tables not in generated types)
-type SupabaseInsert = unknown
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseData = any
 
 // Types for goal data
 export interface ClimbingGoal {
@@ -108,7 +108,7 @@ export async function createGoal(input: CreateGoalInput): Promise<{ data: Climbi
     // Deactivate any existing active goals
     await supabase
       .from('climbing_goals')
-      .update({ is_active: false } as SupabaseInsert)
+      .update({ is_active: false } as SupabaseData)
       .eq('user_id', userData.user.id)
       .eq('is_active', true)
 
@@ -126,7 +126,7 @@ export async function createGoal(input: CreateGoalInput): Promise<{ data: Climbi
         competition_name: input.competition_name,
         custom_details: input.custom_details,
         is_active: true,
-      } as SupabaseInsert)
+      } as SupabaseData)
       .select()
       .single()
 
@@ -142,7 +142,7 @@ export async function createGoal(input: CreateGoalInput): Promise<{ data: Climbi
         sessions_completed: 0,
         milestones: [],
         notes: [],
-      } as SupabaseInsert)
+      } as SupabaseData)
 
     return { data: goalData, error: null }
   } catch (err) {
@@ -242,13 +242,13 @@ export async function setActiveGoal(goalId: string): Promise<{ success: boolean;
     // Deactivate all goals
     await supabase
       .from('climbing_goals')
-      .update({ is_active: false } as SupabaseInsert)
+      .update({ is_active: false } as SupabaseData)
       .eq('user_id', userData.user.id)
 
     // Activate the selected goal
     const { error } = await supabase
       .from('climbing_goals')
-      .update({ is_active: true } as SupabaseInsert)
+      .update({ is_active: true } as SupabaseData)
       .eq('id', goalId)
 
     if (error) throw error
@@ -270,7 +270,7 @@ export async function updateGoal(
       .update({
         ...updates,
         updated_at: new Date().toISOString(),
-      } as SupabaseInsert)
+      } as SupabaseData)
       .eq('id', goalId)
       .select()
       .single()

@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 
-// Helper type for Supabase queries (tables not in generated types)
-type SupabaseInsert = unknown
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseData = any
 
 // Types for session data
 export interface ClimbingSession {
@@ -114,7 +114,7 @@ export async function createSession(input: CreateSessionInput): Promise<{ data: 
         pain_location: input.pain_location,
         pain_severity: input.pain_severity,
         notes: input.notes,
-      } as SupabaseInsert)
+      } as SupabaseData)
       .select()
       .single()
 
@@ -168,7 +168,7 @@ export async function completeSession(input: CompleteSessionInput): Promise<{ da
         pain_severity: input.pain_severity,
         notes: input.notes,
         updated_at: new Date().toISOString(),
-      } as SupabaseInsert)
+      } as SupabaseData)
       .eq('id', input.session_id)
       .select()
       .single()
@@ -186,7 +186,7 @@ export async function cancelSession(sessionId: string): Promise<{ success: boole
   try {
     const { error } = await supabase
       .from('climbing_sessions')
-      .update({ status: 'cancelled', updated_at: new Date().toISOString() } as SupabaseInsert)
+      .update({ status: 'cancelled', updated_at: new Date().toISOString() } as SupabaseData)
       .eq('id', sessionId)
 
     if (error) throw error
