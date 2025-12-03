@@ -178,7 +178,7 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
     end_energy: 3,
     skin_condition: 'slightly_worn',
     felt_pumped: false,
-    could_do_more: 'maybe',
+    could_do_more: 'probably_no',
 
     // Pain/Injury
     has_new_pain: false,
@@ -274,10 +274,6 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
     { value: 'other', label: '📍 Other' },
   ]
 
-  const gradeOptions = sessionType === 'bouldering' || sessionType === 'training'
-    ? ['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12+']
-    : ['5.6', '5.7', '5.8', '5.9', '5.10a', '5.10b', '5.10c', '5.10d', '5.11a', '5.11b', '5.11c', '5.11d', '5.12a', '5.12b', '5.12c', '5.12d', '5.13a+']
-
   const addInjury = () => {
     setFormData({
       ...formData,
@@ -316,27 +312,6 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
     setFormData({
       ...formData,
       training_exercises: formData.training_exercises.filter((_, i) => i !== index),
-    })
-  }
-
-  // Boulder pyramid helpers
-  const addPyramidEntry = () => {
-    setFormData({
-      ...formData,
-      boulder_pyramid: [...formData.boulder_pyramid, { grade: '', attempts: 0, sends: 0, flashes: 0 }],
-    })
-  }
-
-  const updatePyramidEntry = (index: number, field: keyof GradePyramidEntry, value: string | number) => {
-    const updated = [...formData.boulder_pyramid]
-    updated[index] = { ...updated[index], [field]: value }
-    setFormData({ ...formData, boulder_pyramid: updated })
-  }
-
-  const removePyramidEntry = (index: number) => {
-    setFormData({
-      ...formData,
-      boulder_pyramid: formData.boulder_pyramid.filter((_, i) => i !== index),
     })
   }
 
@@ -730,11 +705,10 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
                 <span>💪</span>
                 Could you have done more?
               </label>
-              <div className="grid grid-cols-5 gap-1">
+              <div className="grid grid-cols-4 gap-2">
                 {[
                   { value: 'definitely_no', label: 'Definitely No' },
                   { value: 'probably_no', label: 'Probably No' },
-                  { value: 'maybe', label: 'Maybe' },
                   { value: 'probably_yes', label: 'Probably Yes' },
                   { value: 'definitely_yes', label: 'Definitely Yes' },
                 ].map((option) => (
@@ -742,7 +716,7 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
                     key={option.value}
                     type="button"
                     onClick={() => setFormData({ ...formData, could_do_more: option.value })}
-                    className={`py-2 px-1 rounded-lg text-[10px] font-medium transition-all ${
+                    className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
                       formData.could_do_more === option.value
                         ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
                         : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
@@ -752,62 +726,6 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
                   </button>
                 ))}
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Session Stats */}
-        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
-          <h2 className="font-semibold mb-4">Session Stats</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Total Climbs</label>
-              <input
-                type="number"
-                min="0"
-                value={formData.total_climbs}
-                onChange={(e) => setFormData({ ...formData, total_climbs: parseInt(e.target.value) || 0 })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
-                placeholder="0"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Hardest Grade</label>
-              <select
-                value={formData.hardest_grade}
-                onChange={(e) => setFormData({ ...formData, hardest_grade: e.target.value })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
-              >
-                <option value="">Select grade...</option>
-                {gradeOptions.map((grade) => (
-                  <option key={grade} value={grade}>{grade}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Sends</label>
-              <input
-                type="number"
-                min="0"
-                value={formData.sends}
-                onChange={(e) => setFormData({ ...formData, sends: parseInt(e.target.value) || 0 })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
-                placeholder="0"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Falls</label>
-              <input
-                type="number"
-                min="0"
-                value={formData.falls}
-                onChange={(e) => setFormData({ ...formData, falls: parseInt(e.target.value) || 0 })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
-                placeholder="0"
-              />
             </div>
           </div>
         </div>
@@ -948,46 +866,6 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
                 </button>
               ))}
             </div>
-          </div>
-        </div>
-
-        {/* Goal Progress */}
-        <div className="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/5 backdrop-blur-sm p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xl">🎯</span>
-            <h2 className="font-semibold">Goal Progress</h2>
-          </div>
-          <p className="text-sm text-slate-400 mb-4">Did this session move you toward your current goal?</p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {[
-              { value: 'significant_progress', label: '🚀 Significant Progress', color: 'emerald' },
-              { value: 'some_progress', label: '📈 Some Progress', color: 'cyan' },
-              { value: 'neutral', label: '➡️ Maintained', color: 'slate' },
-              { value: 'slight_setback', label: '📉 Slight Setback', color: 'amber' },
-              { value: 'significant_setback', label: '⬇️ Significant Setback', color: 'red' },
-              { value: 'na', label: '🤷 N/A', color: 'slate' },
-            ].map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setFormData({ ...formData, goal_progress: option.value })}
-                className={`py-3 px-3 rounded-xl text-xs font-medium transition-all ${
-                  formData.goal_progress === option.value
-                    ? option.color === 'emerald'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      : option.color === 'cyan'
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                      : option.color === 'amber'
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                      : option.color === 'red'
-                      ? 'bg-red-500/20 text-red-300 border border-red-500/30'
-                      : 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
-                    : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -1372,177 +1250,6 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
           </div>
         )}
 
-        {/* BOULDERING SESSION SPECIFIC */}
-        {sessionType === 'bouldering' && (
-          <div className="rounded-2xl border border-pink-500/20 bg-pink-500/5 backdrop-blur-sm p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-xl">🪨</span>
-              <h2 className="font-semibold">Bouldering Stats</h2>
-            </div>
-            <div className="space-y-4">
-              {/* Grade Pyramid */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-slate-300">Grade Pyramid</label>
-                  <button
-                    type="button"
-                    onClick={addPyramidEntry}
-                    className="text-xs text-pink-400 hover:text-pink-300"
-                  >
-                    + Add grade
-                  </button>
-                </div>
-
-                {formData.boulder_pyramid.length === 0 && (
-                  <button
-                    type="button"
-                    onClick={addPyramidEntry}
-                    className="w-full py-4 rounded-xl border border-dashed border-white/20 text-sm text-slate-400 hover:text-white hover:border-white/40 transition-colors"
-                  >
-                    + Track grades climbed
-                  </button>
-                )}
-
-                {formData.boulder_pyramid.map((entry, index) => (
-                  <div key={index} className="p-3 rounded-xl bg-white/5 border border-white/10">
-                    <div className="flex items-center gap-3">
-                      <select
-                        value={entry.grade}
-                        onChange={(e) => updatePyramidEntry(index, 'grade', e.target.value)}
-                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
-                      >
-                        <option value="">Grade</option>
-                        {['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12+'].map(g => (
-                          <option key={g} value={g}>{g}</option>
-                        ))}
-                      </select>
-                      <div className="flex-1 grid grid-cols-3 gap-2">
-                        <div className="text-center">
-                          <input
-                            type="number"
-                            min="0"
-                            value={entry.attempts}
-                            onChange={(e) => updatePyramidEntry(index, 'attempts', parseInt(e.target.value) || 0)}
-                            className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-sm text-white text-center"
-                          />
-                          <span className="text-[10px] text-slate-500">attempts</span>
-                        </div>
-                        <div className="text-center">
-                          <input
-                            type="number"
-                            min="0"
-                            value={entry.sends}
-                            onChange={(e) => updatePyramidEntry(index, 'sends', parseInt(e.target.value) || 0)}
-                            className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-sm text-white text-center"
-                          />
-                          <span className="text-[10px] text-slate-500">sends</span>
-                        </div>
-                        <div className="text-center">
-                          <input
-                            type="number"
-                            min="0"
-                            value={entry.flashes}
-                            onChange={(e) => updatePyramidEntry(index, 'flashes', parseInt(e.target.value) || 0)}
-                            className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-sm text-white text-center"
-                          />
-                          <span className="text-[10px] text-slate-500">flashes</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removePyramidEntry(index)}
-                        className="text-slate-400 hover:text-red-400"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Key Metrics */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">Highest grade sent</label>
-                  <select
-                    value={formData.boulder_highest_sent}
-                    onChange={(e) => setFormData({ ...formData, boulder_highest_sent: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white"
-                  >
-                    <option value="">Select...</option>
-                    {['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12+'].map(g => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">Highest grade attempted</label>
-                  <select
-                    value={formData.boulder_highest_attempted}
-                    onChange={(e) => setFormData({ ...formData, boulder_highest_attempted: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white"
-                  >
-                    <option value="">Select...</option>
-                    {['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12+'].map(g => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Quality Indicators */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                  <span className="text-sm text-slate-300">Sent at limit grade?</span>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, boulder_sent_at_limit: !formData.boulder_sent_at_limit })}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${formData.boulder_sent_at_limit ? 'bg-emerald-500' : 'bg-white/20'}`}
-                  >
-                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-200 ${formData.boulder_sent_at_limit ? 'translate-x-6' : 'translate-x-0'}`} />
-                  </button>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                  <span className="text-sm text-slate-300">Attempted above limit?</span>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, boulder_attempted_above_limit: !formData.boulder_attempted_above_limit })}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${formData.boulder_attempted_above_limit ? 'bg-pink-500' : 'bg-white/20'}`}
-                  >
-                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-200 ${formData.boulder_attempted_above_limit ? 'translate-x-6' : 'translate-x-0'}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Style Breakdown */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">Style breakdown</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { value: 'overhang', label: '↖️ Overhang' },
-                    { value: 'slab', label: '↗️ Slab' },
-                    { value: 'vertical', label: '⬆️ Vertical' },
-                    { value: 'mixed', label: '🔀 Mixed' },
-                  ].map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, boulder_style_breakdown: opt.value })}
-                      className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
-                        formData.boulder_style_breakdown === opt.value
-                          ? 'bg-pink-500/20 text-pink-300 border border-pink-500/30'
-                          : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* LEAD SESSION SPECIFIC */}
         {sessionType === 'lead' && (
           <div className="rounded-2xl border border-sky-500/20 bg-sky-500/5 backdrop-blur-sm p-6">
@@ -1885,32 +1592,16 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
           />
         )}
 
-        {/* Highlights & Notes */}
+        {/* Additional Notes */}
         <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
-          <h2 className="font-semibold mb-4">Session Highlights</h2>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">
-                Best moment / proudest send <span className="text-slate-500">(optional)</span>
-              </label>
-              <input
-                type="text"
-                value={formData.highlights}
-                onChange={(e) => setFormData({ ...formData, highlights: e.target.value })}
-                placeholder="e.g., Finally sent that V5 project!"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Additional Notes</label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Anything else worth noting... (techniques tried, beta learned, etc.)"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all h-24 resize-none"
-              />
-            </div>
+          <h2 className="font-semibold mb-4">Additional Notes</h2>
+          <div className="space-y-2">
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Anything else worth noting... (techniques tried, beta learned, highlights, etc.)"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all h-24 resize-none"
+            />
           </div>
         </div>
 
