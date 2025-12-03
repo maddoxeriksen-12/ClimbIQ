@@ -1,20 +1,52 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
 import { PreSessionForm } from './PreSessionForm'
 import { PostSessionForm } from './PostSessionForm'
 import { AnalysisScreen } from './AnalysisScreen'
 import { RecommendationsScreen } from './RecommendationsScreen'
 import { getStoredClimbs, clearStoredClimbs } from './LiveClimbTracker'
 import { saveActiveSession, getActiveSession, clearActiveSession } from '../lib/sessionStorage'
-import { createSession, completeSession } from '../lib/sessionService'
+import { createSession, completeSession, canStartNewSession } from '../lib/sessionService'
 import { getActiveGoal } from '../lib/goalService'
 import type { ActiveSessionData } from '../lib/sessionStorage'
 
-type SessionPhase = 'pre' | 'analyzing' | 'recommendations' | 'active' | 'post' | 'complete'
+type SessionPhase = 'pre' | 'analyzing' | 'recommendations' | 'active' | 'post' | 'complete' | 'cooldown'
+
+interface CooldownInfo {
+  minutesRemaining: number
+  lastSessionTime: Date
+}
 
 export function SessionFlow() {
   const navigate = useNavigate()
   const [phase, setPhase] = useState<SessionPhase>('pre')
+  const [cooldownInfo, setCooldownInfo] = useState<CooldownInfo | null>(null)
+  const [checkingCooldown, setCheckingCooldown] = useState(true)
+
+  // Check if user can start a new session
+  useEffect(() => {
+    async function checkCooldown() {
+      setCheckingCooldown(true)
+      const { canStart, minutesUntilAllowed, lastSessionTime, error } = await canStartNewSession()
+      
+      if (error && error.message.includes('active session')) {
+        // User has an active session, redirect to complete it
+        navigate('/session/complete')
+        return
+      }
+      
+      if (!canStart && minutesUntilAllowed && lastSessionTime) {
+        setCooldownInfo({
+          minutesRemaining: minutesUntilAllowed,
+          lastSessionTime: lastSessionTime,
+        })
+        setPhase('cooldown')
+      }
+      setCheckingCooldown(false)
+    }
+    checkCooldown()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [sessionInfo, setSessionInfo] = useState<ActiveSessionData | null>(null)
   const [dbSessionId, setDbSessionId] = useState<string | null>(null)
 
@@ -140,6 +172,78 @@ export function SessionFlow() {
       clearActiveSession()
       navigate('/')
     }
+  }
+
+  // Loading state while checking cooldown
+  if (checkingCooldown) {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-20">
+        <div className="w-12 h-12 mx-auto rounded-full border-2 border-fuchsia-500 border-t-transparent animate-spin mb-4" />
+        <p className="text-slate-400">Checking session availability...</p>
+      </div>
+    )
+  }
+
+  // Cooldown screen - user must wait before starting another session
+  if (phase === 'cooldown' && cooldownInfo) {
+    const formatTime = (date: Date) => {
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      })
+    }
+
+    return (
+      <div className="max-w-2xl mx-auto text-center py-20">
+        <div className="mb-6">
+          <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center text-4xl">
+            ⏳
+          </div>
+        </div>
+        <h1 className="text-3xl font-bold mb-4">Cooldown Period Active</h1>
+        <p className="text-slate-400 mb-6">
+          To ensure accurate data analysis and training recommendations, please wait before starting a new session.
+        </p>
+        
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 mb-8 max-w-md mx-auto">
+          <div className="text-4xl font-bold text-amber-400 mb-2">
+            {cooldownInfo.minutesRemaining} min
+          </div>
+          <p className="text-sm text-slate-400">
+            until you can start a new session
+          </p>
+          <p className="text-xs text-slate-500 mt-2">
+            Last session ended at {formatTime(cooldownInfo.lastSessionTime)}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 max-w-md mx-auto mb-8">
+          <h3 className="font-semibold mb-2 flex items-center justify-center gap-2">
+            <span>💡</span> Why the wait?
+          </h3>
+          <p className="text-sm text-slate-400">
+            Our training algorithm needs time to process your session data and generate accurate recommendations. 
+            This cooldown period ensures the quality of your personalized insights.
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link
+            to="/sessions"
+            className="px-6 py-3 rounded-xl border border-white/10 text-white font-medium hover:bg-white/5 transition-all"
+          >
+            📅 View Session History
+          </Link>
+          <Link
+            to="/"
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-medium hover:from-fuchsia-500 hover:to-cyan-500 transition-all"
+          >
+            ← Back to Dashboard
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   if (phase === 'complete') {

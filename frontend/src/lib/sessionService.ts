@@ -385,3 +385,92 @@ export async function getSessionsByDateRange(
   }
 }
 
+// Check if user can start a new session (must be at least 1 hour since last session)
+export async function canStartNewSession(): Promise<{ 
+  canStart: boolean; 
+  minutesUntilAllowed?: number;
+  lastSessionTime?: Date;
+  error: Error | null 
+}> {
+  try {
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) {
+      return { canStart: false, error: new Error('User not authenticated') }
+    }
+
+    // Get the most recent completed session
+    const { data, error } = await supabase
+      .from('climbing_sessions')
+      .select('started_at, ended_at, status')
+      .eq('user_id', userData.user.id)
+      .in('status', ['completed', 'active'])
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 means no rows returned, which is fine
+      throw error
+    }
+
+    // If no sessions exist, user can start
+    if (!data) {
+      return { canStart: true, error: null }
+    }
+
+    const session = data as { started_at: string; ended_at?: string; status: string }
+    
+    // If there's an active session, they can't start another
+    if (session.status === 'active') {
+      return { 
+        canStart: false, 
+        minutesUntilAllowed: 0,
+        error: new Error('You already have an active session. Please complete or cancel it first.')
+      }
+    }
+
+    // Check if at least 1 hour has passed since the session ended (or started if no end time)
+    const sessionTime = session.ended_at ? new Date(session.ended_at) : new Date(session.started_at)
+    const now = new Date()
+    const hourInMs = 60 * 60 * 1000 // 1 hour in milliseconds
+    const timeSinceSession = now.getTime() - sessionTime.getTime()
+    
+    if (timeSinceSession < hourInMs) {
+      const minutesRemaining = Math.ceil((hourInMs - timeSinceSession) / 60000)
+      return { 
+        canStart: false, 
+        minutesUntilAllowed: minutesRemaining,
+        lastSessionTime: sessionTime,
+        error: null 
+      }
+    }
+
+    return { canStart: true, error: null }
+  } catch (err) {
+    console.error('Error checking if can start session:', err)
+    return { canStart: false, error: err as Error }
+  }
+}
+
+// Delete a session
+export async function deleteSession(sessionId: string): Promise<{ success: boolean; error: Error | null }> {
+  try {
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) {
+      return { success: false, error: new Error('User not authenticated') }
+    }
+
+    const { error } = await supabase
+      .from('climbing_sessions')
+      .delete()
+      .eq('id', sessionId)
+      .eq('user_id', userData.user.id) // Ensure user can only delete their own sessions
+
+    if (error) throw error
+    return { success: true, error: null }
+  } catch (err) {
+    console.error('Error deleting session:', err)
+    return { success: false, error: err as Error }
+  }
+}
+

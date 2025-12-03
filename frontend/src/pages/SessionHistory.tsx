@@ -177,9 +177,10 @@ export function SessionHistory() {
               {/* Sessions for this month */}
               <div className="space-y-3">
                 {monthSessions.map((session) => (
-                  <div
+                  <Link
                     key={session.id}
-                    className="rounded-2xl border border-white/10 bg-white/5 p-5 hover:bg-white/[0.07] transition-colors"
+                    to={`/sessions/${session.id}`}
+                    className="block rounded-2xl border border-white/10 bg-white/5 p-5 hover:bg-white/[0.07] hover:border-fuchsia-500/30 transition-all cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-4">
@@ -256,7 +257,12 @@ export function SessionHistory() {
                         <p className="text-xs text-slate-400 line-clamp-2">{session.notes}</p>
                       </div>
                     )}
-                  </div>
+                    
+                    {/* Click indicator */}
+                    <div className="mt-3 flex items-center justify-end text-xs text-slate-500">
+                      <span>Click to view details →</span>
+                    </div>
+                  </Link>
                 ))}
               </div>
             </div>
