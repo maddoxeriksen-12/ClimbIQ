@@ -15,6 +15,7 @@ export function Layout({ children }: LayoutProps) {
   const [textBrightness, setTextBrightness] = useState(0) // 0 = black (slate-900), 100 = white
   const [bgOpacity, setBgOpacity] = useState(30) // 0-100
   const [bgBrightness, setBgBrightness] = useState(100) // 0 = black, 100 = white
+  const [bubbleOpacity, setBubbleOpacity] = useState(20) // 0-100 for nav item bubbles
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -165,6 +166,19 @@ export function Layout({ children }: LayoutProps) {
                         className="w-full h-2 rounded-full appearance-none cursor-pointer bg-gradient-to-r from-transparent to-white"
                       />
                     </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-black/70 mb-1">
+                        <span>Bubble Opacity: {bubbleOpacity}%</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="100" 
+                        value={bubbleOpacity}
+                        onChange={(e) => setBubbleOpacity(Number(e.target.value))}
+                        className="w-full h-2 rounded-full appearance-none cursor-pointer bg-gradient-to-r from-transparent to-gray-500"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -186,8 +200,8 @@ export function Layout({ children }: LayoutProps) {
                   </div>
                 </div>
 
-                {/* Navigation Items - Free floating */}
-                <nav className="py-3 px-2">
+                {/* Navigation Items - With bubbles */}
+                <nav className="py-3 px-2 space-y-1">
                   {navItems.map((item) => {
                     const textColor = isActive(item.path) 
                       ? `rgb(${Math.round(255 * textBrightness / 100)}, ${Math.round(255 * textBrightness / 100)}, ${Math.round(255 * textBrightness / 100)})`
@@ -202,8 +216,11 @@ export function Layout({ children }: LayoutProps) {
                             scrollToTop()
                           }
                         }}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors"
-                        style={{ color: textColor }}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-all rounded-xl"
+                        style={{ 
+                          color: textColor,
+                          backgroundColor: `rgba(128, 128, 128, ${bubbleOpacity / 100})`
+                        }}
                       >
                         <span className="text-xl drop-shadow-sm">{item.icon}</span>
                         {item.label}
