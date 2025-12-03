@@ -107,18 +107,18 @@ export function Layout({ children }: LayoutProps) {
 
             {/* Mobile Dropdown Menu - Transparent with floating items */}
             {mobileMenuOpen && (
-              <div className="absolute top-full right-0 mt-2 w-56 rounded-2xl border border-white/20 bg-white/20 backdrop-blur-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute top-full right-0 mt-2 w-56 rounded-2xl border border-white/30 bg-white/30 backdrop-blur-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                 {/* User Info - minimal */}
-                <div className="px-5 py-4 border-b border-white/10">
+                <div className="px-5 py-4 border-b border-white/20">
                   <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${gradientFrom} ${gradientTo} flex items-center justify-center font-bold text-sm`}>
+                    <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${gradientFrom} ${gradientTo} flex items-center justify-center font-bold text-sm shadow-lg`}>
                       {user?.email?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate text-white/90">
+                      <p className="text-sm font-semibold truncate text-slate-900">
                         {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
                       </p>
-                      <p className={`text-xs ${roleTextColor}`}>{userRole}</p>
+                      <p className={`text-xs font-medium ${roleTextColor}`}>{userRole}</p>
                     </div>
                   </div>
                 </div>
@@ -135,31 +135,31 @@ export function Layout({ children }: LayoutProps) {
                           scrollToTop()
                         }
                       }}
-                      className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
+                      className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors ${
                         isActive(item.path)
-                          ? 'text-white'
-                          : 'text-white/60 hover:text-white'
+                          ? 'text-slate-900'
+                          : 'text-slate-700 hover:text-slate-900'
                       }`}
                     >
-                      <span className="text-lg">{item.icon}</span>
+                      <span className="text-xl drop-shadow-sm">{item.icon}</span>
                       {item.label}
                       {isActive(item.path) && (
-                        <span className={`ml-auto w-1.5 h-1.5 rounded-full bg-gradient-to-r ${gradientFrom} ${gradientTo}`} />
+                        <span className={`ml-auto w-2 h-2 rounded-full bg-gradient-to-r ${gradientFrom} ${gradientTo} shadow-lg`} />
                       )}
                     </Link>
                   ))}
                 </nav>
 
                 {/* Sign Out - Free floating */}
-                <div className="py-3 px-2 border-t border-white/10">
+                <div className="py-3 px-2 border-t border-white/20">
                   <button
                     onClick={() => {
                       setMobileMenuOpen(false)
                       signOut()
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-400/80 hover:text-red-400 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
                   >
-                    <span className="text-lg">🚪</span>
+                    <span className="text-xl drop-shadow-sm">🚪</span>
                     Sign out
                   </button>
                 </div>
