@@ -118,12 +118,12 @@ function RatingSlider({
           <span>{icon}</span>
           {label}
         </label>
-        <span className="text-sm font-semibold text-fuchsia-400">{value}/10</span>
+        <span className="text-sm font-semibold text-fuchsia-400">{value}/8</span>
       </div>
       <input
         type="range"
         min="1"
-        max="10"
+        max="8"
         value={value}
         onChange={(e) => onChange(parseInt(e.target.value))}
         className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-fuchsia-500 [&::-webkit-slider-thumb]:to-cyan-500 [&::-webkit-slider-thumb]:shadow-lg"
@@ -148,10 +148,10 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
 
   const [formData, setFormData] = useState<PreSessionData>({
     // Mental/Energy State
-    energy_level: 5,
-    motivation: 5,
-    stress_level: 5,
-    sleep_quality: 5,
+    energy_level: 4,
+    motivation: 4,
+    stress_level: 4,
+    sleep_quality: 4,
     sleep_hours: 7,
     
     // Physical Readiness
@@ -187,7 +187,7 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
     // Outdoor-specific
     crag_name: '',
     rock_type: '',
-    conditions_rating: 3,
+    conditions_rating: 4,
     temperature: '',
     humidity: 'medium',
     recent_precipitation: false,
@@ -458,12 +458,12 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
                     <span>⭐</span>
                     Conditions Rating
                   </label>
-                  <span className="text-sm font-semibold text-emerald-400">{formData.conditions_rating}/5</span>
+                  <span className="text-sm font-semibold text-emerald-400">{formData.conditions_rating}/8</span>
                 </div>
                 <input
                   type="range"
                   min="1"
-                  max="5"
+                  max="8"
                   value={formData.conditions_rating}
                   onChange={(e) => setFormData({ ...formData, conditions_rating: parseInt(e.target.value) })}
                   className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-emerald-500 [&::-webkit-slider-thumb]:to-cyan-500"
@@ -1271,12 +1271,12 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-medium text-slate-300">Pain severity</label>
-                      <span className="text-sm font-semibold text-amber-400">{injury.severity}/10</span>
+                      <span className="text-sm font-semibold text-amber-400">{injury.severity}/8</span>
                     </div>
                     <input
                       type="range"
                       min="1"
-                      max="10"
+                      max="8"
                       value={injury.severity}
                       onChange={(e) => updateInjury(index, 'severity', parseInt(e.target.value))}
                       className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-amber-500 [&::-webkit-slider-thumb]:to-orange-500 [&::-webkit-slider-thumb]:shadow-lg"

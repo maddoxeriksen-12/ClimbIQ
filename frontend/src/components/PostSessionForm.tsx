@@ -164,7 +164,7 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
 
   const [formData, setFormData] = useState<PostSessionData>({
     // Core Outcomes
-    session_rpe: 5,
+    session_rpe: 4,
     actual_duration: plannedDuration,
     left_early: false,
     stayed_longer: false,
@@ -175,7 +175,7 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
     one_more_try_count: 0,
 
     // Fatigue/Recovery
-    end_energy: 3,
+    end_energy: 4,
     skin_condition: 'slightly_worn',
     felt_pumped: false,
     could_do_more: 'probably_no',
@@ -205,7 +205,7 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
 
     // Training Session specific
     training_exercises: [],
-    training_focus_concentration: 3,
+    training_focus_concentration: 4,
     training_progressed: false,
     training_regressed: false,
     training_prs_count: 0,
@@ -474,12 +474,12 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
                   <span>💦</span>
                   How hard did this session feel overall?
                 </label>
-                <span className="text-sm font-semibold text-emerald-400">{formData.session_rpe}/10</span>
+                <span className="text-sm font-semibold text-emerald-400">{formData.session_rpe}/8</span>
               </div>
               <input
                 type="range"
                 min="1"
-                max="10"
+                max="8"
                 value={formData.session_rpe}
                 onChange={(e) => setFormData({ ...formData, session_rpe: parseInt(e.target.value) })}
                 className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-emerald-500 [&::-webkit-slider-thumb]:to-cyan-500 [&::-webkit-slider-thumb]:shadow-lg"
@@ -635,12 +635,12 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
                   <span>⚡</span>
                   End-of-session energy
                 </label>
-                <span className="text-sm font-semibold text-cyan-400">{formData.end_energy}/5</span>
+                <span className="text-sm font-semibold text-cyan-400">{formData.end_energy}/8</span>
               </div>
               <input
                 type="range"
                 min="1"
-                max="5"
+                max="8"
                 value={formData.end_energy}
                 onChange={(e) => setFormData({ ...formData, end_energy: parseInt(e.target.value) })}
                 className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-cyan-500 [&::-webkit-slider-thumb]:to-teal-500 [&::-webkit-slider-thumb]:shadow-lg"
@@ -801,11 +801,11 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300">Severity: {injury.severity}/5</label>
+                      <label className="text-sm font-medium text-slate-300">Severity: {injury.severity}/8</label>
                       <input
                         type="range"
                         min="1"
-                        max="5"
+                        max="8"
                         value={injury.severity}
                         onChange={(e) => updateInjury(index, 'severity', parseInt(e.target.value))}
                         className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-500"
@@ -1166,12 +1166,12 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
                         <span className="text-slate-400">Exercise RPE</span>
-                        <span className="text-indigo-400">{exercise.rpe}/10</span>
+                        <span className="text-indigo-400">{exercise.rpe}/8</span>
                       </div>
                       <input
                         type="range"
                         min="1"
-                        max="10"
+                        max="8"
                         value={exercise.rpe}
                         onChange={(e) => updateExercise(index, 'rpe', parseInt(e.target.value))}
                         className="w-full h-1.5 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-indigo-500"
@@ -1186,12 +1186,12 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <label className="text-sm font-medium text-slate-300">Focus/concentration during training</label>
-                    <span className="text-sm text-indigo-400">{formData.training_focus_concentration}/5</span>
+                    <span className="text-sm text-indigo-400">{formData.training_focus_concentration}/8</span>
                   </div>
                   <input
                     type="range"
                     min="1"
-                    max="5"
+                    max="8"
                     value={formData.training_focus_concentration}
                     onChange={(e) => setFormData({ ...formData, training_focus_concentration: parseInt(e.target.value) })}
                     className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-indigo-500"
