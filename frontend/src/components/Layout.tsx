@@ -10,6 +10,10 @@ export function Layout({ children }: LayoutProps) {
   const { user, signOut, isCoach } = useAuth()
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  
+  // Debug sliders for styling
+  const [textBrightness, setTextBrightness] = useState(0) // 0 = black (slate-900), 100 = white
+  const [bgOpacity, setBgOpacity] = useState(30) // 0-100
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -107,7 +111,45 @@ export function Layout({ children }: LayoutProps) {
 
             {/* Mobile Dropdown Menu - Transparent with floating items */}
             {mobileMenuOpen && (
-              <div className="absolute top-full right-0 mt-2 w-56 rounded-2xl border border-white/30 bg-white/30 backdrop-blur-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <div 
+                className="absolute top-full right-0 mt-2 w-64 rounded-2xl border border-white/30 backdrop-blur-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+                style={{ backgroundColor: `rgba(255, 255, 255, ${bgOpacity / 100})` }}
+              >
+                {/* Debug Sliders */}
+                <div className="px-4 py-3 border-b border-black/10 bg-black/5">
+                  <p className="text-xs font-bold text-black mb-2">🎨 Debug Controls</p>
+                  <div className="space-y-2">
+                    <div>
+                      <div className="flex justify-between text-xs text-black/70 mb-1">
+                        <span>Text: {textBrightness}%</span>
+                        <span>{textBrightness === 0 ? 'Black' : textBrightness === 100 ? 'White' : 'Gray'}</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="100" 
+                        value={textBrightness}
+                        onChange={(e) => setTextBrightness(Number(e.target.value))}
+                        className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                        style={{ background: `linear-gradient(to right, #000 0%, #fff 100%)` }}
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-black/70 mb-1">
+                        <span>BG Opacity: {bgOpacity}%</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="100" 
+                        value={bgOpacity}
+                        onChange={(e) => setBgOpacity(Number(e.target.value))}
+                        className="w-full h-2 rounded-full appearance-none cursor-pointer bg-gradient-to-r from-transparent to-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* User Info - minimal */}
                 <div className="px-5 py-4 border-b border-white/20">
                   <div className="flex items-center gap-3">
@@ -115,7 +157,10 @@ export function Layout({ children }: LayoutProps) {
                       {user?.email?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate text-slate-900">
+                      <p 
+                        className="text-sm font-semibold truncate"
+                        style={{ color: `rgb(${Math.round(255 * textBrightness / 100)}, ${Math.round(255 * textBrightness / 100)}, ${Math.round(255 * textBrightness / 100)})` }}
+                      >
                         {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
                       </p>
                       <p className={`text-xs font-medium ${roleTextColor}`}>{userRole}</p>
@@ -125,29 +170,31 @@ export function Layout({ children }: LayoutProps) {
 
                 {/* Navigation Items - Free floating */}
                 <nav className="py-3 px-2">
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => {
-                        setMobileMenuOpen(false)
-                        if (item.path === location.pathname) {
-                          scrollToTop()
-                        }
-                      }}
-                      className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors ${
-                        isActive(item.path)
-                          ? 'text-slate-900'
-                          : 'text-slate-700 hover:text-slate-900'
-                      }`}
-                    >
-                      <span className="text-xl drop-shadow-sm">{item.icon}</span>
-                      {item.label}
-                      {isActive(item.path) && (
-                        <span className={`ml-auto w-2 h-2 rounded-full bg-gradient-to-r ${gradientFrom} ${gradientTo} shadow-lg`} />
-                      )}
-                    </Link>
-                  ))}
+                  {navItems.map((item) => {
+                    const textColor = isActive(item.path) 
+                      ? `rgb(${Math.round(255 * textBrightness / 100)}, ${Math.round(255 * textBrightness / 100)}, ${Math.round(255 * textBrightness / 100)})`
+                      : `rgba(${Math.round(255 * textBrightness / 100)}, ${Math.round(255 * textBrightness / 100)}, ${Math.round(255 * textBrightness / 100)}, 0.7)`
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => {
+                          setMobileMenuOpen(false)
+                          if (item.path === location.pathname) {
+                            scrollToTop()
+                          }
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors"
+                        style={{ color: textColor }}
+                      >
+                        <span className="text-xl drop-shadow-sm">{item.icon}</span>
+                        {item.label}
+                        {isActive(item.path) && (
+                          <span className={`ml-auto w-2 h-2 rounded-full bg-gradient-to-r ${gradientFrom} ${gradientTo} shadow-lg`} />
+                        )}
+                      </Link>
+                    )
+                  })}
                 </nav>
 
                 {/* Sign Out - Free floating */}
