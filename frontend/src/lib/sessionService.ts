@@ -148,8 +148,7 @@ export async function completeSession(input: CompleteSessionInput): Promise<{ da
       actualDuration = Math.round((end.getTime() - start.getTime()) / 60000)
     }
 
-    // @ts-expect-error - Supabase types not fully generated
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('climbing_sessions')
       .update({
         status: 'completed',
@@ -185,8 +184,7 @@ export async function completeSession(input: CompleteSessionInput): Promise<{ da
 // Cancel a session
 export async function cancelSession(sessionId: string): Promise<{ success: boolean; error: Error | null }> {
   try {
-    // @ts-expect-error - Supabase types not fully generated
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('climbing_sessions')
       .update({ status: 'cancelled', updated_at: new Date().toISOString() })
       .eq('id', sessionId)
