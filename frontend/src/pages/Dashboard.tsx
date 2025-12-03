@@ -15,8 +15,7 @@ import {
   Warning,
   ChartBar,
   CheckCircle,
-  ClipboardText,
-  type Icon
+  ClipboardText
 } from '@phosphor-icons/react'
 
 export function Dashboard() {
