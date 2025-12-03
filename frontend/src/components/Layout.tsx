@@ -11,12 +11,20 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
-  // Debug sliders for styling
-  const [textBrightness, setTextBrightness] = useState(0) // 0 = black (slate-900), 100 = white
-  const [bgOpacity, setBgOpacity] = useState(30) // 0-100
-  const [bgBrightness, setBgBrightness] = useState(100) // 0 = black, 100 = white
-  const [bubbleOpacity, setBubbleOpacity] = useState(20) // 0-100 for nav item bubbles
-  const [bubbleBrightness, setBubbleBrightness] = useState(50) // 0 = black, 100 = white
+  // Style values - finalized
+  const textBrightness = 100 // 100% = white
+  const bgOpacity = 30 // 30%
+  const bgBrightness = 0 // 0% = black
+  const bubbleOpacity = 75 // 75%
+  const bubbleBrightness = 20 // 20% (dark gray)
+  
+  /* DEBUG SLIDERS - Uncomment to re-enable
+  const [textBrightness, setTextBrightness] = useState(100)
+  const [bgOpacity, setBgOpacity] = useState(30)
+  const [bgBrightness, setBgBrightness] = useState(0)
+  const [bubbleOpacity, setBubbleOpacity] = useState(75)
+  const [bubbleBrightness, setBubbleBrightness] = useState(20)
+  */
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -123,7 +131,7 @@ export function Layout({ children }: LayoutProps) {
                   backgroundColor: `rgba(${Math.round(255 * bgBrightness / 100)}, ${Math.round(255 * bgBrightness / 100)}, ${Math.round(255 * bgBrightness / 100)}, ${bgOpacity / 100})` 
                 }}
               >
-                {/* Debug Sliders */}
+                {/* DEBUG SLIDERS - Uncomment to re-enable
                 <div className="px-4 py-3 border-b border-black/10 bg-black/5">
                   <p className="text-xs font-bold text-black mb-2">🎨 Debug Controls</p>
                   <div className="space-y-2">
@@ -200,6 +208,7 @@ export function Layout({ children }: LayoutProps) {
                     </div>
                   </div>
                 </div>
+                */}
 
                 {/* User Info - same color as bubbles */}
                 <div 
