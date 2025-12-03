@@ -2,16 +2,16 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   GOAL_TYPES,
-  createGoal,
-  saveGoal,
-  setActiveGoal,
-  type GoalType,
-} from '../lib/goalStorage'
+  createGoal as createGoalInDb,
+} from '../lib/goalService'
+
+type GoalType = keyof typeof GOAL_TYPES
 
 export function NewGoal() {
   const navigate = useNavigate()
   const [step, setStep] = useState<'type' | 'details' | 'confirm'>('type')
   const [selectedType, setSelectedType] = useState<GoalType | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -34,20 +34,36 @@ export function NewGoal() {
     setStep('details')
   }
 
-  const handleSubmit = () => {
-    if (!selectedType || !formData.targetDate) return
+  const handleSubmit = async () => {
+    if (!selectedType || !formData.targetDate || isSubmitting) return
 
-    const goal = createGoal(selectedType, formData.title, formData.targetDate, {
-      description: formData.description,
-      targetGrade: formData.targetGrade || undefined,
-      projectName: formData.projectName || undefined,
-      competitionName: formData.competitionName || undefined,
-      customDetails: formData.customDetails || undefined,
-    })
+    setIsSubmitting(true)
+    try {
+      const { data, error } = await createGoalInDb({
+        type: selectedType,
+        title: formData.title,
+        description: formData.description || undefined,
+        target_date: formData.targetDate,
+        target_grade: formData.targetGrade || undefined,
+        project_name: formData.projectName || undefined,
+        competition_name: formData.competitionName || undefined,
+        custom_details: formData.customDetails || undefined,
+      })
 
-    saveGoal(goal)
-    setActiveGoal(goal.id)
-    navigate('/goals')
+      if (error) {
+        console.error('Error creating goal:', error)
+        alert('Failed to create goal. Please try again.')
+        return
+      }
+
+      console.log('Goal created successfully:', data)
+      navigate('/goals')
+    } catch (err) {
+      console.error('Error creating goal:', err)
+      alert('Failed to create goal. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   // Get default date (3 months from now)
@@ -332,9 +348,10 @@ export function NewGoal() {
             </button>
             <button
               onClick={handleSubmit}
-              className="flex-[2] py-4 rounded-xl bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-semibold text-lg shadow-lg shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 hover:scale-[1.01] transition-all"
+              disabled={isSubmitting}
+              className="flex-[2] py-4 rounded-xl bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-semibold text-lg shadow-lg shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              🎯 Set This Goal
+              {isSubmitting ? '⏳ Creating...' : '🎯 Set This Goal'}
             </button>
           </div>
         </div>

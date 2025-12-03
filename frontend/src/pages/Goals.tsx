@@ -1,27 +1,95 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  getActiveGoal,
-  getGoals,
-  getGoalProgress,
-  calculateDaysRemaining,
-  calculateDaysElapsed,
-  calculateProgress,
+  getActiveGoal as getActiveGoalFromDb,
+  getAllGoals,
+  getGoalProgress as getGoalProgressFromDb,
+  setActiveGoal as setActiveGoalInDb,
+  deleteGoal as deleteGoalFromDb,
   GOAL_TYPES,
-  setActiveGoal,
-  deleteGoal,
   type ClimbingGoal,
   type GoalProgress as GoalProgressType,
-} from '../lib/goalStorage'
+} from '../lib/goalService'
+
+// Helper functions for date calculations
+function calculateDaysRemaining(targetDate: string): number {
+  const target = new Date(targetDate)
+  const now = new Date()
+  const diffMs = target.getTime() - now.getTime()
+  return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+}
+
+function calculateDaysElapsed(startDate: string): number {
+  const start = new Date(startDate)
+  const now = new Date()
+  const diffMs = now.getTime() - start.getTime()
+  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
+}
+
+function calculateProgress(startDate: string, targetDate: string): number {
+  const start = new Date(startDate).getTime()
+  const target = new Date(targetDate).getTime()
+  const now = new Date().getTime()
+  
+  if (now >= target) return 100
+  if (now <= start) return 0
+  
+  const total = target - start
+  const elapsed = now - start
+  return Math.round((elapsed / total) * 100)
+}
 
 export function Goals() {
   const navigate = useNavigate()
-  const [activeGoal, setActiveGoalState] = useState<ClimbingGoal | null>(getActiveGoal())
-  const [allGoals] = useState<ClimbingGoal[]>(getGoals())
-  const [progress, setProgress] = useState<GoalProgressType | null>(
-    activeGoal ? getGoalProgress(activeGoal.id) : null
-  )
+  const [activeGoal, setActiveGoalState] = useState<ClimbingGoal | null>(null)
+  const [allGoals, setAllGoals] = useState<ClimbingGoal[]>([])
+  const [progress, setProgress] = useState<GoalProgressType | null>(null)
   const [showAllGoals, setShowAllGoals] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  // Fetch goals from database on mount
+  useEffect(() => {
+    async function fetchGoals() {
+      setLoading(true)
+      try {
+        const [activeResult, allResult] = await Promise.all([
+          getActiveGoalFromDb(),
+          getAllGoals(),
+        ])
+
+        if (activeResult.data) {
+          setActiveGoalState(activeResult.data)
+          // Fetch progress for active goal
+          const progressResult = await getGoalProgressFromDb(activeResult.data.id)
+          if (progressResult.data) {
+            setProgress(progressResult.data)
+          }
+        }
+
+        if (allResult.data) {
+          setAllGoals(allResult.data)
+        }
+      } catch (err) {
+        console.error('Error fetching goals:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchGoals()
+  }, [])
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto">
+        <div className="text-center py-16">
+          <div className="w-16 h-16 mx-auto rounded-full border-4 border-fuchsia-500/30 border-t-fuchsia-500 animate-spin mb-6" />
+          <p className="text-slate-400">Loading your goals...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!activeGoal) {
     return (
@@ -45,31 +113,48 @@ export function Goals() {
     )
   }
 
-  const daysRemaining = calculateDaysRemaining(activeGoal.targetDate)
-  const daysElapsed = calculateDaysElapsed(activeGoal.startDate)
-  const progressPercent = calculateProgress(activeGoal.startDate, activeGoal.targetDate)
-  const goalInfo = GOAL_TYPES[activeGoal.type]
-  const targetDate = new Date(activeGoal.targetDate)
+  const daysRemaining = calculateDaysRemaining(activeGoal.target_date || '')
+  const daysElapsed = calculateDaysElapsed(activeGoal.start_date)
+  const progressPercent = calculateProgress(activeGoal.start_date, activeGoal.target_date || '')
+  const goalInfo = GOAL_TYPES[activeGoal.type as keyof typeof GOAL_TYPES]
+  const targetDate = new Date(activeGoal.target_date || '')
 
   // Calculate weekly average
   const weeksElapsed = Math.max(1, Math.ceil(daysElapsed / 7))
-  const sessionsPerWeek = progress ? (progress.sessionsCompleted / weeksElapsed).toFixed(1) : '0'
+  const sessionsPerWeek = progress ? (progress.sessions_completed / weeksElapsed).toFixed(1) : '0'
 
-  const handleSwitchGoal = (goalId: string) => {
-    setActiveGoal(goalId)
-    const newActive = allGoals.find(g => g.id === goalId)
-    if (newActive) {
-      setActiveGoalState(newActive)
-      setProgress(getGoalProgress(goalId))
+  const handleSwitchGoal = async (goalId: string) => {
+    try {
+      await setActiveGoalInDb(goalId)
+      const newActive = allGoals.find(g => g.id === goalId)
+      if (newActive) {
+        setActiveGoalState(newActive)
+        const progressResult = await getGoalProgressFromDb(goalId)
+        if (progressResult.data) {
+          setProgress(progressResult.data)
+        }
+      }
+      setShowAllGoals(false)
+    } catch (err) {
+      console.error('Error switching goal:', err)
     }
-    setShowAllGoals(false)
   }
 
-  const handleDeleteGoal = (goalId: string) => {
+  const handleDeleteGoal = async (goalId: string) => {
     if (window.confirm('Are you sure you want to delete this goal? This cannot be undone.')) {
-      deleteGoal(goalId)
-      if (activeGoal.id === goalId) {
-        navigate('/goals/new')
+      try {
+        await deleteGoalFromDb(goalId)
+        if (activeGoal.id === goalId) {
+          navigate('/goals/new')
+        } else {
+          // Refresh the goals list
+          const allResult = await getAllGoals()
+          if (allResult.data) {
+            setAllGoals(allResult.data)
+          }
+        }
+      } catch (err) {
+        console.error('Error deleting goal:', err)
       }
     }
   }
@@ -117,10 +202,10 @@ export function Goals() {
                 onClick={() => goal.id !== activeGoal.id && handleSwitchGoal(goal.id)}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-xl">{GOAL_TYPES[goal.type].icon}</span>
+                  <span className="text-xl">{GOAL_TYPES[goal.type as keyof typeof GOAL_TYPES]?.icon || '🎯'}</span>
                   <div>
                     <p className="font-medium">{goal.title}</p>
-                    <p className="text-xs text-slate-400">{GOAL_TYPES[goal.type].label}</p>
+                    <p className="text-xs text-slate-400">{GOAL_TYPES[goal.type as keyof typeof GOAL_TYPES]?.label || goal.type}</p>
                   </div>
                 </div>
                 {goal.id === activeGoal.id ? (
@@ -208,7 +293,7 @@ export function Goals() {
               <p className="text-sm text-slate-400">Days Training</p>
             </div>
             <div className="p-5 rounded-2xl bg-white/5 border border-white/5">
-              <p className="text-3xl font-bold mb-1">{progress?.sessionsCompleted || 0}</p>
+              <p className="text-3xl font-bold mb-1">{progress?.sessions_completed || 0}</p>
               <p className="text-sm text-slate-400">Sessions Logged</p>
             </div>
             <div className="p-5 rounded-2xl bg-white/5 border border-white/5">
@@ -219,25 +304,25 @@ export function Goals() {
         </div>
 
         {/* Target Details */}
-        {(activeGoal.targetGrade || activeGoal.projectName || activeGoal.competitionName) && (
+        {(activeGoal.target_grade || activeGoal.project_name || activeGoal.competition_name) && (
           <div className="mt-8 pt-6 border-t border-white/10">
             <div className="flex items-center gap-4 flex-wrap">
-              {activeGoal.targetGrade && (
+              {activeGoal.target_grade && (
                 <div className="px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                   <span className="text-emerald-400 text-sm">🎯 Target Grade: </span>
-                  <span className="font-semibold">{activeGoal.targetGrade}</span>
+                  <span className="font-semibold">{activeGoal.target_grade}</span>
                 </div>
               )}
-              {activeGoal.projectName && (
+              {activeGoal.project_name && (
                 <div className="px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
                   <span className="text-amber-400 text-sm">🧗 Project: </span>
-                  <span className="font-semibold">{activeGoal.projectName}</span>
+                  <span className="font-semibold">{activeGoal.project_name}</span>
                 </div>
               )}
-              {activeGoal.competitionName && (
+              {activeGoal.competition_name && (
                 <div className="px-4 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
                   <span className="text-rose-400 text-sm">🏆 Event: </span>
-                  <span className="font-semibold">{activeGoal.competitionName}</span>
+                  <span className="font-semibold">{activeGoal.competition_name}</span>
                 </div>
               )}
             </div>
@@ -257,21 +342,21 @@ export function Goals() {
               <div className="absolute -left-[26px] w-3 h-3 rounded-full bg-fuchsia-500 border-2 border-[#0a0f0d]" />
               <div className="p-3 rounded-xl bg-white/5">
                 <p className="text-xs text-slate-500">
-                  {new Date(activeGoal.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {new Date(activeGoal.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </p>
                 <p className="font-medium">Goal Started</p>
               </div>
             </div>
             
-            {progress?.lastSessionDate && (
+            {progress?.last_session_date && (
               <div className="relative">
                 <div className="absolute -left-[26px] w-3 h-3 rounded-full bg-cyan-500 border-2 border-[#0a0f0d]" />
                 <div className="p-3 rounded-xl bg-white/5">
                   <p className="text-xs text-slate-500">
-                    {new Date(progress.lastSessionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    {new Date(progress.last_session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </p>
                   <p className="font-medium">Last Session</p>
-                  <p className="text-sm text-slate-400">{progress.sessionsCompleted} sessions completed</p>
+                  <p className="text-sm text-slate-400">{progress.sessions_completed} sessions completed</p>
                 </div>
               </div>
             )}
