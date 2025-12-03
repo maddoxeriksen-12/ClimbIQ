@@ -1,9 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth, type UserRole } from '../hooks/useAuth'
 import { SubscriptionManager } from '../components/SubscriptionManager'
 import { CustomVariableManager } from '../components/CustomVariableManager'
-
-import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
 type SettingsTab = 'profile' | 'subscription' | 'preferences' | 'tracking' | 'account'
@@ -207,6 +205,32 @@ export function Settings() {
           <h2 className="text-xl font-semibold mb-6">Preferences</h2>
           
           <div className="space-y-6">
+            {/* Navigation Items */}
+            <div>
+              <h3 className="font-medium mb-4">Navigation</h3>
+              <p className="text-sm text-slate-400 mb-4">Choose which items appear in your navigation menu</p>
+              <div className="space-y-3">
+                <label className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.07] transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">📈</span>
+                    <div>
+                      <p className="font-medium text-sm">Stats & Analytics</p>
+                      <p className="text-xs text-slate-400">View detailed climbing statistics and charts</p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={localStorage.getItem('showStatsNav') !== 'false'}
+                    onChange={(e) => {
+                      localStorage.setItem('showStatsNav', e.target.checked.toString())
+                      window.dispatchEvent(new Event('navSettingsChanged'))
+                    }}
+                    className={`w-5 h-5 rounded bg-white/10 border-white/20 ${isCoach() ? 'text-amber-500 focus:ring-amber-500/50' : 'text-fuchsia-500 focus:ring-fuchsia-500/50'}`}
+                  />
+                </label>
+              </div>
+            </div>
+
             {/* Notification settings */}
             <div>
               <h3 className="font-medium mb-4">Notifications</h3>

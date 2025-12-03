@@ -11,6 +11,7 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showStatsNav, setShowStatsNav] = useState(() => localStorage.getItem('showStatsNav') !== 'false')
   
   // Style values - finalized
   const bgOpacity = 30 // 30%
@@ -42,14 +43,27 @@ export function Layout({ children }: LayoutProps) {
     return () => document.removeEventListener('click', handleClickOutside)
   }, [mobileMenuOpen])
 
+  // Listen for nav settings changes
+  useEffect(() => {
+    const handleNavSettingsChanged = () => {
+      setShowStatsNav(localStorage.getItem('showStatsNav') !== 'false')
+    }
+    window.addEventListener('navSettingsChanged', handleNavSettingsChanged)
+    return () => window.removeEventListener('navSettingsChanged', handleNavSettingsChanged)
+  }, [])
+
   // Different nav items based on role
-  const athleteNavItems = [
+  const baseAthleteNavItems = [
     { path: '/', label: 'Dashboard', icon: '📊' },
     { path: '/session/new', label: 'New Session', icon: '🧗' },
     { path: '/sessions', label: 'History', icon: '📅' },
-    { path: '/recommendations', label: 'Insights', icon: '💡' },
-    { path: '/settings', label: 'Settings', icon: '⚙️' },
   ]
+  
+  const statsNavItem = { path: '/stats', label: 'Stats', icon: '📈' }
+  
+  const athleteNavItems = showStatsNav 
+    ? [...baseAthleteNavItems, statsNavItem, { path: '/recommendations', label: 'Insights', icon: '💡' }, { path: '/settings', label: 'Settings', icon: '⚙️' }]
+    : [...baseAthleteNavItems, { path: '/recommendations', label: 'Insights', icon: '💡' }, { path: '/settings', label: 'Settings', icon: '⚙️' }]
 
   const coachNavItems = [
     { path: '/', label: 'Team Dashboard', icon: '👥' },

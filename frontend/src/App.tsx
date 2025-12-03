@@ -15,6 +15,7 @@ import { SessionReview } from './pages/SessionReview'
 import { SessionHistory } from './pages/SessionHistory'
 import { SessionDetail } from './pages/SessionDetail'
 import { EditSession } from './pages/EditSession'
+import { Stats } from './pages/Stats'
 import { Goals } from './pages/Goals'
 import { NewGoal } from './pages/NewGoal'
 
@@ -195,6 +196,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <SessionHistory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/stats"
+            element={
+              <ProtectedRoute>
+                <Stats />
               </ProtectedRoute>
             }
           />
