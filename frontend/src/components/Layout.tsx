@@ -14,6 +14,7 @@ export function Layout({ children }: LayoutProps) {
   // Debug sliders for styling
   const [textBrightness, setTextBrightness] = useState(0) // 0 = black (slate-900), 100 = white
   const [bgOpacity, setBgOpacity] = useState(30) // 0-100
+  const [bgBrightness, setBgBrightness] = useState(100) // 0 = black, 100 = white
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -113,7 +114,9 @@ export function Layout({ children }: LayoutProps) {
             {mobileMenuOpen && (
               <div 
                 className="absolute top-full right-0 mt-2 w-64 rounded-2xl border border-white/30 backdrop-blur-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
-                style={{ backgroundColor: `rgba(255, 255, 255, ${bgOpacity / 100})` }}
+                style={{ 
+                  backgroundColor: `rgba(${Math.round(255 * bgBrightness / 100)}, ${Math.round(255 * bgBrightness / 100)}, ${Math.round(255 * bgBrightness / 100)}, ${bgOpacity / 100})` 
+                }}
               >
                 {/* Debug Sliders */}
                 <div className="px-4 py-3 border-b border-black/10 bg-black/5">
@@ -130,6 +133,21 @@ export function Layout({ children }: LayoutProps) {
                         max="100" 
                         value={textBrightness}
                         onChange={(e) => setTextBrightness(Number(e.target.value))}
+                        className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                        style={{ background: `linear-gradient(to right, #000 0%, #fff 100%)` }}
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-black/70 mb-1">
+                        <span>BG Color: {bgBrightness}%</span>
+                        <span>{bgBrightness === 0 ? 'Black' : bgBrightness === 100 ? 'White' : 'Gray'}</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="100" 
+                        value={bgBrightness}
+                        onChange={(e) => setBgBrightness(Number(e.target.value))}
                         className="w-full h-2 rounded-full appearance-none cursor-pointer"
                         style={{ background: `linear-gradient(to right, #000 0%, #fff 100%)` }}
                       />
