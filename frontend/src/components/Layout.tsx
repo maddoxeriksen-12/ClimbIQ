@@ -1,6 +1,22 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { 
+  ChartBar, 
+  Mountains, 
+  Calendar, 
+  Lightbulb, 
+  Gear, 
+  Users, 
+  SignOut,
+  type Icon
+} from '@phosphor-icons/react'
+
+interface NavItem {
+  path: string
+  label: string
+  icon: Icon
+}
 
 interface LayoutProps {
   children: React.ReactNode
@@ -43,18 +59,18 @@ export function Layout({ children }: LayoutProps) {
   }, [mobileMenuOpen])
 
   // Different nav items based on role
-  const athleteNavItems = [
-    { path: '/', label: 'Dashboard', icon: '📊' },
-    { path: '/session/new', label: 'New Session', icon: '🧗' },
-    { path: '/sessions', label: 'History', icon: '📅' },
-    { path: '/recommendations', label: 'Insights', icon: '💡' },
-    { path: '/settings', label: 'Settings', icon: '⚙️' },
+  const athleteNavItems: NavItem[] = [
+    { path: '/', label: 'Dashboard', icon: ChartBar },
+    { path: '/session/new', label: 'New Session', icon: Mountains },
+    { path: '/sessions', label: 'History', icon: Calendar },
+    { path: '/recommendations', label: 'Insights', icon: Lightbulb },
+    { path: '/settings', label: 'Settings', icon: Gear },
   ]
 
-  const coachNavItems = [
-    { path: '/', label: 'Team Dashboard', icon: '👥' },
-    { path: '/recommendations', label: 'Team Insights', icon: '💡' },
-    { path: '/settings', label: 'Settings', icon: '⚙️' },
+  const coachNavItems: NavItem[] = [
+    { path: '/', label: 'Team Dashboard', icon: Users },
+    { path: '/recommendations', label: 'Team Insights', icon: Lightbulb },
+    { path: '/settings', label: 'Settings', icon: Gear },
   ]
 
   const navItems = isCoach() ? coachNavItems : athleteNavItems
@@ -242,28 +258,31 @@ export function Layout({ children }: LayoutProps) {
 
                 {/* Navigation Items - With bubbles, 100% white text */}
                 <nav className="py-3 px-2 space-y-1">
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => {
-                        setMobileMenuOpen(false)
-                        if (item.path === location.pathname) {
-                          scrollToTop()
-                        }
-                      }}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-all rounded-xl text-white"
-                      style={{ 
-                        backgroundColor: `rgba(${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${bubbleOpacity / 100})`
-                      }}
-                    >
-                      <span className="text-xl drop-shadow-sm">{item.icon}</span>
-                      {item.label}
-                      {isActive(item.path) && (
-                        <span className={`ml-auto w-2 h-2 rounded-full bg-gradient-to-r ${gradientFrom} ${gradientTo} shadow-lg`} />
-                      )}
-                    </Link>
-                  ))}
+                  {navItems.map((item) => {
+                    const IconComponent = item.icon
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => {
+                          setMobileMenuOpen(false)
+                          if (item.path === location.pathname) {
+                            scrollToTop()
+                          }
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-all rounded-xl text-white"
+                        style={{ 
+                          backgroundColor: `rgba(${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${bubbleOpacity / 100})`
+                        }}
+                      >
+                        <IconComponent size={20} weight="fill" className="drop-shadow-sm" />
+                        {item.label}
+                        {isActive(item.path) && (
+                          <span className={`ml-auto w-2 h-2 rounded-full bg-gradient-to-r ${gradientFrom} ${gradientTo} shadow-lg`} />
+                        )}
+                      </Link>
+                    )
+                  })}
                 </nav>
 
                 {/* Sign Out - Same bubble style */}
@@ -278,7 +297,7 @@ export function Layout({ children }: LayoutProps) {
                       backgroundColor: `rgba(${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${bubbleOpacity / 100})`
                     }}
                   >
-                    <span className="text-xl drop-shadow-sm">🚪</span>
+                    <SignOut size={20} weight="fill" className="drop-shadow-sm" />
                     Sign out
                   </button>
                 </div>
@@ -307,20 +326,23 @@ export function Layout({ children }: LayoutProps) {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                isActive(item.path)
-                  ? `bg-gradient-to-r ${activeGradientFrom} ${activeGradientTo} text-white border border-white/10`
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <span className="text-lg">{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const IconComponent = item.icon
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  isActive(item.path)
+                    ? `bg-gradient-to-r ${activeGradientFrom} ${activeGradientTo} text-white border border-white/10`
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <IconComponent size={20} weight="fill" />
+                {item.label}
+              </Link>
+            )
+          })}
         </nav>
 
         {/* User section */}

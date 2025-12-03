@@ -6,6 +6,18 @@ import { GoalWidget } from '../components/GoalWidget'
 import { LiveClimbTracker } from '../components/LiveClimbTracker'
 import { getActiveSession } from '../lib/sessionStorage'
 import { getSessionStats, getRecentSessions, type ClimbingSession, type SessionStats } from '../lib/sessionService'
+import { 
+  Barbell, 
+  Target, 
+  Mountains, 
+  Tree,
+  Buildings,
+  Warning,
+  ChartBar,
+  CheckCircle,
+  ClipboardText,
+  type Icon
+} from '@phosphor-icons/react'
 
 export function Dashboard() {
   const { user } = useAuth()
@@ -86,8 +98,8 @@ export function Dashboard() {
   ]
 
   const quickTips = [
-    { icon: '💪', title: 'Recovery day recommended', desc: 'Your finger load is elevated. Consider active rest.' },
-    { icon: '🎯', title: 'Focus on overhangs', desc: 'Your data shows room for improvement on steep terrain.' },
+    { icon: Barbell, title: 'Recovery day recommended', desc: 'Your finger load is elevated. Consider active rest.' },
+    { icon: Target, title: 'Focus on overhangs', desc: 'Your data shows room for improvement on steep terrain.' },
   ]
 
   // Performance data for correlation widget
@@ -128,12 +140,12 @@ export function Dashboard() {
   // Get session type icon
   const getSessionIcon = (type: string) => {
     switch (type.toLowerCase()) {
-      case 'bouldering': return '🪨'
-      case 'lead': case 'sport': return '🧗'
-      case 'trad': return '⛰️'
-      case 'training': return '🏋️'
-      case 'project': return '🎯'
-      default: return '🧗'
+      case 'bouldering': return Mountains
+      case 'lead': case 'sport': return Mountains
+      case 'trad': return Tree
+      case 'training': return Barbell
+      case 'project': return Target
+      default: return Mountains
     }
   }
 
@@ -145,8 +157,8 @@ export function Dashboard() {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center text-2xl">
-                  🧗
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center">
+                  <Mountains size={28} weight="fill" className="text-white" />
                 </div>
                 {/* Pulsing indicator */}
                 <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 animate-pulse" />
@@ -163,8 +175,8 @@ export function Dashboard() {
                 <h2 className="text-xl font-bold">
                   {activeSession.sessionType.charAt(0).toUpperCase() + activeSession.sessionType.slice(1)} at {activeSession.location || 'Unknown Location'}
                 </h2>
-                <p className="text-sm text-slate-400">
-                  {activeSession.isOutdoor ? '🏔️ Outdoor' : '🏢 Indoor'} • Planned: {activeSession.plannedDuration} min
+                <p className="text-sm text-slate-400 flex items-center gap-1">
+                  {activeSession.isOutdoor ? <><Tree size={16} weight="fill" /> Outdoor</> : <><Buildings size={16} weight="fill" /> Indoor</>} • Planned: {activeSession.plannedDuration} min
                 </p>
               </div>
             </div>
@@ -177,9 +189,9 @@ export function Dashboard() {
               </Link>
               <Link
                 to="/session/complete"
-                className="px-6 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 text-white font-medium text-sm shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all"
+                className="px-6 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 text-white font-medium text-sm shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all flex items-center gap-2"
               >
-                ✅ Complete Session
+                <CheckCircle size={18} weight="fill" /> Complete Session
               </Link>
             </div>
           </div>
@@ -265,7 +277,7 @@ export function Dashboard() {
               <div className="p-8 text-center text-slate-400">Loading sessions...</div>
             ) : recentSessions.length === 0 ? (
               <div className="p-8 text-center">
-                <span className="text-4xl mb-4 block">🧗</span>
+                <Mountains size={48} weight="fill" className="text-slate-400 mb-4 mx-auto" />
                 <p className="text-slate-400 mb-2">No sessions yet</p>
                 <p className="text-sm text-slate-500">Start your first session to see your history here.</p>
                 <Link
@@ -276,12 +288,14 @@ export function Dashboard() {
                 </Link>
               </div>
             ) : (
-              recentSessions.map((session) => (
+              recentSessions.map((session) => {
+                const SessionIcon = getSessionIcon(session.session_type)
+                return (
                 <div key={session.id} className="p-5 hover:bg-white/[0.02] transition-colors">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-fuchsia-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center">
-                        {getSessionIcon(session.session_type)}
+                        <SessionIcon size={20} weight="fill" className="text-fuchsia-400" />
                       </div>
                       <div>
                         <p className="font-medium capitalize">{session.session_type}</p>
@@ -303,7 +317,8 @@ export function Dashboard() {
                     )}
                   </div>
                 </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>
@@ -320,14 +335,14 @@ export function Dashboard() {
                     to="/session/complete"
                     className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 text-white font-medium hover:from-emerald-500 hover:to-cyan-500 transition-all"
                   >
-                    <span>✅</span>
+                    <CheckCircle size={20} weight="fill" />
                     Complete Session
                   </Link>
                   <Link
                     to="/session/review"
                     className="flex items-center gap-3 p-3 rounded-xl border border-white/10 hover:bg-white/5 transition-colors"
                   >
-                    <span>📋</span>
+                    <ClipboardText size={20} weight="fill" />
                     View Session Details
                   </Link>
                 </>
@@ -337,14 +352,14 @@ export function Dashboard() {
                     to="/session/new"
                     className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-medium hover:from-fuchsia-500 hover:to-cyan-500 transition-all"
                   >
-                    <span>🧗</span>
+                    <Mountains size={20} weight="fill" />
                     Start New Session
                   </Link>
                   <Link
                     to="/goals"
                     className="flex items-center gap-3 p-3 rounded-xl border border-white/10 hover:bg-white/5 transition-colors"
                   >
-                    <span>🎯</span>
+                    <Target size={20} weight="fill" />
                     View Goals
                   </Link>
                 </>
@@ -364,7 +379,7 @@ export function Dashboard() {
                   {stats.sessionsThisWeek >= 4 && (
                     <div className="p-3 rounded-xl bg-white/5 border border-white/5">
                       <div className="flex items-start gap-3">
-                        <span className="text-xl">💪</span>
+                        <Barbell size={24} weight="fill" className="text-emerald-400 shrink-0" />
                         <div>
                           <p className="font-medium text-sm">Great consistency!</p>
                           <p className="text-xs text-slate-400 mt-1">You've logged {stats.sessionsThisWeek} sessions this week. Keep it up!</p>
@@ -375,7 +390,7 @@ export function Dashboard() {
                   {stats.avgSessionRpe > 7 && (
                     <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
                       <div className="flex items-start gap-3">
-                        <span className="text-xl">⚠️</span>
+                        <Warning size={24} weight="fill" className="text-amber-400 shrink-0" />
                         <div>
                           <p className="font-medium text-sm text-amber-300">High intensity detected</p>
                           <p className="text-xs text-slate-400 mt-1">Your average RPE is {stats.avgSessionRpe}. Consider a recovery day.</p>
@@ -385,7 +400,7 @@ export function Dashboard() {
                   )}
                   <div className="p-3 rounded-xl bg-white/5 border border-white/5">
                     <div className="flex items-start gap-3">
-                      <span className="text-xl">📊</span>
+                      <ChartBar size={24} weight="fill" className="text-fuchsia-400 shrink-0" />
                       <div>
                         <p className="font-medium text-sm">Session Summary</p>
                         <p className="text-xs text-slate-400 mt-1">
@@ -396,17 +411,20 @@ export function Dashboard() {
                   </div>
                 </>
               ) : (
-                quickTips.map((tip, i) => (
-                  <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/5">
-                    <div className="flex items-start gap-3">
-                      <span className="text-xl">{tip.icon}</span>
-                      <div>
-                        <p className="font-medium text-sm">{tip.title}</p>
-                        <p className="text-xs text-slate-400 mt-1">{tip.desc}</p>
+                quickTips.map((tip, i) => {
+                  const TipIcon = tip.icon
+                  return (
+                    <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/5">
+                      <div className="flex items-start gap-3">
+                        <TipIcon size={24} weight="fill" className="text-fuchsia-400 shrink-0" />
+                        <div>
+                          <p className="font-medium text-sm">{tip.title}</p>
+                          <p className="text-xs text-slate-400 mt-1">{tip.desc}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
               )}
             </div>
           </div>
