@@ -23,26 +23,35 @@ export function Dashboard() {
   // Fetch real data from database
   useEffect(() => {
     async function fetchData() {
+      if (!user) return
+      
       setLoading(true)
       
-      const [statsResult, sessionsResult] = await Promise.all([
-        getSessionStats(),
-        getRecentSessions(5),
-      ])
-      
-      if (statsResult.data) {
-        setStats(statsResult.data)
-      }
-      
-      if (sessionsResult.data) {
-        setRecentSessions(sessionsResult.data)
+      try {
+        const [statsResult, sessionsResult] = await Promise.all([
+          getSessionStats(),
+          getRecentSessions(5),
+        ])
+        
+        console.log('Stats result:', statsResult)
+        console.log('Sessions result:', sessionsResult)
+        
+        if (statsResult.data) {
+          setStats(statsResult.data)
+        }
+        
+        if (sessionsResult.data) {
+          setRecentSessions(sessionsResult.data)
+        }
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err)
       }
       
       setLoading(false)
     }
     
     fetchData()
-  }, [])
+  }, [user])
   
   // Check for active session
   const activeSession = getActiveSession()
