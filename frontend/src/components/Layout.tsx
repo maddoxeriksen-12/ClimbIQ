@@ -13,17 +13,15 @@ export function Layout({ children }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
   // Style values - finalized
-  const textBrightness = 100 // 100% = white
   const bgOpacity = 30 // 30%
   const bgBrightness = 0 // 0% = black
-  const bubbleOpacity = 80 // 80% (increased by 5%)
+  const bubbleOpacity = 80 // 80%
   const bubbleBrightness = 20 // 20% (dark gray)
   
   /* DEBUG SLIDERS - Uncomment to re-enable
-  const [textBrightness, setTextBrightness] = useState(100)
   const [bgOpacity, setBgOpacity] = useState(30)
   const [bgBrightness, setBgBrightness] = useState(0)
-  const [bubbleOpacity, setBubbleOpacity] = useState(75)
+  const [bubbleOpacity, setBubbleOpacity] = useState(80)
   const [bubbleBrightness, setBubbleBrightness] = useState(20)
   */
 
