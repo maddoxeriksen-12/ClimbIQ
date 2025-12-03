@@ -264,31 +264,31 @@ export function SessionDetail() {
                 <span>🌅</span> Pre-Session State
               </h3>
               <div className="grid grid-cols-2 gap-3">
-                {preData.energy_level && (
+                {preData.energy_level != null && (
                   <div className="p-2 rounded-lg bg-white/5">
                     <p className="text-xs text-slate-500">Energy</p>
-                    <p className="font-medium">{preData.energy_level as number}/8</p>
+                    <p className="font-medium">{Number(preData.energy_level)}/8</p>
                   </div>
                 )}
-                {preData.motivation && (
+                {preData.motivation != null && (
                   <div className="p-2 rounded-lg bg-white/5">
                     <p className="text-xs text-slate-500">Motivation</p>
-                    <p className="font-medium">{preData.motivation as number}/8</p>
+                    <p className="font-medium">{Number(preData.motivation)}/8</p>
                   </div>
                 )}
-                {preData.sleep_quality && (
+                {preData.sleep_quality != null && (
                   <div className="p-2 rounded-lg bg-white/5">
                     <p className="text-xs text-slate-500">Sleep Quality</p>
-                    <p className="font-medium">{preData.sleep_quality as number}/8</p>
+                    <p className="font-medium">{Number(preData.sleep_quality)}/8</p>
                   </div>
                 )}
-                {preData.stress_level && (
+                {preData.stress_level != null && (
                   <div className="p-2 rounded-lg bg-white/5">
                     <p className="text-xs text-slate-500">Stress</p>
-                    <p className="font-medium">{preData.stress_level as number}/8</p>
+                    <p className="font-medium">{Number(preData.stress_level)}/8</p>
                   </div>
                 )}
-                {preData.primary_goal && (
+                {preData.primary_goal != null && (
                   <div className="p-2 rounded-lg bg-white/5 col-span-2">
                     <p className="text-xs text-slate-500">Primary Goal</p>
                     <p className="font-medium capitalize">{String(preData.primary_goal).replace(/_/g, ' ')}</p>
