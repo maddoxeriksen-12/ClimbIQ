@@ -16,6 +16,7 @@ export function Layout({ children }: LayoutProps) {
   const [bgOpacity, setBgOpacity] = useState(30) // 0-100
   const [bgBrightness, setBgBrightness] = useState(100) // 0 = black, 100 = white
   const [bubbleOpacity, setBubbleOpacity] = useState(20) // 0-100 for nav item bubbles
+  const [bubbleBrightness, setBubbleBrightness] = useState(50) // 0 = black, 100 = white
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -74,10 +75,13 @@ export function Layout({ children }: LayoutProps) {
       {/* Mobile Header - Only visible on mobile */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#0a0f0d]/95 backdrop-blur-xl border-b border-white/10">
         <div className="flex items-center justify-between px-4 py-3">
-          {/* Logo - scrolls to top */}
+          {/* Spacer for centering */}
+          <div className="w-10" />
+
+          {/* Logo - centered, scrolls to top */}
           <button 
             onClick={scrollToTop}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 absolute left-1/2 -translate-x-1/2"
           >
             <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${gradientFrom} ${gradientTo} flex items-center justify-center font-bold text-sm`}>
               C
@@ -179,6 +183,21 @@ export function Layout({ children }: LayoutProps) {
                         className="w-full h-2 rounded-full appearance-none cursor-pointer bg-gradient-to-r from-transparent to-gray-500"
                       />
                     </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-black/70 mb-1">
+                        <span>Bubble Color: {bubbleBrightness}%</span>
+                        <span>{bubbleBrightness === 0 ? 'Black' : bubbleBrightness === 100 ? 'White' : 'Gray'}</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="100" 
+                        value={bubbleBrightness}
+                        onChange={(e) => setBubbleBrightness(Number(e.target.value))}
+                        className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                        style={{ background: `linear-gradient(to right, #000 0%, #fff 100%)` }}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -219,7 +238,7 @@ export function Layout({ children }: LayoutProps) {
                         className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-all rounded-xl"
                         style={{ 
                           color: textColor,
-                          backgroundColor: `rgba(128, 128, 128, ${bubbleOpacity / 100})`
+                          backgroundColor: `rgba(${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${bubbleOpacity / 100})`
                         }}
                       >
                         <span className="text-xl drop-shadow-sm">{item.icon}</span>
