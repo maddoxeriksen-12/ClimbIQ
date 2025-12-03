@@ -1,20 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { 
-  Users, 
-  Lightbulb, 
-  Gear, 
-  SignOut,
-  type Icon
-} from '@phosphor-icons/react'
-
-interface NavItem {
-  path: string
-  label: string
-  icon: Icon
-  color: string
-}
 
 interface CoachLayoutProps {
   children: React.ReactNode
@@ -42,10 +28,10 @@ export function CoachLayout({ children }: CoachLayoutProps) {
     return () => document.removeEventListener('click', handleClickOutside)
   }, [mobileMenuOpen])
 
-  const navItems: NavItem[] = [
-    { path: '/', label: 'Team Dashboard', icon: Users, color: '#f59e0b' }, // Amber
-    { path: '/recommendations', label: 'Team Insights', icon: Lightbulb, color: '#facc15' }, // Yellow
-    { path: '/settings', label: 'Settings', icon: Gear, color: '#94a3b8' }, // Slate
+  const navItems = [
+    { path: '/', label: 'Team Dashboard', icon: '👥' },
+    { path: '/recommendations', label: 'Team Insights', icon: '💡' },
+    { path: '/settings', label: 'Settings', icon: '⚙️' },
   ]
 
   const isActive = (path: string) => location.pathname === path
@@ -117,32 +103,29 @@ export function CoachLayout({ children }: CoachLayoutProps) {
 
                 {/* Navigation Items - Free floating */}
                 <nav className="py-3 px-2">
-                  {navItems.map((item) => {
-                    const IconComponent = item.icon
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => {
-                          setMobileMenuOpen(false)
-                          if (item.path === location.pathname) {
-                            scrollToTop()
-                          }
-                        }}
-                        className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors ${
-                          isActive(item.path)
-                            ? 'text-slate-900'
-                            : 'text-slate-700 hover:text-slate-900'
-                        }`}
-                      >
-                        <IconComponent size={20} weight="fill" style={{ color: item.color }} className="drop-shadow-sm" />
-                        {item.label}
-                        {isActive(item.path) && (
-                          <span className="ml-auto w-2 h-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg" />
-                        )}
-                      </Link>
-                    )
-                  })}
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => {
+                        setMobileMenuOpen(false)
+                        if (item.path === location.pathname) {
+                          scrollToTop()
+                        }
+                      }}
+                      className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors ${
+                        isActive(item.path)
+                          ? 'text-slate-900'
+                          : 'text-slate-700 hover:text-slate-900'
+                      }`}
+                    >
+                      <span className="text-xl drop-shadow-sm">{item.icon}</span>
+                      {item.label}
+                      {isActive(item.path) && (
+                        <span className="ml-auto w-2 h-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg" />
+                      )}
+                    </Link>
+                  ))}
                 </nav>
 
                 {/* Sign Out - Free floating */}
@@ -154,7 +137,7 @@ export function CoachLayout({ children }: CoachLayoutProps) {
                     }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
                   >
-                    <SignOut size={20} weight="fill" className="drop-shadow-sm" />
+                    <span className="text-xl drop-shadow-sm">🚪</span>
                     Sign out
                   </button>
                 </div>
@@ -183,23 +166,20 @@ export function CoachLayout({ children }: CoachLayoutProps) {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => {
-            const IconComponent = item.icon
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  isActive(item.path)
-                    ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-white border border-white/10'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <IconComponent size={20} weight="fill" style={{ color: isActive(item.path) ? '#fff' : item.color }} />
-                {item.label}
-              </Link>
-            )
-          })}
+          {navItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                isActive(item.path)
+                  ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-white border border-white/10'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <span className="text-lg">{item.icon}</span>
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         {/* User section */}

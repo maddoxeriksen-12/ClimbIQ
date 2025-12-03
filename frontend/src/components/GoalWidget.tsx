@@ -10,7 +10,6 @@ import {
   type ClimbingGoal,
   type GoalProgress,
 } from '../lib/goalService'
-import { Target } from '@phosphor-icons/react'
 
 export function GoalWidget() {
   const [activeGoal, setActiveGoal] = useState<ClimbingGoal | null>(null)
@@ -55,8 +54,8 @@ export function GoalWidget() {
         className="block rounded-2xl border border-dashed border-white/20 bg-white/5 p-6 hover:border-fuchsia-500/50 hover:bg-white/[0.07] transition-all group"
       >
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-fuchsia-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Target size={28} weight="fill" className="text-fuchsia-400" />
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-fuchsia-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+            🎯
           </div>
           <div>
             <h3 className="font-semibold mb-1">Set Your Climbing Goal</h3>
@@ -100,8 +99,8 @@ export function GoalWidget() {
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-fuchsia-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center">
-            <Target size={24} weight="fill" className="text-fuchsia-400" />
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-fuchsia-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center text-2xl">
+            {goalInfo.icon}
           </div>
           <div>
             <p className="text-xs text-slate-500 mb-0.5">Current Goal</p>
@@ -148,7 +147,7 @@ export function GoalWidget() {
       {/* Target info */}
       {(activeGoal.target_grade || activeGoal.project_name || activeGoal.competition_name) && (
         <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-sm text-slate-400">
-          <Target size={16} weight="fill" className="text-emerald-400" />
+          <span>🎯</span>
           <span>
             {activeGoal.target_grade && `Target: ${activeGoal.target_grade}`}
             {activeGoal.project_name && `Project: ${activeGoal.project_name}`}
