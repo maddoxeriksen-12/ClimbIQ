@@ -10,6 +10,7 @@ import {
   type ClimbingGoal,
   type GoalProgress as GoalProgressType,
 } from '../lib/goalService'
+import { Target } from '@phosphor-icons/react'
 
 // Helper functions for date calculations
 function calculateDaysRemaining(targetDate: string): number {
@@ -98,8 +99,8 @@ export function Goals() {
     return (
       <div className="p-8 max-w-4xl mx-auto">
         <div className="text-center py-16">
-          <div className="w-24 h-24 mx-auto rounded-3xl bg-gradient-to-br from-fuchsia-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center text-5xl mb-6">
-            🎯
+          <div className="w-24 h-24 mx-auto rounded-3xl bg-gradient-to-br from-fuchsia-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center mb-6">
+            <Target size={56} weight="fill" className="text-fuchsia-400" />
           </div>
           <h1 className="text-3xl font-bold mb-3">Set Your Climbing Goal</h1>
           <p className="text-slate-400 mb-8 max-w-md mx-auto">
@@ -248,7 +249,7 @@ export function Goals() {
                 onClick={() => goal.id !== activeGoal.id && handleSwitchGoal(goal.id)}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-xl">{GOAL_TYPES[goal.type as keyof typeof GOAL_TYPES]?.icon || '🎯'}</span>
+                  <Target size={24} weight="fill" className="text-fuchsia-400" />
                   <div>
                     <p className="font-medium">{goal.title}</p>
                     <p className="text-xs text-slate-400">{GOAL_TYPES[goal.type as keyof typeof GOAL_TYPES]?.label || goal.type}</p>
@@ -358,8 +359,9 @@ export function Goals() {
           <div className="mt-8 pt-6 border-t border-white/10">
             <div className="flex items-center gap-4 flex-wrap">
               {activeGoal.target_grade && (
-                <div className="px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                  <span className="text-emerald-400 text-sm">🎯 Target Grade: </span>
+                <div className="px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2">
+                  <Target size={16} weight="fill" className="text-emerald-400" />
+                  <span className="text-emerald-400 text-sm">Target Grade: </span>
                   <span className="font-semibold">{activeGoal.target_grade}</span>
                 </div>
               )}
@@ -485,9 +487,7 @@ export function Goals() {
             {/* Goal Preview */}
             <div className="p-4 rounded-xl bg-white/5 border border-white/10 mb-6">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">
-                  {GOAL_TYPES[goalToDelete.type as keyof typeof GOAL_TYPES]?.icon || '🎯'}
-                </span>
+                <Target size={28} weight="fill" className="text-fuchsia-400" />
                 <div>
                   <p className="font-medium">{goalToDelete.title}</p>
                   <p className="text-xs text-slate-400">

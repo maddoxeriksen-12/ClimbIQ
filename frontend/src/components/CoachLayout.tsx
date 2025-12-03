@@ -13,6 +13,7 @@ interface NavItem {
   path: string
   label: string
   icon: Icon
+  color: string
 }
 
 interface CoachLayoutProps {
@@ -42,9 +43,9 @@ export function CoachLayout({ children }: CoachLayoutProps) {
   }, [mobileMenuOpen])
 
   const navItems: NavItem[] = [
-    { path: '/', label: 'Team Dashboard', icon: Users },
-    { path: '/recommendations', label: 'Team Insights', icon: Lightbulb },
-    { path: '/settings', label: 'Settings', icon: Gear },
+    { path: '/', label: 'Team Dashboard', icon: Users, color: '#f59e0b' }, // Amber
+    { path: '/recommendations', label: 'Team Insights', icon: Lightbulb, color: '#facc15' }, // Yellow
+    { path: '/settings', label: 'Settings', icon: Gear, color: '#94a3b8' }, // Slate
   ]
 
   const isActive = (path: string) => location.pathname === path
@@ -134,7 +135,7 @@ export function CoachLayout({ children }: CoachLayoutProps) {
                             : 'text-slate-700 hover:text-slate-900'
                         }`}
                       >
-                        <IconComponent size={20} weight="fill" className="drop-shadow-sm" />
+                        <IconComponent size={20} weight="fill" style={{ color: item.color }} className="drop-shadow-sm" />
                         {item.label}
                         {isActive(item.path) && (
                           <span className="ml-auto w-2 h-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg" />
@@ -194,7 +195,7 @@ export function CoachLayout({ children }: CoachLayoutProps) {
                     : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <IconComponent size={20} weight="fill" />
+                <IconComponent size={20} weight="fill" style={{ color: isActive(item.path) ? '#fff' : item.color }} />
                 {item.label}
               </Link>
             )

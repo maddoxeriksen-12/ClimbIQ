@@ -16,6 +16,7 @@ interface NavItem {
   path: string
   label: string
   icon: Icon
+  color: string
 }
 
 interface LayoutProps {
@@ -60,17 +61,17 @@ export function Layout({ children }: LayoutProps) {
 
   // Different nav items based on role
   const athleteNavItems: NavItem[] = [
-    { path: '/', label: 'Dashboard', icon: ChartBar },
-    { path: '/session/new', label: 'New Session', icon: Mountains },
-    { path: '/sessions', label: 'History', icon: Calendar },
-    { path: '/recommendations', label: 'Insights', icon: Lightbulb },
-    { path: '/settings', label: 'Settings', icon: Gear },
+    { path: '/', label: 'Dashboard', icon: ChartBar, color: '#a855f7' }, // Purple
+    { path: '/session/new', label: 'New Session', icon: Mountains, color: '#22d3ee' }, // Cyan
+    { path: '/sessions', label: 'History', icon: Calendar, color: '#f472b6' }, // Pink
+    { path: '/recommendations', label: 'Insights', icon: Lightbulb, color: '#facc15' }, // Yellow
+    { path: '/settings', label: 'Settings', icon: Gear, color: '#94a3b8' }, // Slate
   ]
 
   const coachNavItems: NavItem[] = [
-    { path: '/', label: 'Team Dashboard', icon: Users },
-    { path: '/recommendations', label: 'Team Insights', icon: Lightbulb },
-    { path: '/settings', label: 'Settings', icon: Gear },
+    { path: '/', label: 'Team Dashboard', icon: Users, color: '#f59e0b' }, // Amber
+    { path: '/recommendations', label: 'Team Insights', icon: Lightbulb, color: '#facc15' }, // Yellow
+    { path: '/settings', label: 'Settings', icon: Gear, color: '#94a3b8' }, // Slate
   ]
 
   const navItems = isCoach() ? coachNavItems : athleteNavItems
@@ -275,7 +276,7 @@ export function Layout({ children }: LayoutProps) {
                           backgroundColor: `rgba(${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${Math.round(255 * bubbleBrightness / 100)}, ${bubbleOpacity / 100})`
                         }}
                       >
-                        <IconComponent size={20} weight="fill" className="drop-shadow-sm" />
+                        <IconComponent size={20} weight="fill" style={{ color: item.color }} className="drop-shadow-sm" />
                         {item.label}
                         {isActive(item.path) && (
                           <span className={`ml-auto w-2 h-2 rounded-full bg-gradient-to-r ${gradientFrom} ${gradientTo} shadow-lg`} />
@@ -338,7 +339,7 @@ export function Layout({ children }: LayoutProps) {
                     : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <IconComponent size={20} weight="fill" />
+                <IconComponent size={20} weight="fill" style={{ color: isActive(item.path) ? '#fff' : item.color }} />
                 {item.label}
               </Link>
             )
