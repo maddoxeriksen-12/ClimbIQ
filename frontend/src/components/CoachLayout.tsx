@@ -85,7 +85,7 @@ export function CoachLayout({ children }: CoachLayoutProps) {
 
             {/* Mobile Dropdown Menu - Transparent with floating items */}
             {mobileMenuOpen && (
-              <div className="absolute top-full right-0 mt-2 w-56 rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute top-full right-0 mt-2 w-56 rounded-2xl border border-white/20 bg-white/20 backdrop-blur-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                 {/* User Info - minimal */}
                 <div className="px-5 py-4 border-b border-white/10">
                   <div className="flex items-center gap-3">
