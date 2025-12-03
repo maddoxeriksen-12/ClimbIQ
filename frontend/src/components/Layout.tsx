@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
 interface LayoutProps {
@@ -9,6 +9,7 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const { user, signOut, isCoach } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
   // Style values - finalized
@@ -73,7 +74,18 @@ export function Layout({ children }: LayoutProps) {
   const roleTextColor = isCoach() ? 'text-amber-400' : 'text-fuchsia-400'
   const borderColor = isCoach() ? 'border-amber-500/30' : 'border-fuchsia-500/30'
 
-  // Scroll to top function
+  // Navigate to dashboard and scroll to top
+  const goToDashboard = () => {
+    if (location.pathname === '/') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } else {
+      navigate('/')
+      // Scroll to top after navigation
+      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100)
+    }
+  }
+  
+  // Scroll to top function (for nav items on same page)
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -83,9 +95,9 @@ export function Layout({ children }: LayoutProps) {
       {/* Mobile Header - Only visible on mobile */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#0a0f0d]/95 backdrop-blur-xl border-b border-white/10">
         <div className="flex items-center justify-center px-4 py-3 relative">
-          {/* Logo - centered */}
+          {/* Logo - centered, navigates to dashboard */}
           <button 
-            onClick={scrollToTop}
+            onClick={goToDashboard}
             className="flex items-center gap-2"
           >
             <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${gradientFrom} ${gradientTo} flex items-center justify-center font-bold text-sm`}>
