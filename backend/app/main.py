@@ -22,15 +22,11 @@ app = FastAPI(
   lifespan=lifespan,
 )
 
-# CORS
+# CORS - Allow all origins for now to debug
 app.add_middleware(
   CORSMiddleware,
-  allow_origins=[
-    "http://localhost:5173",
-    "https://climbiq.vercel.app",
-    "https://climbiqfrontend.vercel.app",
-  ],
-  allow_credentials=True,
+  allow_origins=["*"],
+  allow_credentials=False,  # Must be False when using "*" for origins
   allow_methods=["*"],
   allow_headers=["*"],
 )
