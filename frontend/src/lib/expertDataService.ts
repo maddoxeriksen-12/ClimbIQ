@@ -219,7 +219,7 @@ export async function getReviewSessions(status?: string): Promise<{ data: RuleRe
 
 export async function createReviewSession(input: CreateReviewSessionInput): Promise<{ data: RuleReviewSession | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('rule_review_sessions')
       .insert(input)
       .select()
@@ -235,7 +235,7 @@ export async function createReviewSession(input: CreateReviewSessionInput): Prom
 
 export async function updateReviewSession(id: string, updates: Partial<RuleReviewSession>): Promise<{ data: RuleReviewSession | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('rule_review_sessions')
       .update(updates)
       .eq('id', id)
@@ -304,7 +304,7 @@ export async function getScenarioById(id: string): Promise<{ data: SyntheticScen
 
 export async function createScenario(input: CreateScenarioInput): Promise<{ data: SyntheticScenario | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('synthetic_scenarios')
       .insert(input)
       .select()
@@ -320,7 +320,7 @@ export async function createScenario(input: CreateScenarioInput): Promise<{ data
 
 export async function updateScenario(id: string, updates: Partial<SyntheticScenario>): Promise<{ data: SyntheticScenario | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('synthetic_scenarios')
       .update(updates)
       .eq('id', id)
@@ -386,7 +386,7 @@ export async function getMyResponseForScenario(scenarioId: string, expertId: str
 
 export async function createExpertResponse(input: CreateExpertResponseInput): Promise<{ data: ExpertScenarioResponse | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('expert_scenario_responses')
       .insert(input)
       .select()
@@ -402,7 +402,7 @@ export async function createExpertResponse(input: CreateExpertResponseInput): Pr
 
 export async function updateExpertResponse(id: string, updates: Partial<ExpertScenarioResponse>): Promise<{ data: ExpertScenarioResponse | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('expert_scenario_responses')
       .update(updates)
       .eq('id', id)
@@ -419,7 +419,7 @@ export async function updateExpertResponse(id: string, updates: Partial<ExpertSc
 
 export async function upsertExpertResponse(input: CreateExpertResponseInput): Promise<{ data: ExpertScenarioResponse | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('expert_scenario_responses')
       .upsert(input, { onConflict: 'scenario_id,expert_id' })
       .select()
@@ -453,7 +453,7 @@ export async function getConsensus(scenarioId: string): Promise<{ data: Scenario
 
 export async function createConsensus(input: Partial<ScenarioConsensus>): Promise<{ data: ScenarioConsensus | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('scenario_consensus')
       .insert(input)
       .select()
@@ -501,7 +501,7 @@ export async function getRules(filters?: {
 
 export async function createRule(input: CreateRuleInput): Promise<{ data: ExpertRule | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('expert_rules')
       .insert(input)
       .select()
@@ -510,7 +510,7 @@ export async function createRule(input: CreateRuleInput): Promise<{ data: Expert
     if (error) throw error
 
     // Create audit log entry
-    await supabase.from('rule_audit_log').insert({
+    await (supabase as any).from('rule_audit_log').insert({
       rule_id: data.id,
       action: 'created',
       changed_by: input.created_by || 'unknown',
@@ -527,13 +527,13 @@ export async function createRule(input: CreateRuleInput): Promise<{ data: Expert
 export async function updateRule(id: string, updates: Partial<ExpertRule>, changedBy: string, reason?: string): Promise<{ data: ExpertRule | null; error: Error | null }> {
   try {
     // Get current state for audit
-    const { data: currentRule } = await supabase
+    const { data: currentRule } = await (supabase as any)
       .from('expert_rules')
       .select('*')
       .eq('id', id)
       .single()
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('expert_rules')
       .update(updates)
       .eq('id', id)
@@ -543,7 +543,7 @@ export async function updateRule(id: string, updates: Partial<ExpertRule>, chang
     if (error) throw error
 
     // Create audit log entry
-    await supabase.from('rule_audit_log').insert({
+    await (supabase as any).from('rule_audit_log').insert({
       rule_id: id,
       action: 'modified',
       changed_by: changedBy,
@@ -561,7 +561,7 @@ export async function updateRule(id: string, updates: Partial<ExpertRule>, chang
 
 export async function toggleRuleActive(id: string, isActive: boolean, changedBy: string, reason?: string): Promise<{ data: ExpertRule | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('expert_rules')
       .update({ is_active: isActive })
       .eq('id', id)
@@ -571,7 +571,7 @@ export async function toggleRuleActive(id: string, isActive: boolean, changedBy:
     if (error) throw error
 
     // Create audit log entry
-    await supabase.from('rule_audit_log').insert({
+    await (supabase as any).from('rule_audit_log').insert({
       rule_id: id,
       action: isActive ? 'activated' : 'deactivated',
       changed_by: changedBy,

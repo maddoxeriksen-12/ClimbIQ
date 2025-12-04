@@ -339,7 +339,7 @@ function ScenarioReviewPanel({
   const [sessionTypeConfidence, setSessionTypeConfidence] = useState<'high' | 'medium' | 'low'>(existingResponse?.session_type_confidence || 'medium')
   const [agreesWithAi, setAgreesWithAi] = useState<'yes' | 'partially' | 'no' | ''>(existingResponse?.agrees_with_ai || '')
   const [reasoning, setReasoning] = useState(existingResponse?.reasoning || '')
-  const [keyDrivers, setKeyDrivers] = useState<string[]>([])
+  const [keyDrivers, _setKeyDrivers] = useState<string[]>([]) // TODO: Add UI for key drivers
 
   // Update form when existing response changes
   useEffect(() => {
