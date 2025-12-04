@@ -1,0 +1,6 @@
+# Dagster Workspace Configuration
+# This tells Dagster where to find the code definitions
+
+load_from:
+  - python_module: dagster_pipeline
+
