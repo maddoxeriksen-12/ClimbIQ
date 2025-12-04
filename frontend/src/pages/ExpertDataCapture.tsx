@@ -678,53 +678,55 @@ function ScenarioReviewPanel({
   const preSession = (scenario.pre_session_snapshot || {}) as Record<string, unknown>
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0a0f0d] overflow-hidden">
-      {/* Header */}
-      <div className="h-20 px-10 border-b border-white/10 flex items-center justify-between bg-[#0f1312]">
-        <div className="flex items-center gap-6">
-          <button onClick={onClose} className="w-12 h-12 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white text-2xl transition-all">←</button>
-          <div>
-            <h2 className="font-bold text-2xl">Scenario Review</h2>
-            <p className="text-sm text-slate-500 mt-0.5">Expert feedback for Bayesian priors</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm">
+      {/* Modal Container */}
+      <div className="w-[95%] h-[95%] max-w-[1800px] bg-[#0a0f0d] rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="h-20 px-10 border-b border-white/10 flex items-center justify-between bg-[#0f1312] shrink-0">
+          <div className="flex items-center gap-6">
+            <button onClick={onClose} className="w-12 h-12 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white text-2xl transition-all">←</button>
+            <div>
+              <h2 className="font-bold text-2xl">Scenario Review</h2>
+              <p className="text-sm text-slate-500 mt-0.5">Expert feedback for Bayesian priors</p>
+            </div>
+            <span className={`px-4 py-1.5 rounded-full text-sm font-semibold ${
+              scenario.difficulty_level === 'extreme' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
+              scenario.difficulty_level === 'edge_case' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+              'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+            }`}>
+              {scenario.difficulty_level || 'common'}
+            </span>
           </div>
-          <span className={`px-4 py-1.5 rounded-full text-sm font-semibold ${
-            scenario.difficulty_level === 'extreme' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
-            scenario.difficulty_level === 'edge_case' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
-            'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-          }`}>
-            {scenario.difficulty_level || 'common'}
-          </span>
+          
+          {/* Progress Indicator */}
+          <div className="flex items-center gap-6">
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                <div
+                  key={num}
+                  className={`w-10 h-10 rounded-xl text-base flex items-center justify-center font-bold transition-all cursor-pointer hover:scale-105 ${
+                    sectionCompletion[num as keyof typeof sectionCompletion]
+                      ? 'bg-emerald-500/30 text-emerald-300 border-2 border-emerald-500/50'
+                      : expandedSection === num
+                      ? 'bg-violet-500/30 text-violet-300 border-2 border-violet-500/50'
+                      : 'bg-white/5 text-slate-500 border border-white/10'
+                  }`}
+                  onClick={() => setExpandedSection(num)}
+                >
+                  {num}
+                </div>
+              ))}
+            </div>
+            <div className="text-right">
+              <span className="text-2xl font-bold text-white">{completedSections}/9</span>
+              <p className="text-sm text-slate-500">complete</p>
+            </div>
+          </div>
         </div>
-        
-        {/* Progress Indicator */}
-        <div className="flex items-center gap-6">
-          <div className="flex gap-2">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-              <div
-                key={num}
-                className={`w-10 h-10 rounded-xl text-base flex items-center justify-center font-bold transition-all cursor-pointer hover:scale-105 ${
-                  sectionCompletion[num as keyof typeof sectionCompletion]
-                    ? 'bg-emerald-500/30 text-emerald-300 border-2 border-emerald-500/50'
-                    : expandedSection === num
-                    ? 'bg-violet-500/30 text-violet-300 border-2 border-violet-500/50'
-                    : 'bg-white/5 text-slate-500 border border-white/10'
-                }`}
-                onClick={() => setExpandedSection(num)}
-              >
-                {num}
-              </div>
-            ))}
-          </div>
-          <div className="text-right">
-            <span className="text-2xl font-bold text-white">{completedSections}/9</span>
-            <p className="text-sm text-slate-500">complete</p>
-          </div>
-        </div>
-      </div>
 
-      <div className="h-[calc(100vh-80px)] flex">
+        <div className="flex-1 flex overflow-hidden">
         {/* LEFT PANEL - Scenario Info */}
-        <div className="w-[45%] min-w-[500px] max-w-[700px] border-r border-white/10 overflow-y-auto bg-[#0c1210]">
+        <div className="w-[42%] min-w-[450px] max-w-[650px] border-r border-white/10 overflow-y-auto bg-[#0c1210]">
           {/* Climber Profile Panel */}
           <div className="p-8 border-b border-white/10">
             <h3 className="font-bold mb-6 flex items-center gap-3 text-lg uppercase tracking-wider text-slate-200">
@@ -814,8 +816,8 @@ function ScenarioReviewPanel({
         </div>
 
         {/* RIGHT PANEL - Expert Input Form */}
-        <div className="flex-1 overflow-y-auto pb-28">
-          <div className="max-w-5xl mx-auto p-10 space-y-6">
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto p-8 space-y-5">
             {/* Section 1: Outcome Predictions */}
             <FormSection
               number={1}
@@ -981,28 +983,29 @@ function ScenarioReviewPanel({
         </div>
       </div>
 
-      {/* Footer Actions */}
-      <div className="fixed bottom-0 left-[45%] right-0 p-8 border-t border-white/10 bg-[#0f1312]/95 backdrop-blur-sm flex gap-5 justify-center">
-        <button
-          onClick={onClose}
-          className="px-10 py-4 rounded-xl border border-white/20 text-slate-300 font-semibold text-lg hover:bg-white/5 transition-all"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={() => handleSave(false)}
-          disabled={saving}
-          className="px-10 py-4 rounded-xl border-2 border-violet-500/40 text-violet-300 font-semibold text-lg hover:bg-violet-500/10 transition-all disabled:opacity-50"
-        >
-          {saving ? 'Saving...' : 'Save Draft'}
-        </button>
-        <button
-          onClick={() => handleSave(true)}
-          disabled={saving || !requiredComplete}
-          className="px-12 py-4 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold text-lg shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02] transition-all disabled:opacity-50"
-        >
-          {saving ? 'Submitting...' : 'Submit Response'}
-        </button>
+        {/* Footer Actions - Inside the modal */}
+        <div className="shrink-0 p-6 border-t border-white/10 bg-[#0f1312] flex gap-5 justify-center">
+          <button
+            onClick={onClose}
+            className="px-10 py-4 rounded-xl border border-white/20 text-slate-300 font-semibold text-lg hover:bg-white/5 transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => handleSave(false)}
+            disabled={saving}
+            className="px-10 py-4 rounded-xl border-2 border-violet-500/40 text-violet-300 font-semibold text-lg hover:bg-violet-500/10 transition-all disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Save Draft'}
+          </button>
+          <button
+            onClick={() => handleSave(true)}
+            disabled={saving || !requiredComplete}
+            className="px-12 py-4 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold text-lg shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02] transition-all disabled:opacity-50"
+          >
+            {saving ? 'Submitting...' : 'Submit Response'}
+          </button>
+        </div>
       </div>
     </div>
   )
