@@ -1428,113 +1428,57 @@ export function Stats() {
             } ${activeMenu === widget.id ? 'ring-2 ring-fuchsia-500/50' : ''}`}
           >
             <div className="h-full flex flex-col rounded-2xl overflow-hidden relative">
-              {/* Mobile/Tablet tap overlay - invisible but captures taps */}
-              <div
-                className="xl:hidden absolute inset-0 z-20"
+              {/* Mobile/Tablet menu button - always visible */}
+              <button
+                className="xl:hidden absolute top-2 right-2 z-30 p-2 rounded-lg bg-white/20 active:bg-white/30"
                 onClick={(e) => {
                   e.stopPropagation()
                   e.preventDefault()
                   setActiveMenu(activeMenu === widget.id ? null : widget.id)
                 }}
-              />
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                </svg>
+              </button>
 
-              {/* Mobile/Tablet dropdown menu - appears when widget is tapped */}
+              {/* Mobile/Tablet dropdown menu with scroll */}
               {activeMenu === widget.id && (
                 <div 
-                  className="xl:hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 w-56 max-h-80 rounded-2xl border border-white/20 bg-[#1a1f1e]/95 backdrop-blur-xl shadow-2xl overflow-hidden"
+                  className="xl:hidden absolute top-12 right-2 z-40 w-52 max-h-72 rounded-xl border border-white/20 bg-[#1a1f1e] shadow-2xl overflow-hidden flex flex-col"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {/* Menu Header */}
-                  <div className="px-4 py-3 border-b border-white/10 bg-white/5">
-                    <h4 className="font-semibold text-sm text-center">{widget.title}</h4>
-                  </div>
-                  
                   {/* Scrollable menu items */}
-                  <div className="overflow-y-auto max-h-60">
+                  <div className="overflow-y-auto flex-1">
+                    <button
+                      onClick={() => handleSort(widget.id, widget.dimensions[0] || 'value')}
+                      className="w-full px-4 py-3 text-left text-sm hover:bg-white/10 active:bg-white/20 transition-colors flex items-center gap-3 border-b border-white/10"
+                    >
+                      <span className="text-lg">↕️</span> Sort
+                    </button>
+                    <button
+                      onClick={() => handleLockToggle(widget.id)}
+                      className="w-full px-4 py-3 text-left text-sm hover:bg-white/10 active:bg-white/20 transition-colors flex items-center gap-3 border-b border-white/10"
+                    >
+                      <span className="text-lg">{widget.locked ? '🔓' : '🔒'}</span> {widget.locked ? 'Unlock' : 'Lock'}
+                    </button>
                     <button
                       onClick={() => {
                         setEditingWidget(widget)
                         setActiveMenu(null)
                       }}
-                      className="w-full px-4 py-3.5 text-left text-sm hover:bg-white/10 active:bg-white/20 transition-colors flex items-center gap-3 border-b border-white/10"
+                      className="w-full px-4 py-3 text-left text-sm hover:bg-white/10 active:bg-white/20 transition-colors flex items-center gap-3 border-b border-white/10"
                     >
-                      <span className="text-lg">✏️</span> 
-                      <div>
-                        <p className="font-medium">Edit Chart</p>
-                        <p className="text-xs text-slate-400">Change type, measures, colors</p>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => handleSort(widget.id, widget.dimensions[0] || 'value')}
-                      className="w-full px-4 py-3.5 text-left text-sm hover:bg-white/10 active:bg-white/20 transition-colors flex items-center gap-3 border-b border-white/10"
-                    >
-                      <span className="text-lg">↕️</span>
-                      <div>
-                        <p className="font-medium">Sort Data</p>
-                        <p className="text-xs text-slate-400">{widget.sortOrder === 'asc' ? 'Currently ascending' : 'Currently descending'}</p>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => handleLockToggle(widget.id)}
-                      className="w-full px-4 py-3.5 text-left text-sm hover:bg-white/10 active:bg-white/20 transition-colors flex items-center gap-3 border-b border-white/10"
-                    >
-                      <span className="text-lg">{widget.locked ? '🔓' : '🔒'}</span>
-                      <div>
-                        <p className="font-medium">{widget.locked ? 'Unlock Position' : 'Lock Position'}</p>
-                        <p className="text-xs text-slate-400">{widget.locked ? 'Allow moving/resizing' : 'Prevent accidental moves'}</p>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => {
-                        // Duplicate widget
-                        const newWidget = {
-                          ...widget,
-                          id: `${widget.id}-copy-${Date.now()}`,
-                          title: `${widget.title} (Copy)`,
-                        }
-                        setWidgets([...widgets, newWidget])
-                        const maxY = Math.max(...layout.map((l: LayoutItem) => l.y + l.h), 0)
-                        setLayout([...layout, { i: newWidget.id, x: 0, y: maxY, w: 4, h: 3, minW: 2, minH: 2 }])
-                        setActiveMenu(null)
-                      }}
-                      className="w-full px-4 py-3.5 text-left text-sm hover:bg-white/10 active:bg-white/20 transition-colors flex items-center gap-3 border-b border-white/10"
-                    >
-                      <span className="text-lg">📋</span>
-                      <div>
-                        <p className="font-medium">Duplicate</p>
-                        <p className="text-xs text-slate-400">Create a copy of this chart</p>
-                      </div>
+                      <span className="text-lg">✏️</span> Edit
                     </button>
                     <button
                       onClick={() => handleWidgetDelete(widget.id)}
-                      className="w-full px-4 py-3.5 text-left text-sm text-red-400 hover:bg-red-500/10 active:bg-red-500/20 transition-colors flex items-center gap-3"
+                      className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 active:bg-red-500/20 transition-colors flex items-center gap-3"
                     >
-                      <span className="text-lg">🗑️</span>
-                      <div>
-                        <p className="font-medium">Delete</p>
-                        <p className="text-xs text-red-400/70">Remove this chart</p>
-                      </div>
-                    </button>
-                  </div>
-                  
-                  {/* Close button */}
-                  <div className="px-4 py-3 border-t border-white/10 bg-white/5">
-                    <button
-                      onClick={() => setActiveMenu(null)}
-                      className="w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 active:bg-white/30 text-sm font-medium transition-colors"
-                    >
-                      Close
+                      <span className="text-lg">🗑️</span> Delete
                     </button>
                   </div>
                 </div>
-              )}
-
-              {/* Backdrop overlay when menu is open */}
-              {activeMenu === widget.id && (
-                <div 
-                  className="xl:hidden fixed inset-0 bg-black/50 z-30"
-                  onClick={() => setActiveMenu(null)}
-                />
               )}
 
               {/* Widget Header */}
