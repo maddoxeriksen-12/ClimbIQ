@@ -249,24 +249,48 @@ class PriorExtractor:
         return blended
     
     def _store_priors(self, priors: Dict[str, Dict]) -> None:
-        """Store aggregated priors in the database"""
-        # For now, store in a simple format
-        # In production, you might want a dedicated table for this
+        """Store aggregated priors in the population_priors table"""
         for variable, prior_data in priors.items():
+            # Determine source type
+            has_expert = prior_data.get("n_scenarios", 0) > 0
+            has_literature = "literature" in str(prior_data.get("sources", []))
+            
+            if has_expert and has_literature:
+                source = "blended"
+            elif has_expert:
+                source = "expert_only"
+            else:
+                source = "literature_only"
+            
             data = {
-                "variable": variable,
+                "variable_name": variable,
                 "population_mean": prior_data.get("mean_effect", 0),
                 "population_std": prior_data.get("std_dev", 0.5),
                 "individual_variance": prior_data.get("std_dev", 0.5) ** 2,
+                "source": source,
+                "confidence": prior_data.get("confidence", "medium"),
                 "n_scenarios": prior_data.get("n_scenarios", 0),
                 "total_judgments": prior_data.get("total_judgments", 0),
-                "sources": prior_data.get("sources", []),
-                "confidence": prior_data.get("confidence", "medium"),
-                "updated_at": datetime.utcnow().isoformat(),
+                "metadata": {
+                    "sources": prior_data.get("sources", []),
+                    "expert_effect": prior_data.get("expert_effect"),
+                    "literature_effect": prior_data.get("literature_effect"),
+                    "expert_weight": prior_data.get("expert_weight"),
+                    "min_effect": prior_data.get("min_effect"),
+                    "max_effect": prior_data.get("max_effect"),
+                    "last_updated": datetime.utcnow().isoformat(),
+                },
             }
             
-            # Upsert into population_priors table (if it exists)
-            # self.supabase.table("population_priors").upsert(data, on_conflict="variable").execute()
+            # Upsert into population_priors table
+            try:
+                self.supabase.table("population_priors").upsert(
+                    data, 
+                    on_conflict="variable_name"
+                ).execute()
+                print(f"[PRIORS] Updated prior for {variable}: mean={data['population_mean']:.4f}, std={data['population_std']:.4f}")
+            except Exception as e:
+                print(f"[PRIORS] Error storing prior for {variable}: {e}")
     
     def get_blended_priors(self) -> Dict[str, Any]:
         """Get current blended priors (literature + expert)"""
