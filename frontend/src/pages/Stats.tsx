@@ -1426,30 +1426,68 @@ export function Stats() {
             className={`group rounded-2xl border bg-white/5 backdrop-blur-sm overflow-visible widget-container ${
               widget.locked ? 'border-amber-500/30' : 'border-white/10'
             } ${activeMenu === widget.id ? 'ring-2 ring-fuchsia-500/50' : ''}`}
-            onClick={(e) => {
-              // On mobile/tablet (< 1024px), tapping the widget toggles the menu
-              if (window.innerWidth < 1024) {
-                e.stopPropagation()
-                // Toggle menu for this widget
-                setActiveMenu(activeMenu === widget.id ? null : widget.id)
-              }
-            }}
-            onTouchEnd={(e) => {
-              // Ensure touch events work on mobile
-              if (window.innerWidth < 1024) {
-                e.stopPropagation()
-                setActiveMenu(activeMenu === widget.id ? null : widget.id)
-              }
-            }}
           >
-            <div className="h-full flex flex-col rounded-2xl overflow-hidden">
+            <div className="h-full flex flex-col rounded-2xl overflow-hidden relative">
+              {/* Mobile tap overlay - visible tap target for mobile */}
+              <button
+                className="lg:hidden absolute top-2 right-2 z-30 p-2 rounded-lg bg-white/20 active:bg-white/30"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  setActiveMenu(activeMenu === widget.id ? null : widget.id)
+                }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                </svg>
+              </button>
+
+              {/* Mobile dropdown menu */}
+              {activeMenu === widget.id && (
+                <div 
+                  className="lg:hidden absolute top-12 right-2 z-40 w-48 rounded-xl border border-white/20 bg-[#1a1f1e] shadow-2xl overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => handleSort(widget.id, widget.dimensions[0] || 'value')}
+                    className="w-full px-4 py-3 text-left text-sm hover:bg-white/10 active:bg-white/20 transition-colors flex items-center gap-3 border-b border-white/10"
+                  >
+                    <span className="text-lg">↕️</span> Sort
+                  </button>
+                  <button
+                    onClick={() => handleLockToggle(widget.id)}
+                    className="w-full px-4 py-3 text-left text-sm hover:bg-white/10 active:bg-white/20 transition-colors flex items-center gap-3 border-b border-white/10"
+                  >
+                    <span className="text-lg">{widget.locked ? '🔓' : '🔒'}</span> {widget.locked ? 'Unlock' : 'Lock'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingWidget(widget)
+                      setActiveMenu(null)
+                    }}
+                    className="w-full px-4 py-3 text-left text-sm hover:bg-white/10 active:bg-white/20 transition-colors flex items-center gap-3 border-b border-white/10"
+                  >
+                    <span className="text-lg">✏️</span> Edit
+                  </button>
+                  <button
+                    onClick={() => handleWidgetDelete(widget.id)}
+                    className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 active:bg-red-500/20 transition-colors flex items-center gap-3"
+                  >
+                    <span className="text-lg">🗑️</span> Delete
+                  </button>
+                </div>
+              )}
+
               {/* Widget Header */}
               <div className="drag-handle cursor-move px-4 py-3 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   {widget.locked && <span className="text-amber-400">🔒</span>}
                   {widget.title}
                 </h3>
-                {renderWidgetMenu(widget)}
+                {/* Desktop menu - hidden on mobile */}
+                <div className="hidden lg:block">
+                  {renderWidgetMenu(widget)}
+                </div>
               </div>
               
               {/* Widget Content */}
