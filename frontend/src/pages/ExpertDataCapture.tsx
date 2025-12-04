@@ -8,11 +8,17 @@ import {
   updateScenario,
   createScenario,
   getRules,
+  updateRule,
+  toggleRuleActive,
+  getAuditLog,
+  getLiteratureReferences,
   generateScenariosWithAI,
   checkAIStatus,
   type SyntheticScenario,
   type ExpertScenarioResponse,
   type ExpertRule,
+  type RuleAuditLog,
+  type LiteratureReference,
   type SessionType,
   type CreateExpertResponseInput,
   type CreateScenarioInput,
@@ -1783,6 +1789,8 @@ function SessionStructureForm({ enabled, setEnabled, structure, setStructure }: 
 }
 
 function RulesTab({ rules, onRefresh }: { rules: ExpertRule[]; onRefresh: () => void }) {
+  const [selectedRule, setSelectedRule] = useState<ExpertRule | null>(null)
+  
   const categoryColors: Record<string, string> = {
     safety: 'bg-red-500/20 text-red-300 border-red-500/30',
     interaction: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
@@ -1792,54 +1800,500 @@ function RulesTab({ rules, onRefresh }: { rules: ExpertRule[]; onRefresh: () => 
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
-      <div className="p-4 border-b border-white/10 flex items-center justify-between">
-        <h2 className="font-semibold">Expert Rules</h2>
-        <button
-          onClick={onRefresh}
-          className="text-xs text-slate-400 hover:text-white transition-colors"
-        >
-          🔄 Refresh
-        </button>
-      </div>
+    <>
+      <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
+        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+          <h2 className="font-semibold">Expert Rules</h2>
+          <button
+            onClick={onRefresh}
+            className="text-xs text-slate-400 hover:text-white transition-colors"
+          >
+            🔄 Refresh
+          </button>
+        </div>
 
-      <div className="divide-y divide-white/5 max-h-[600px] overflow-y-auto">
-        {rules.length === 0 ? (
-          <div className="p-8 text-center">
-            <span className="text-4xl mb-4 block">📜</span>
-            <p className="text-slate-400">No rules defined yet</p>
-          </div>
-        ) : (
-          rules.map((rule) => (
-            <div key={rule.id} className="p-4 hover:bg-white/5 transition-colors">
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <div className="flex items-center gap-2">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${categoryColors[rule.rule_category]}`}>
-                    {rule.rule_category}
+        <div className="divide-y divide-white/5 max-h-[600px] overflow-y-auto">
+          {rules.length === 0 ? (
+            <div className="p-8 text-center">
+              <span className="text-4xl mb-4 block">📜</span>
+              <p className="text-slate-400">No rules defined yet</p>
+            </div>
+          ) : (
+            rules.map((rule) => (
+              <div 
+                key={rule.id} 
+                className="p-4 hover:bg-white/5 transition-colors cursor-pointer"
+                onClick={() => setSelectedRule(rule)}
+              >
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${categoryColors[rule.rule_category]}`}>
+                      {rule.rule_category}
+                    </span>
+                    <span className="text-xs text-slate-500">Priority: {rule.priority}</span>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${rule.is_active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-500/20 text-slate-400'}`}>
+                    {rule.is_active ? 'Active' : 'Inactive'}
                   </span>
-                  <span className="text-xs text-slate-500">Priority: {rule.priority}</span>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${rule.is_active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-500/20 text-slate-400'}`}>
-                  {rule.is_active ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-              
-              <h3 className="font-medium mb-1">{rule.name}</h3>
-              <p className="text-sm text-slate-400 mb-3">{rule.description}</p>
-              
-              <div className="flex gap-2 text-xs">
-                <span className="px-2 py-1 rounded bg-white/5 text-slate-400">
-                  Source: {rule.source}
-                </span>
-                {rule.confidence && (
+                
+                <h3 className="font-medium mb-1">{rule.name}</h3>
+                <p className="text-sm text-slate-400 mb-3">{rule.description}</p>
+                
+                <div className="flex gap-2 text-xs">
                   <span className="px-2 py-1 rounded bg-white/5 text-slate-400">
-                    Confidence: {rule.confidence}
+                    Source: {rule.source}
                   </span>
+                  {rule.confidence && (
+                    <span className="px-2 py-1 rounded bg-white/5 text-slate-400">
+                      Confidence: {rule.confidence}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+      
+      {selectedRule && (
+        <RuleDetailModal 
+          rule={selectedRule} 
+          onClose={() => setSelectedRule(null)}
+          onUpdate={onRefresh}
+        />
+      )}
+    </>
+  )
+}
+
+function RuleDetailModal({ 
+  rule, 
+  onClose, 
+  onUpdate 
+}: { 
+  rule: ExpertRule
+  onClose: () => void
+  onUpdate: () => void 
+}) {
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [literatureRefs, setLiteratureRefs] = useState<LiteratureReference[]>([])
+  const [auditLog, setAuditLog] = useState<RuleAuditLog[]>([])
+  const [priority, setPriority] = useState(rule.priority)
+  const [isActive, setIsActive] = useState(rule.is_active)
+  const [activeTab, setActiveTab] = useState<'details' | 'literature' | 'history'>('details')
+  
+  useEffect(() => {
+    loadData()
+  }, [rule.id])
+  
+  const loadData = async () => {
+    setLoading(true)
+    
+    // Parse literature refs from evidence field or metadata
+    // The evidence field contains the literature citation keys
+    const citationKeys = extractCitationKeys(rule.evidence)
+    
+    const [litResult, auditResult] = await Promise.all([
+      citationKeys.length > 0 ? getLiteratureReferences(citationKeys) : Promise.resolve({ data: [], error: null }),
+      getAuditLog(rule.id),
+    ])
+    
+    if (litResult.data) setLiteratureRefs(litResult.data)
+    if (auditResult.data) setAuditLog(auditResult.data)
+    
+    setLoading(false)
+  }
+  
+  const extractCitationKeys = (evidence: string | null): string[] => {
+    if (!evidence) return []
+    // Try to extract citation keys from evidence text
+    // Format: "Author Year: description" -> try to match known patterns
+    const patterns = [
+      /schoffl/i, /watson/i, /grgic/i, /draper/i, /meeusen/i, 
+      /philippe/i, /balas/i, /mah/i, /barnes/i, /sawka/i, 
+      /fradkin/i, /schweizer/i, /sanchez/i, /macleod/i, /medernach/i,
+      /jones/i, /bertuzzi/i, /kerksick/i, /pickering/i, /giles/i
+    ]
+    
+    const matchedKeys: string[] = []
+    for (const pattern of patterns) {
+      if (pattern.test(evidence)) {
+        // Map pattern to citation key
+        const keyMap: Record<string, string> = {
+          schoffl: 'schoffl_2012_finger_injuries',
+          watson: 'watson_2017_sleep',
+          grgic: 'grgic_2020_caffeine',
+          draper: 'draper_2008_fear',
+          meeusen: 'meeusen_2013_overtraining',
+          philippe: 'philippe_2012_oxygenation',
+          balas: 'balas_2012_fatigue',
+          mah: 'mah_2011_sleep_extension',
+          barnes: 'barnes_2010_alcohol',
+          sawka: 'sawka_2007_hydration',
+          fradkin: 'fradkin_2010_warmup',
+          schweizer: 'schweizer_2001_grip',
+          sanchez: 'sanchez_2012_psychology',
+          macleod: 'macleod_2007_fingerboard',
+          medernach: 'medernach_2015_training',
+          jones: 'jones_2016_training_injury',
+          bertuzzi: 'bertuzzi_2012_age',
+          kerksick: 'kerksick_2017_nutrition',
+          pickering: 'pickering_2018_caffeine_climbing',
+          giles: 'giles_2014_fear_falling',
+        }
+        const match = evidence.toLowerCase().match(pattern)
+        if (match) {
+          const key = Object.entries(keyMap).find(([k]) => evidence.toLowerCase().includes(k))?.[1]
+          if (key && !matchedKeys.includes(key)) matchedKeys.push(key)
+        }
+      }
+    }
+    return matchedKeys
+  }
+  
+  const handleSavePriority = async () => {
+    if (priority === rule.priority) return
+    
+    setSaving(true)
+    const result = await updateRule(rule.id, { priority }, user?.email || 'unknown', 'Priority updated')
+    setSaving(false)
+    
+    if (!result.error) {
+      onUpdate()
+    }
+  }
+  
+  const handleToggleActive = async () => {
+    setSaving(true)
+    const newState = !isActive
+    const result = await toggleRuleActive(rule.id, newState, user?.email || 'unknown', newState ? 'Rule activated' : 'Rule deactivated')
+    setSaving(false)
+    
+    if (!result.error) {
+      setIsActive(newState)
+      onUpdate()
+    }
+  }
+  
+  const categoryColors: Record<string, string> = {
+    safety: 'bg-red-500/20 text-red-300 border-red-500/30',
+    interaction: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+    edge_case: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    conservative: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    performance: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
+  }
+  
+  const studyTypeLabels: Record<string, string> = {
+    meta_analysis: 'Meta-Analysis',
+    systematic_review: 'Systematic Review',
+    rct: 'Randomized Controlled Trial',
+    cohort: 'Cohort Study',
+    cross_sectional: 'Cross-Sectional Study',
+    case_control: 'Case-Control Study',
+    case_series: 'Case Series',
+    expert_opinion: 'Expert Opinion',
+  }
+  
+  const evidenceLevelLabels: Record<string, { label: string; color: string }> = {
+    '1a': { label: 'Level 1a - Systematic review of RCTs', color: 'text-emerald-400' },
+    '1b': { label: 'Level 1b - Individual RCT', color: 'text-emerald-400' },
+    '2a': { label: 'Level 2a - Systematic review of cohort studies', color: 'text-green-400' },
+    '2b': { label: 'Level 2b - Individual cohort study', color: 'text-green-400' },
+    '3a': { label: 'Level 3a - Systematic review of case-control', color: 'text-yellow-400' },
+    '3b': { label: 'Level 3b - Individual case-control study', color: 'text-yellow-400' },
+    '4': { label: 'Level 4 - Case series', color: 'text-orange-400' },
+    '5': { label: 'Level 5 - Expert opinion', color: 'text-red-400' },
+  }
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="relative w-full max-w-4xl max-h-[90vh] rounded-2xl border border-white/10 bg-[#0f1312] shadow-2xl overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="p-6 border-b border-white/10 flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <span className={`px-3 py-1 rounded-full text-sm font-medium border ${categoryColors[rule.rule_category]}`}>
+                {rule.rule_category}
+              </span>
+              <span className={`px-3 py-1 rounded-full text-sm ${isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-500/20 text-slate-400'}`}>
+                {isActive ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            <h2 className="text-xl font-semibold">{rule.name}</h2>
+            <p className="text-slate-400 mt-1">{rule.description}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+        
+        {/* Tabs */}
+        <div className="flex border-b border-white/10">
+          {[
+            { id: 'details' as const, label: 'Details', icon: '📋' },
+            { id: 'literature' as const, label: `Literature (${literatureRefs.length})`, icon: '📚' },
+            { id: 'history' as const, label: `History (${auditLog.length})`, icon: '📜' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-white/5 text-white border-b-2 border-violet-500'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+        
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500"></div>
+            </div>
+          ) : activeTab === 'details' ? (
+            <div className="space-y-6">
+              {/* Priority Control */}
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label className="text-sm text-slate-300 block mb-3">Priority (0-100)</label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={priority}
+                    onChange={(e) => setPriority(parseInt(e.target.value))}
+                    className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                  />
+                  <span className="text-2xl font-bold text-violet-400 w-12 text-right">{priority}</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">Higher priority rules are evaluated first. Safety rules should have priority 90-100.</p>
+                {priority !== rule.priority && (
+                  <button
+                    onClick={handleSavePriority}
+                    disabled={saving}
+                    className="mt-3 px-4 py-2 rounded-lg bg-violet-500/20 text-violet-300 hover:bg-violet-500/30 transition-colors text-sm"
+                  >
+                    {saving ? 'Saving...' : 'Save Priority'}
+                  </button>
                 )}
               </div>
+              
+              {/* Active Toggle */}
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Rule Status</h4>
+                    <p className="text-sm text-slate-400">
+                      {isActive ? 'This rule is currently active and will be applied to recommendations.' : 'This rule is inactive and will not affect recommendations.'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleToggleActive}
+                    disabled={saving}
+                    className={`px-4 py-2 rounded-lg transition-colors text-sm ${
+                      isActive 
+                        ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30'
+                        : 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
+                    }`}
+                  >
+                    {saving ? 'Saving...' : isActive ? 'Deactivate' : 'Activate'}
+                  </button>
+                </div>
+              </div>
+              
+              {/* Metadata */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <label className="text-xs text-slate-500 uppercase tracking-wider">Source</label>
+                  <p className="font-medium mt-1">{rule.source.replace('_', ' ')}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <label className="text-xs text-slate-500 uppercase tracking-wider">Confidence</label>
+                  <p className="font-medium mt-1 capitalize">{rule.confidence || 'Not specified'}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <label className="text-xs text-slate-500 uppercase tracking-wider">Created</label>
+                  <p className="font-medium mt-1">{new Date(rule.created_at).toLocaleDateString()}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <label className="text-xs text-slate-500 uppercase tracking-wider">Last Updated</label>
+                  <p className="font-medium mt-1">{new Date(rule.updated_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+              
+              {/* Evidence */}
+              {rule.evidence && (
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <label className="text-xs text-slate-500 uppercase tracking-wider">Evidence</label>
+                  <p className="mt-2 text-slate-300">{rule.evidence}</p>
+                </div>
+              )}
+              
+              {/* Conditions */}
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label className="text-xs text-slate-500 uppercase tracking-wider">Conditions (JSON)</label>
+                <pre className="mt-2 p-3 rounded-lg bg-black/30 text-xs text-slate-300 overflow-x-auto">
+                  {JSON.stringify(rule.conditions, null, 2)}
+                </pre>
+              </div>
+              
+              {/* Actions */}
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label className="text-xs text-slate-500 uppercase tracking-wider">Actions (JSON)</label>
+                <pre className="mt-2 p-3 rounded-lg bg-black/30 text-xs text-slate-300 overflow-x-auto">
+                  {JSON.stringify(rule.actions, null, 2)}
+                </pre>
+              </div>
             </div>
-          ))
-        )}
+          ) : activeTab === 'literature' ? (
+            <div className="space-y-4">
+              {literatureRefs.length === 0 ? (
+                <div className="text-center py-12">
+                  <span className="text-4xl mb-4 block">📚</span>
+                  <p className="text-slate-400">No literature references found for this rule.</p>
+                  <p className="text-sm text-slate-500 mt-2">Literature references are linked via the evidence field.</p>
+                </div>
+              ) : (
+                literatureRefs.map((ref) => (
+                  <div key={ref.id} className="p-5 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-lg mb-2">{ref.title}</h4>
+                        <p className="text-slate-400 text-sm mb-3">
+                          {ref.authors.join(', ')}
+                        </p>
+                        
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {ref.journal && (
+                            <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-300 text-xs">
+                              📖 {ref.journal}
+                            </span>
+                          )}
+                          <span className="px-2 py-1 rounded bg-violet-500/20 text-violet-300 text-xs">
+                            📅 {ref.year}
+                          </span>
+                          {ref.volume && (
+                            <span className="px-2 py-1 rounded bg-white/10 text-slate-300 text-xs">
+                              Vol. {ref.volume}{ref.pages ? `: ${ref.pages}` : ''}
+                            </span>
+                          )}
+                          {ref.study_type && (
+                            <span className="px-2 py-1 rounded bg-amber-500/20 text-amber-300 text-xs">
+                              {studyTypeLabels[ref.study_type] || ref.study_type}
+                            </span>
+                          )}
+                          {ref.sample_size && (
+                            <span className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 text-xs">
+                              n={ref.sample_size}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {ref.evidence_level && evidenceLevelLabels[ref.evidence_level] && (
+                          <p className={`text-sm font-medium ${evidenceLevelLabels[ref.evidence_level].color}`}>
+                            {evidenceLevelLabels[ref.evidence_level].label}
+                          </p>
+                        )}
+                        
+                        {/* Key Findings */}
+                        {ref.key_findings && Array.isArray(ref.key_findings) && ref.key_findings.length > 0 && (
+                          <div className="mt-4">
+                            <label className="text-xs text-slate-500 uppercase tracking-wider">Key Findings</label>
+                            <ul className="mt-2 space-y-1">
+                              {ref.key_findings.map((finding: any, idx: number) => (
+                                <li key={idx} className="text-sm text-slate-300 flex items-start gap-2">
+                                  <span className="text-emerald-400">•</span>
+                                  {typeof finding === 'object' ? finding.finding : String(finding)}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Links */}
+                      <div className="flex flex-col gap-2">
+                        {ref.doi && (
+                          <a
+                            href={`https://doi.org/${ref.doi}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-2 rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 transition-colors text-xs text-center"
+                          >
+                            🔗 DOI
+                          </a>
+                        )}
+                        {ref.pmid && (
+                          <a
+                            href={`https://pubmed.ncbi.nlm.nih.gov/${ref.pmid}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-2 rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 transition-colors text-xs text-center"
+                          >
+                            📄 PubMed
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+            /* History Tab */
+            <div className="space-y-3">
+              {auditLog.length === 0 ? (
+                <div className="text-center py-12">
+                  <span className="text-4xl mb-4 block">📜</span>
+                  <p className="text-slate-400">No history available for this rule.</p>
+                </div>
+              ) : (
+                auditLog.map((log) => (
+                  <div key={log.id} className="p-4 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        log.action === 'created' ? 'bg-emerald-500/20 text-emerald-300' :
+                        log.action === 'modified' ? 'bg-blue-500/20 text-blue-300' :
+                        log.action === 'activated' ? 'bg-green-500/20 text-green-300' :
+                        log.action === 'deactivated' ? 'bg-red-500/20 text-red-300' :
+                        'bg-amber-500/20 text-amber-300'
+                      }`}>
+                        {log.action}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        {new Date(log.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-400">
+                      By: {log.changed_by}
+                      {log.reason && <span className="block mt-1 text-slate-300">Reason: {log.reason}</span>}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* Footer */}
+        <div className="p-4 border-t border-white/10 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 transition-colors"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   )

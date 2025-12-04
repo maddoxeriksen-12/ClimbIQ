@@ -106,6 +106,28 @@ export interface RuleAuditLog {
   created_at: string
 }
 
+export interface LiteratureReference {
+  id: string
+  citation_key: string
+  authors: string[]
+  title: string
+  journal: string | null
+  year: number
+  volume: string | null
+  issue: string | null
+  pages: string | null
+  doi: string | null
+  pmid: string | null
+  study_type: 'meta_analysis' | 'systematic_review' | 'rct' | 'cohort' | 'cross_sectional' | 'case_control' | 'case_series' | 'expert_opinion' | null
+  sample_size: number | null
+  population: string | null
+  key_findings: unknown[]
+  effect_sizes: Record<string, unknown>
+  evidence_level: '1a' | '1b' | '2a' | '2b' | '3a' | '3b' | '4' | '5' | null
+  quality_score: number | null
+  created_at: string
+}
+
 // Sub-types for responses
 export type SessionType = 'project' | 'limit_bouldering' | 'volume' | 'technique' | 'training' | 'light_session' | 'rest_day' | 'active_recovery'
 
@@ -603,6 +625,44 @@ export async function getAuditLog(ruleId?: string): Promise<{ data: RuleAuditLog
     return { data: data as RuleAuditLog[], error: null }
   } catch (err) {
     console.error('Error fetching audit log:', err)
+    return { data: null, error: err as Error }
+  }
+}
+
+// ==================== Literature References ====================
+
+export async function getLiteratureReferences(citationKeys?: string[]): Promise<{ data: LiteratureReference[] | null; error: Error | null }> {
+  try {
+    let query = (supabase as any)
+      .from('literature_references')
+      .select('*')
+      .order('year', { ascending: false })
+
+    if (citationKeys && citationKeys.length > 0) {
+      query = query.in('citation_key', citationKeys)
+    }
+
+    const { data, error } = await query
+    if (error) throw error
+    return { data: data as LiteratureReference[], error: null }
+  } catch (err) {
+    console.error('Error fetching literature references:', err)
+    return { data: null, error: err as Error }
+  }
+}
+
+export async function getLiteratureReference(citationKey: string): Promise<{ data: LiteratureReference | null; error: Error | null }> {
+  try {
+    const { data, error } = await (supabase as any)
+      .from('literature_references')
+      .select('*')
+      .eq('citation_key', citationKey)
+      .single()
+
+    if (error) throw error
+    return { data: data as LiteratureReference, error: null }
+  } catch (err) {
+    console.error('Error fetching literature reference:', err)
     return { data: null, error: err as Error }
   }
 }
