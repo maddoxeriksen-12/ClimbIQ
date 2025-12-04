@@ -659,52 +659,59 @@ function ScenarioReviewPanel({
   const preSession = (scenario.pre_session_snapshot || {}) as Record<string, unknown>
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0a0f0d]">
+    <div className="fixed inset-0 z-50 bg-[#0a0f0d] overflow-hidden">
       {/* Header */}
-      <div className="h-16 px-8 border-b border-white/10 flex items-center justify-between bg-[#0f1312]">
-        <div className="flex items-center gap-5">
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl font-bold">←</button>
-          <h2 className="font-bold text-xl">Scenario Review</h2>
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-            scenario.difficulty_level === 'extreme' ? 'bg-red-500/20 text-red-300' :
-            scenario.difficulty_level === 'edge_case' ? 'bg-amber-500/20 text-amber-300' :
-            'bg-emerald-500/20 text-emerald-300'
+      <div className="h-20 px-10 border-b border-white/10 flex items-center justify-between bg-[#0f1312]">
+        <div className="flex items-center gap-6">
+          <button onClick={onClose} className="w-12 h-12 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white text-2xl transition-all">←</button>
+          <div>
+            <h2 className="font-bold text-2xl">Scenario Review</h2>
+            <p className="text-sm text-slate-500 mt-0.5">Expert feedback for Bayesian priors</p>
+          </div>
+          <span className={`px-4 py-1.5 rounded-full text-sm font-semibold ${
+            scenario.difficulty_level === 'extreme' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
+            scenario.difficulty_level === 'edge_case' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+            'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
           }`}>
             {scenario.difficulty_level || 'common'}
           </span>
         </div>
         
         {/* Progress Indicator */}
-        <div className="flex items-center gap-4">
-          <div className="flex gap-1.5">
+        <div className="flex items-center gap-6">
+          <div className="flex gap-2">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
               <div
                 key={num}
-                className={`w-8 h-8 rounded-full text-sm flex items-center justify-center font-semibold transition-all ${
+                className={`w-10 h-10 rounded-xl text-base flex items-center justify-center font-bold transition-all cursor-pointer hover:scale-105 ${
                   sectionCompletion[num as keyof typeof sectionCompletion]
-                    ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50'
+                    ? 'bg-emerald-500/30 text-emerald-300 border-2 border-emerald-500/50'
                     : expandedSection === num
-                    ? 'bg-violet-500/30 text-violet-300 border border-violet-500/50'
+                    ? 'bg-violet-500/30 text-violet-300 border-2 border-violet-500/50'
                     : 'bg-white/5 text-slate-500 border border-white/10'
                 }`}
+                onClick={() => setExpandedSection(num)}
               >
                 {num}
               </div>
             ))}
           </div>
-          <span className="text-base text-slate-400 font-medium">{completedSections}/9 complete</span>
+          <div className="text-right">
+            <span className="text-2xl font-bold text-white">{completedSections}/9</span>
+            <p className="text-sm text-slate-500">complete</p>
+          </div>
         </div>
       </div>
 
-      <div className="h-[calc(100vh-64px)] flex">
+      <div className="h-[calc(100vh-80px)] flex">
         {/* LEFT PANEL - Scenario Info */}
-        <div className="w-[520px] border-r border-white/10 overflow-y-auto bg-[#0c1210]">
+        <div className="w-[45%] min-w-[500px] max-w-[700px] border-r border-white/10 overflow-y-auto bg-[#0c1210]">
           {/* Climber Profile Panel */}
-          <div className="p-6 border-b border-white/10">
-            <h3 className="font-semibold mb-4 flex items-center gap-2 text-base uppercase tracking-wider text-slate-300">
-              <span>👤</span> Climber Profile
+          <div className="p-8 border-b border-white/10">
+            <h3 className="font-bold mb-6 flex items-center gap-3 text-lg uppercase tracking-wider text-slate-200">
+              <span className="text-2xl">👤</span> Climber Profile
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-4">
               <ProfileItem label="Age" value={String(baseline.age || 'N/A')} />
               <ProfileItem label="Years Climbing" value={String(baseline.years_climbing || baseline.climbing_experience_years || 'N/A')} />
               <ProfileItem label="Boulder Grade" value={String(baseline.highest_boulder_grade || 'N/A')} />
@@ -717,9 +724,9 @@ function ScenarioReviewPanel({
             </div>
             
             {/* Psychological Profile */}
-            <div className="mt-6 pt-6 border-t border-white/10">
-              <h4 className="text-sm text-slate-400 uppercase tracking-wider mb-3 font-medium">Psychological</h4>
-              <div className="space-y-4">
+            <div className="mt-8 pt-8 border-t border-white/10">
+              <h4 className="text-base text-slate-300 uppercase tracking-wider mb-5 font-semibold">Psychological</h4>
+              <div className="space-y-6">
                 <ProfileSlider label="Fear of Falling" value={Number(baseline.fear_of_falling) || 5} max={10} color="amber" />
                 <ProfileSlider label="Performance Anxiety" value={Number(baseline.performance_anxiety_baseline || baseline.performance_anxiety) || 5} max={10} color="red" />
               </div>
@@ -727,11 +734,11 @@ function ScenarioReviewPanel({
           </div>
 
           {/* Pre-Session State Panel */}
-          <div className="p-6 border-b border-white/10">
-            <h3 className="font-semibold mb-4 flex items-center gap-2 text-base uppercase tracking-wider text-slate-300">
-              <span>📊</span> Pre-Session State
+          <div className="p-8 border-b border-white/10">
+            <h3 className="font-bold mb-6 flex items-center gap-3 text-lg uppercase tracking-wider text-slate-200">
+              <span className="text-2xl">📊</span> Pre-Session State
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <ProfileSlider label="Energy Level" value={Number(preSession.energy_level) || 5} max={10} color="emerald" />
               <ProfileSlider label="Motivation" value={Number(preSession.motivation) || 5} max={10} color="cyan" />
               <ProfileSlider label="Sleep Quality" value={Number(preSession.sleep_quality) || 5} max={10} color="violet" />
@@ -740,45 +747,45 @@ function ScenarioReviewPanel({
               <ProfileSlider label="Muscle Soreness" value={Number(preSession.muscle_soreness) || 5} max={10} color="red" inverted />
             </div>
             
-            <div className="mt-6 pt-6 border-t border-white/10 space-y-3">
+            <div className="mt-8 pt-8 border-t border-white/10 space-y-4">
               <ProfileItem label="Days Since Last Session" value={String(preSession.days_since_last_session ?? 'N/A')} />
               <ProfileItem label="Days Since Rest" value={String(preSession.days_since_rest_day ?? 'N/A')} />
               <ProfileItem label="Planned Duration" value={preSession.planned_duration ? `${preSession.planned_duration} min` : 'N/A'} />
               <ProfileItem label="Primary Goal" value={String(preSession.primary_goal || 'N/A').replace(/_/g, ' ')} />
-              <div className="flex gap-2 flex-wrap mt-3">
-                {Boolean(preSession.is_outdoor) && <span className="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-sm font-medium">Outdoor</span>}
-                {Boolean(preSession.caffeine_today) && <span className="px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 text-sm font-medium">Caffeine</span>}
-                {Boolean(preSession.alcohol_last_24h) && <span className="px-3 py-1 rounded-lg bg-red-500/20 text-red-300 text-sm font-medium">Alcohol 24h</span>}
-                {Boolean(preSession.has_pain) && <span className="px-3 py-1 rounded-lg bg-red-500/20 text-red-300 text-sm font-medium">Pain</span>}
+              <div className="flex gap-3 flex-wrap mt-4">
+                {Boolean(preSession.is_outdoor) && <span className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 text-base font-semibold">Outdoor</span>}
+                {Boolean(preSession.caffeine_today) && <span className="px-4 py-2 rounded-xl bg-amber-500/20 text-amber-300 text-base font-semibold">Caffeine</span>}
+                {Boolean(preSession.alcohol_last_24h) && <span className="px-4 py-2 rounded-xl bg-red-500/20 text-red-300 text-base font-semibold">Alcohol 24h</span>}
+                {Boolean(preSession.has_pain) && <span className="px-4 py-2 rounded-xl bg-red-500/20 text-red-300 text-base font-semibold">Pain</span>}
               </div>
             </div>
           </div>
 
           {/* AI Suggestion Panel */}
           {scenario.ai_recommendation && (
-            <div className="p-6">
+            <div className="p-8">
               <button
                 onClick={() => setShowAiSuggestion(!showAiSuggestion)}
-                className="w-full flex items-center justify-between p-4 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/15 transition-colors"
+                className="w-full flex items-center justify-between p-5 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/15 transition-colors"
               >
-                <h3 className="font-semibold flex items-center gap-2 text-base">
-                  <span>🤖</span> AI Suggestion
+                <h3 className="font-bold flex items-center gap-3 text-lg">
+                  <span className="text-2xl">🤖</span> AI Suggestion
                 </h3>
-                <span className="text-sm text-cyan-400">{showAiSuggestion ? '▲ Collapse' : '▼ Expand'}</span>
+                <span className="text-base text-cyan-400 font-medium">{showAiSuggestion ? '▲ Collapse' : '▼ Expand'}</span>
               </button>
               
               {showAiSuggestion && (
-                <div className="mt-4 p-4 rounded-xl bg-cyan-500/5 border border-cyan-500/20 space-y-4">
+                <div className="mt-5 p-6 rounded-2xl bg-cyan-500/5 border border-cyan-500/20 space-y-5">
                   <div>
-                    <span className="text-sm text-slate-400 uppercase font-medium">Recommended</span>
-                    <p className="text-lg font-semibold text-cyan-300 mt-1">
+                    <span className="text-base text-slate-400 uppercase font-semibold">Recommended</span>
+                    <p className="text-xl font-bold text-cyan-300 mt-2">
                       {String((scenario.ai_recommendation as Record<string, unknown>)?.session_type || 'N/A')}
                     </p>
                   </div>
                   {scenario.ai_reasoning && (
                     <div>
-                      <span className="text-sm text-slate-400 uppercase font-medium">Reasoning</span>
-                      <p className="text-sm text-slate-300 mt-2 leading-relaxed">{String(scenario.ai_reasoning)}</p>
+                      <span className="text-base text-slate-400 uppercase font-semibold">Reasoning</span>
+                      <p className="text-base text-slate-300 mt-3 leading-relaxed">{String(scenario.ai_reasoning)}</p>
                     </div>
                   )}
                 </div>
@@ -788,8 +795,8 @@ function ScenarioReviewPanel({
         </div>
 
         {/* RIGHT PANEL - Expert Input Form */}
-        <div className="flex-1 overflow-y-auto pb-24">
-          <div className="max-w-4xl mx-auto p-8 space-y-5">
+        <div className="flex-1 overflow-y-auto pb-28">
+          <div className="max-w-5xl mx-auto p-10 space-y-6">
             {/* Section 1: Outcome Predictions */}
             <FormSection
               number={1}
@@ -956,24 +963,24 @@ function ScenarioReviewPanel({
       </div>
 
       {/* Footer Actions */}
-      <div className="fixed bottom-0 left-[520px] right-0 p-6 border-t border-white/10 bg-[#0f1312]/95 backdrop-blur-sm flex gap-4 justify-center">
+      <div className="fixed bottom-0 left-[45%] right-0 p-8 border-t border-white/10 bg-[#0f1312]/95 backdrop-blur-sm flex gap-5 justify-center">
         <button
           onClick={onClose}
-          className="px-8 py-3.5 rounded-xl border border-white/10 text-slate-300 font-medium text-base hover:bg-white/5 transition-all"
+          className="px-10 py-4 rounded-xl border border-white/20 text-slate-300 font-semibold text-lg hover:bg-white/5 transition-all"
         >
           Cancel
         </button>
         <button
           onClick={() => handleSave(false)}
           disabled={saving}
-          className="px-8 py-3.5 rounded-xl border border-violet-500/30 text-violet-300 font-medium text-base hover:bg-violet-500/10 transition-all disabled:opacity-50"
+          className="px-10 py-4 rounded-xl border-2 border-violet-500/40 text-violet-300 font-semibold text-lg hover:bg-violet-500/10 transition-all disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save Draft'}
         </button>
         <button
           onClick={() => handleSave(true)}
           disabled={saving || !requiredComplete}
-          className="px-10 py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-semibold text-base shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all disabled:opacity-50"
+          className="px-12 py-4 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold text-lg shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02] transition-all disabled:opacity-50"
         >
           {saving ? 'Submitting...' : 'Submit Response'}
         </button>
@@ -986,9 +993,9 @@ function ScenarioReviewPanel({
 
 function ProfileItem({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex justify-between items-center py-1">
-      <span className="text-slate-400 text-base">{label}</span>
-      <span className="text-slate-200 font-medium text-base capitalize">{value}</span>
+    <div className="flex justify-between items-center py-2">
+      <span className="text-slate-400 text-lg">{label}</span>
+      <span className="text-slate-100 font-semibold text-lg capitalize">{value}</span>
     </div>
   )
 }
@@ -1001,11 +1008,11 @@ function ProfileSlider({ label, value, max, color, inverted }: { label: string; 
   
   return (
     <div>
-      <div className="flex justify-between text-sm mb-2">
+      <div className="flex justify-between text-base mb-2">
         <span className="text-slate-400">{label}</span>
-        <span className={`text-${color}-400 font-semibold`}>{value}/{max}</span>
+        <span className={`text-${color}-400 font-bold text-lg`}>{value}/{max}</span>
       </div>
-      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+      <div className="h-3 bg-white/10 rounded-full overflow-hidden">
         <div className={`h-full ${colorClass} rounded-full transition-all`} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -1018,30 +1025,30 @@ function FormSection({
   number: number; title: string; icon: string; isExpanded: boolean; isComplete: boolean; onToggle: () => void; optional?: boolean; children: React.ReactNode 
 }) {
   return (
-    <div className={`rounded-2xl border transition-all ${
-      isComplete ? 'border-emerald-500/30 bg-emerald-500/5' : 
-      isExpanded ? 'border-violet-500/30 bg-violet-500/5' : 'border-white/10 bg-white/5'
+    <div className={`rounded-2xl border-2 transition-all ${
+      isComplete ? 'border-emerald-500/40 bg-emerald-500/5' : 
+      isExpanded ? 'border-violet-500/40 bg-violet-500/5' : 'border-white/10 bg-white/[0.02]'
     }`}>
       <button
         onClick={onToggle}
-        className="w-full p-5 flex items-center justify-between"
+        className="w-full p-6 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
       >
-        <div className="flex items-center gap-4">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
-            isComplete ? 'bg-emerald-500/20' : 'bg-white/10'
+        <div className="flex items-center gap-5">
+          <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl ${
+            isComplete ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10'
           }`}>
             {isComplete ? '✓' : icon}
           </div>
           <div className="text-left">
-            <span className="font-semibold text-lg">{number}. {title}</span>
-            {optional && <span className="text-sm text-slate-500 ml-2">(Optional)</span>}
+            <span className="font-bold text-xl">{number}. {title}</span>
+            {optional && <span className="text-base text-slate-500 ml-3">(Optional)</span>}
           </div>
         </div>
-        <span className="text-slate-400 text-lg">{isExpanded ? '▲' : '▼'}</span>
+        <span className="text-slate-400 text-xl">{isExpanded ? '▲' : '▼'}</span>
       </button>
       
       {isExpanded && (
-        <div className="px-5 pb-5">
+        <div className="px-6 pb-6">
           {children}
         </div>
       )}
