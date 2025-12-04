@@ -885,6 +885,7 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
               { value: 'recovery', label: 'Active Recovery', emoji: '🧘', desc: 'Easy day, stay loose' },
               { value: 'social', label: 'Social / Fun', emoji: '🎉', desc: 'Climb with friends' },
               { value: 'skill_work', label: 'Specific Skills', emoji: '🛠️', desc: 'Drills & exercises' },
+              { value: 'unsure', label: 'Unsure', emoji: '🤷', desc: "I'll see how I feel" },
             ].map((goal) => (
               <button
                 key={goal.value}
