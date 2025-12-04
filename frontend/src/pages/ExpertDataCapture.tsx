@@ -6,12 +6,14 @@ import {
   getMyResponseForScenario,
   upsertExpertResponse,
   updateScenario,
+  createScenario,
   getRules,
   type SyntheticScenario,
   type ExpertScenarioResponse,
   type ExpertRule,
   type SessionType,
   type CreateExpertResponseInput,
+  type CreateScenarioInput,
 } from '../lib/expertDataService'
 
 type TabType = 'scenarios' | 'rules' | 'sessions'
@@ -40,6 +42,9 @@ export function ExpertDataCapture() {
   const [selectedScenario, setSelectedScenario] = useState<SyntheticScenario | null>(null)
   const [existingResponse, setExistingResponse] = useState<ExpertScenarioResponse | null>(null)
   const [responseStartTime, setResponseStartTime] = useState<Date | null>(null)
+  
+  // Create scenario modal
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   const expertId = user?.id || ''
 
@@ -151,12 +156,20 @@ export function ExpertDataCapture() {
             <div className="p-4 border-b border-white/10">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold">Scenarios</h2>
-                <button
-                  onClick={fetchData}
-                  className="text-xs text-slate-400 hover:text-white transition-colors"
-                >
-                  🔄 Refresh
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="px-3 py-1.5 rounded-lg bg-violet-500/20 text-violet-300 text-xs font-medium hover:bg-violet-500/30 transition-colors"
+                  >
+                    + New Scenario
+                  </button>
+                  <button
+                    onClick={fetchData}
+                    className="text-xs text-slate-400 hover:text-white transition-colors"
+                  >
+                    🔄 Refresh
+                  </button>
+                </div>
               </div>
               
               {/* Filter Pills */}
@@ -234,6 +247,17 @@ export function ExpertDataCapture() {
 
       {activeTab === 'sessions' && (
         <ReviewSessionsTab />
+      )}
+
+      {/* Create Scenario Modal */}
+      {showCreateModal && (
+        <CreateScenarioModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={() => {
+            setShowCreateModal(false)
+            fetchData()
+          }}
+        />
       )}
     </div>
   )
@@ -693,6 +717,466 @@ function RulesTab({ rules, onRefresh }: { rules: ExpertRule[]; onRefresh: () => 
             </div>
           ))
         )}
+      </div>
+    </div>
+  )
+}
+
+function CreateScenarioModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void
+  onCreated: () => void
+}) {
+  const [saving, setSaving] = useState(false)
+  const [activeSection, setActiveSection] = useState<'baseline' | 'presession' | 'meta'>('baseline')
+  
+  // Scenario metadata
+  const [description, setDescription] = useState('')
+  const [difficultyLevel, setDifficultyLevel] = useState<'common' | 'edge_case' | 'extreme'>('common')
+  const [edgeCaseTags, setEdgeCaseTags] = useState<string[]>([])
+  const [tagInput, setTagInput] = useState('')
+  
+  // Baseline snapshot (climber profile)
+  const [baselineSnapshot, setBaselineSnapshot] = useState({
+    climbing_experience_years: 3,
+    highest_boulder_grade: 'V5',
+    highest_sport_grade: '5.11c',
+    sessions_per_week: 3,
+    injury_history: [] as string[],
+    fear_of_falling: 5,
+    training_focus: 'general',
+  })
+  
+  // Pre-session snapshot (current state)
+  const [preSessionSnapshot, setPreSessionSnapshot] = useState({
+    energy_level: 7,
+    motivation: 7,
+    sleep_quality: 7,
+    stress_level: 4,
+    days_since_last_session: 2,
+    days_since_rest_day: 1,
+    muscle_soreness: 3,
+    has_pain: false,
+    pain_location: '',
+    pain_severity: 0,
+    caffeine_today: false,
+    alcohol_last_24h: false,
+    primary_goal: 'volume',
+    planned_duration: 90,
+    is_outdoor: false,
+  })
+
+  const handleAddTag = () => {
+    if (tagInput.trim() && !edgeCaseTags.includes(tagInput.trim())) {
+      setEdgeCaseTags([...edgeCaseTags, tagInput.trim()])
+      setTagInput('')
+    }
+  }
+
+  const handleRemoveTag = (tag: string) => {
+    setEdgeCaseTags(edgeCaseTags.filter(t => t !== tag))
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    
+    const input: CreateScenarioInput = {
+      baseline_snapshot: baselineSnapshot,
+      pre_session_snapshot: preSessionSnapshot,
+      scenario_description: description,
+      edge_case_tags: edgeCaseTags.length > 0 ? edgeCaseTags : undefined,
+      difficulty_level: difficultyLevel,
+    }
+
+    const { error } = await createScenario(input)
+    
+    if (error) {
+      alert('Failed to create scenario. Please try again.')
+    } else {
+      onCreated()
+    }
+    
+    setSaving(false)
+  }
+
+  const suggestedTags = [
+    'injury_present', 'high_fatigue', 'low_motivation', 'outdoor_conditions',
+    'competition_prep', 'returning_from_break', 'overtraining', 'mental_block',
+    'weather_dependent', 'time_constrained', 'recovery_focused', 'project_session'
+  ]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      
+      {/* Modal */}
+      <div className="relative w-full max-w-4xl max-h-[90vh] rounded-2xl border border-white/10 bg-[#0f1312] shadow-2xl overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold">Create New Scenario</h2>
+            <p className="text-sm text-slate-400">Define a synthetic climbing scenario for expert review</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl">×</button>
+        </div>
+
+        {/* Section Tabs */}
+        <div className="px-6 pt-4 flex gap-2">
+          {[
+            { id: 'baseline' as const, label: 'Climber Profile', icon: '👤' },
+            { id: 'presession' as const, label: 'Current State', icon: '📊' },
+            { id: 'meta' as const, label: 'Scenario Details', icon: '🏷️' },
+          ].map((section) => (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                activeSection === section.id
+                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                  : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+              }`}
+            >
+              <span>{section.icon}</span>
+              {section.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {activeSection === 'baseline' && (
+            <div className="space-y-6">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <h3 className="font-medium mb-4">Climbing Experience</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Years Climbing</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={baselineSnapshot.climbing_experience_years}
+                      onChange={(e) => setBaselineSnapshot({ ...baselineSnapshot, climbing_experience_years: parseInt(e.target.value) || 0 })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Sessions per Week</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="14"
+                      value={baselineSnapshot.sessions_per_week}
+                      onChange={(e) => setBaselineSnapshot({ ...baselineSnapshot, sessions_per_week: parseInt(e.target.value) || 0 })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Highest Boulder Grade</label>
+                    <select
+                      value={baselineSnapshot.highest_boulder_grade}
+                      onChange={(e) => setBaselineSnapshot({ ...baselineSnapshot, highest_boulder_grade: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    >
+                      {['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12+'].map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Highest Sport Grade</label>
+                    <select
+                      value={baselineSnapshot.highest_sport_grade}
+                      onChange={(e) => setBaselineSnapshot({ ...baselineSnapshot, highest_sport_grade: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    >
+                      {['5.6', '5.7', '5.8', '5.9', '5.10a', '5.10b', '5.10c', '5.10d', '5.11a', '5.11b', '5.11c', '5.11d', '5.12a', '5.12b', '5.12c', '5.12d', '5.13a+'].map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <h3 className="font-medium mb-4">Psychological Profile</h3>
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <label className="text-slate-400">Fear of Falling</label>
+                    <span className="text-violet-400">{baselineSnapshot.fear_of_falling}/10</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={baselineSnapshot.fear_of_falling}
+                    onChange={(e) => setBaselineSnapshot({ ...baselineSnapshot, fear_of_falling: parseInt(e.target.value) })}
+                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'presession' && (
+            <div className="space-y-6">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <h3 className="font-medium mb-4">Physical State</h3>
+                <div className="space-y-4">
+                  {[
+                    { key: 'energy_level', label: 'Energy Level', color: 'emerald' },
+                    { key: 'motivation', label: 'Motivation', color: 'cyan' },
+                    { key: 'sleep_quality', label: 'Sleep Quality', color: 'violet' },
+                    { key: 'stress_level', label: 'Stress Level', color: 'amber' },
+                    { key: 'muscle_soreness', label: 'Muscle Soreness', color: 'red' },
+                  ].map((item) => (
+                    <div key={item.key}>
+                      <div className="flex justify-between text-sm mb-2">
+                        <label className="text-slate-400">{item.label}</label>
+                        <span className={`text-${item.color}-400`}>
+                          {preSessionSnapshot[item.key as keyof typeof preSessionSnapshot] as number}/10
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="1"
+                        max="10"
+                        value={preSessionSnapshot[item.key as keyof typeof preSessionSnapshot] as number}
+                        onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, [item.key]: parseInt(e.target.value) })}
+                        className={`w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-${item.color}-500`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <h3 className="font-medium mb-4">Session Context</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Days Since Last Session</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={preSessionSnapshot.days_since_last_session}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, days_since_last_session: parseInt(e.target.value) || 0 })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Days Since Rest Day</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={preSessionSnapshot.days_since_rest_day}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, days_since_rest_day: parseInt(e.target.value) || 0 })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Planned Duration (min)</label>
+                    <input
+                      type="number"
+                      min="30"
+                      max="300"
+                      value={preSessionSnapshot.planned_duration}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, planned_duration: parseInt(e.target.value) || 90 })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Primary Goal</label>
+                    <select
+                      value={preSessionSnapshot.primary_goal}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, primary_goal: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    >
+                      <option value="push_limits">Push Limits</option>
+                      <option value="volume">Volume / Mileage</option>
+                      <option value="technique">Technique Focus</option>
+                      <option value="active_recovery">Active Recovery</option>
+                      <option value="social">Social / Fun</option>
+                      <option value="skill_work">Specific Skill Work</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={preSessionSnapshot.is_outdoor}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, is_outdoor: e.target.checked })}
+                      className="rounded border-white/20 bg-white/5 text-violet-500"
+                    />
+                    <span className="text-sm">Outdoor Session</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={preSessionSnapshot.caffeine_today}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, caffeine_today: e.target.checked })}
+                      className="rounded border-white/20 bg-white/5 text-violet-500"
+                    />
+                    <span className="text-sm">Caffeine Today</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={preSessionSnapshot.alcohol_last_24h}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, alcohol_last_24h: e.target.checked })}
+                      className="rounded border-white/20 bg-white/5 text-violet-500"
+                    />
+                    <span className="text-sm">Alcohol in Last 24h</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={preSessionSnapshot.has_pain}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, has_pain: e.target.checked })}
+                      className="rounded border-white/20 bg-white/5 text-violet-500"
+                    />
+                    <span className="text-sm">Has Pain/Injury</span>
+                  </label>
+                </div>
+
+                {preSessionSnapshot.has_pain && (
+                  <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 space-y-3">
+                    <div>
+                      <label className="text-sm text-slate-400 block mb-2">Pain Location</label>
+                      <input
+                        type="text"
+                        value={preSessionSnapshot.pain_location}
+                        onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, pain_location: e.target.value })}
+                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                        placeholder="e.g., Left finger A2 pulley"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <label className="text-slate-400">Pain Severity</label>
+                        <span className="text-red-400">{preSessionSnapshot.pain_severity}/10</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="1"
+                        max="10"
+                        value={preSessionSnapshot.pain_severity}
+                        onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, pain_severity: parseInt(e.target.value) })}
+                        className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-red-500"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'meta' && (
+            <div className="space-y-6">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <h3 className="font-medium mb-4">Scenario Description</h3>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500"
+                  placeholder="Describe the scenario context and what makes it interesting for expert review..."
+                  rows={4}
+                />
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <h3 className="font-medium mb-4">Difficulty Level</h3>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'common' as const, label: 'Common', icon: '🟢', desc: 'Typical scenario' },
+                    { value: 'edge_case' as const, label: 'Edge Case', icon: '🟡', desc: 'Unusual combination' },
+                    { value: 'extreme' as const, label: 'Extreme', icon: '🔴', desc: 'Challenging decision' },
+                  ].map((level) => (
+                    <button
+                      key={level.value}
+                      onClick={() => setDifficultyLevel(level.value)}
+                      className={`flex-1 p-3 rounded-lg text-left transition-all ${
+                        difficultyLevel === level.value
+                          ? 'bg-violet-500/20 border border-violet-500/30'
+                          : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span>{level.icon}</span>
+                        <span className="font-medium text-sm">{level.label}</span>
+                      </div>
+                      <p className="text-xs text-slate-400">{level.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <h3 className="font-medium mb-4">Edge Case Tags</h3>
+                <div className="flex gap-2 mb-3">
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white text-sm"
+                    placeholder="Add custom tag..."
+                  />
+                  <button
+                    onClick={handleAddTag}
+                    className="px-4 py-2 rounded-lg bg-violet-500/20 text-violet-300 text-sm font-medium hover:bg-violet-500/30"
+                  >
+                    Add
+                  </button>
+                </div>
+                
+                {edgeCaseTags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {edgeCaseTags.map((tag) => (
+                      <span key={tag} className="px-3 py-1 rounded-full bg-violet-500/20 text-violet-300 text-xs flex items-center gap-2">
+                        {tag}
+                        <button onClick={() => handleRemoveTag(tag)} className="hover:text-white">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                
+                <p className="text-xs text-slate-500 mb-2">Suggested tags:</p>
+                <div className="flex flex-wrap gap-1">
+                  {suggestedTags.filter(t => !edgeCaseTags.includes(t)).map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => setEdgeCaseTags([...edgeCaseTags, tag])}
+                      className="px-2 py-1 rounded bg-white/5 text-xs text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+                    >
+                      + {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-white/10 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 font-medium hover:bg-white/5 transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-[2] py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-medium shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all disabled:opacity-50"
+          >
+            {saving ? 'Creating...' : 'Create Scenario'}
+          </button>
+        </div>
       </div>
     </div>
   )
