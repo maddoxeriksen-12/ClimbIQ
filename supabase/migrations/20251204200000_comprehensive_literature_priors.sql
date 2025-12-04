@@ -913,6 +913,9 @@ CREATE INDEX IF NOT EXISTS idx_priors_effect_direction ON population_priors (eff
 
 -- Allow authenticated users to read
 ALTER TABLE literature_references ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "Anyone can read literature" ON literature_references FOR SELECT USING (true);
+
+-- Drop and recreate policy (PostgreSQL doesn't support IF NOT EXISTS for policies)
+DROP POLICY IF EXISTS "Anyone can read literature" ON literature_references;
+CREATE POLICY "Anyone can read literature" ON literature_references FOR SELECT USING (true);
 
 
