@@ -562,16 +562,11 @@ function ScenarioReviewPanel({
   const [expandedSection, setExpandedSection] = useState<number>(1)
   const [showSessionStructure, setShowSessionStructure] = useState(false)
   
-  // Form state - Section 1: Outcome Predictions
-  const [qualityOptimal, setQualityOptimal] = useState(existingResponse?.predicted_quality_optimal || 5)
-  const [qualityBaseline, setQualityBaseline] = useState(existingResponse?.predicted_quality_baseline || 5)
-  const [predictionConfidence, setPredictionConfidence] = useState<'high' | 'medium' | 'low'>(existingResponse?.prediction_confidence || 'medium')
-  
-  // Section 2: Session Recommendation
+  // Form state - Section 1: Session Recommendation
   const [sessionType, setSessionType] = useState<SessionType | ''>(existingResponse?.recommended_session_type || '')
   const [sessionTypeConfidence, setSessionTypeConfidence] = useState<'high' | 'medium' | 'low'>(existingResponse?.session_type_confidence || 'medium')
   
-  // Section 3: Treatment Recommendations
+  // Section 2: Treatment Recommendations
   const [treatments, setTreatments] = useState<Record<string, TreatmentRec>>({
     caffeine: { value: 'none', importance: 'neutral' },
     warmup_duration: { value: '15', importance: 'helpful' },
@@ -579,20 +574,20 @@ function ScenarioReviewPanel({
     timing: { value: 'afternoon', importance: 'neutral' },
   })
   
-  // Section 4: Counterfactuals
+  // Section 3: Counterfactuals (Optional)
   const [counterfactuals, setCounterfactuals] = useState<Counterfactual[]>([])
   
-  // Section 5: Key Drivers
+  // Section 4: Key Drivers
   const [keyDrivers, setKeyDrivers] = useState<KeyDriver[]>([
     { rank: 1, variable: '', direction: 'positive' },
     { rank: 2, variable: '', direction: 'positive' },
     { rank: 3, variable: '', direction: 'positive' },
   ])
   
-  // Section 6: Interaction Effects
+  // Section 5: Interaction Effects (Optional)
   const [interactionEffects, setInteractionEffects] = useState<InteractionEffect[]>([])
   
-  // Section 7: Session Structure
+  // Section 6: Session Structure (Optional)
   const [sessionStructure, setSessionStructure] = useState<SessionStructure>({
     warmup: { durationMin: 15, includeMobility: true, includeTraversing: true, intensity: 'light' },
     mainSession: { focus: 'volume', durationMin: 60, restBetweenAttempts: 'medium', stopCondition: 'time_limit' },
@@ -602,22 +597,27 @@ function ScenarioReviewPanel({
     activities: [],
   })
   
-  // Section 8: Reasoning
+  // Section 7: Reasoning
   const [reasoning, setReasoning] = useState(existingResponse?.reasoning || '')
+  
+  // Section 8: Outcome Predictions (last - after reviewing everything)
+  const [qualityOptimal, setQualityOptimal] = useState(existingResponse?.predicted_quality_optimal || 5)
+  const [qualityBaseline, setQualityBaseline] = useState(existingResponse?.predicted_quality_baseline || 5)
+  const [predictionConfidence, setPredictionConfidence] = useState<'high' | 'medium' | 'low'>(existingResponse?.prediction_confidence || 'medium')
   
   // Calculate progress
   const sectionCompletion = {
-    1: qualityOptimal !== 5 || qualityBaseline !== 5,
-    2: sessionType !== '',
-    3: Object.values(treatments).some(t => t.importance !== 'neutral'),
-    4: true, // Optional - counterfactuals
-    5: keyDrivers.filter(kd => kd.variable !== '').length >= 1,
-    6: true, // Optional
-    7: true, // Optional
-    8: reasoning.trim().length > 10,
+    1: sessionType !== '',                                           // Session Recommendation
+    2: Object.values(treatments).some(t => t.importance !== 'neutral'), // Treatment
+    3: true,                                                          // Counterfactuals (optional)
+    4: keyDrivers.filter(kd => kd.variable !== '').length >= 1,      // Key Drivers
+    5: true,                                                          // Interaction Effects (optional)
+    6: true,                                                          // Session Structure (optional)
+    7: reasoning.trim().length > 10,                                 // Reasoning
+    8: qualityOptimal !== 5 || qualityBaseline !== 5,                // Outcome Predictions
   }
   const completedSections = Object.values(sectionCompletion).filter(Boolean).length
-  const requiredComplete = sectionCompletion[1] && sectionCompletion[2] && sectionCompletion[5] && sectionCompletion[8]
+  const requiredComplete = sectionCompletion[1] && sectionCompletion[4] && sectionCompletion[7] && sectionCompletion[8]
 
   const handleSave = async (isComplete: boolean) => {
     setSaving(true)
@@ -823,33 +823,14 @@ function ScenarioReviewPanel({
         {/* RIGHT PANEL - Expert Input Form */}
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-4xl mx-auto p-8 space-y-5">
-            {/* Section 1: Outcome Predictions */}
+            {/* Section 1: Session Recommendation */}
             <FormSection
               number={1}
-              title="Outcome Predictions"
-              icon="📈"
+              title="Session Recommendation"
+              icon="🎯"
               isExpanded={expandedSection === 1}
               isComplete={sectionCompletion[1]}
               onToggle={() => setExpandedSection(expandedSection === 1 ? 0 : 1)}
-            >
-              <OutcomePredictionsForm
-                qualityOptimal={qualityOptimal}
-                setQualityOptimal={setQualityOptimal}
-                qualityBaseline={qualityBaseline}
-                setQualityBaseline={setQualityBaseline}
-                confidence={predictionConfidence}
-                setConfidence={setPredictionConfidence}
-              />
-            </FormSection>
-
-            {/* Section 2: Session Recommendation */}
-            <FormSection
-              number={2}
-              title="Session Recommendation"
-              icon="🎯"
-              isExpanded={expandedSection === 2}
-              isComplete={sectionCompletion[2]}
-              onToggle={() => setExpandedSection(expandedSection === 2 ? 0 : 2)}
             >
               <SessionRecommendationForm
                 sessionType={sessionType}
@@ -859,26 +840,26 @@ function ScenarioReviewPanel({
               />
             </FormSection>
 
-            {/* Section 3: Treatment Recommendations */}
+            {/* Section 2: Treatment Recommendations */}
             <FormSection
-              number={3}
+              number={2}
               title="Treatment Recommendations"
               icon="💊"
-              isExpanded={expandedSection === 3}
-              isComplete={sectionCompletion[3]}
-              onToggle={() => setExpandedSection(expandedSection === 3 ? 0 : 3)}
+              isExpanded={expandedSection === 2}
+              isComplete={sectionCompletion[2]}
+              onToggle={() => setExpandedSection(expandedSection === 2 ? 0 : 2)}
             >
               <TreatmentForm treatments={treatments} setTreatments={setTreatments} />
             </FormSection>
 
-            {/* Section 4: Counterfactuals */}
+            {/* Section 3: Counterfactuals (Optional) */}
             <FormSection
-              number={4}
+              number={3}
               title="Counterfactuals (Optional)"
               icon="🔄"
-              isExpanded={expandedSection === 4}
-              isComplete={sectionCompletion[4]}
-              onToggle={() => setExpandedSection(expandedSection === 4 ? 0 : 4)}
+              isExpanded={expandedSection === 3}
+              isComplete={sectionCompletion[3]}
+              onToggle={() => setExpandedSection(expandedSection === 3 ? 0 : 3)}
             >
               <CounterfactualInput
                 counterfactuals={counterfactuals}
@@ -887,26 +868,26 @@ function ScenarioReviewPanel({
               />
             </FormSection>
 
-            {/* Section 5: Key Drivers */}
+            {/* Section 4: Key Drivers */}
             <FormSection
-              number={5}
+              number={4}
               title="Key Drivers (Top 3)"
               icon="🔑"
-              isExpanded={expandedSection === 5}
-              isComplete={sectionCompletion[5]}
-              onToggle={() => setExpandedSection(expandedSection === 5 ? 0 : 5)}
+              isExpanded={expandedSection === 4}
+              isComplete={sectionCompletion[4]}
+              onToggle={() => setExpandedSection(expandedSection === 4 ? 0 : 4)}
             >
               <KeyDriversInput keyDrivers={keyDrivers} setKeyDrivers={setKeyDrivers} />
             </FormSection>
 
-            {/* Section 6: Interaction Effects (Optional) */}
+            {/* Section 5: Interaction Effects (Optional) */}
             <FormSection
-              number={6}
+              number={5}
               title="Interaction Effects"
               icon="🔗"
-              isExpanded={expandedSection === 6}
-              isComplete={sectionCompletion[6]}
-              onToggle={() => setExpandedSection(expandedSection === 6 ? 0 : 6)}
+              isExpanded={expandedSection === 5}
+              isComplete={sectionCompletion[5]}
+              onToggle={() => setExpandedSection(expandedSection === 5 ? 0 : 5)}
               optional
             >
               <InteractionEffectsInput
@@ -915,14 +896,14 @@ function ScenarioReviewPanel({
               />
             </FormSection>
 
-            {/* Section 7: Session Structure (Optional) */}
+            {/* Section 6: Session Structure (Optional) */}
             <FormSection
-              number={7}
+              number={6}
               title="Session Structure"
               icon="📋"
-              isExpanded={expandedSection === 7}
-              isComplete={sectionCompletion[7]}
-              onToggle={() => setExpandedSection(expandedSection === 7 ? 0 : 7)}
+              isExpanded={expandedSection === 6}
+              isComplete={sectionCompletion[6]}
+              onToggle={() => setExpandedSection(expandedSection === 6 ? 0 : 6)}
               optional
             >
               <SessionStructureForm
@@ -933,20 +914,39 @@ function ScenarioReviewPanel({
               />
             </FormSection>
 
-            {/* Section 8: Reasoning */}
+            {/* Section 7: Reasoning */}
             <FormSection
-              number={8}
+              number={7}
               title="Reasoning"
               icon="💭"
-              isExpanded={expandedSection === 8}
-              isComplete={sectionCompletion[8]}
-              onToggle={() => setExpandedSection(expandedSection === 8 ? 0 : 8)}
+              isExpanded={expandedSection === 7}
+              isComplete={sectionCompletion[7]}
+              onToggle={() => setExpandedSection(expandedSection === 7 ? 0 : 7)}
             >
               <textarea
                 value={reasoning}
                 onChange={(e) => setReasoning(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 min-h-[150px]"
                 placeholder="Explain your reasoning for this recommendation. What factors were most important? Why did you choose this session type? What would change your recommendation?"
+              />
+            </FormSection>
+
+            {/* Section 8: Outcome Predictions (last - after expert has formed their recommendation) */}
+            <FormSection
+              number={8}
+              title="Outcome Predictions"
+              icon="📈"
+              isExpanded={expandedSection === 8}
+              isComplete={sectionCompletion[8]}
+              onToggle={() => setExpandedSection(expandedSection === 8 ? 0 : 8)}
+            >
+              <OutcomePredictionsForm
+                qualityOptimal={qualityOptimal}
+                setQualityOptimal={setQualityOptimal}
+                qualityBaseline={qualityBaseline}
+                setQualityBaseline={setQualityBaseline}
+                confidence={predictionConfidence}
+                setConfidence={setPredictionConfidence}
               />
             </FormSection>
 
