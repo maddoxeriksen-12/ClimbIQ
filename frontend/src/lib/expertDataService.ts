@@ -791,3 +791,100 @@ export async function checkAIStatus(): Promise<{
   }
 }
 
+// ==================== AI Research for Rules ====================
+
+export interface ResearchFinding {
+  citation: {
+    authors: string[]
+    title: string
+    journal: string | null
+    year: number
+    volume: string | null
+    pages: string | null
+    doi: string | null
+    pmid: string | null
+  }
+  citation_key: string
+  study_details: {
+    study_type: string | null
+    sample_size: number | null
+    population: string | null
+    evidence_level: string | null
+  }
+  key_findings: Array<{
+    finding: string
+    effect_size?: string | null
+    confidence: 'high' | 'medium' | 'low'
+  }>
+  proposed_rules: Array<{
+    name: string
+    description: string
+    rule_category: string
+    conditions: Record<string, unknown>
+    actions: Array<Record<string, unknown>>
+    priority: number
+    confidence: string
+    source: string
+    evidence: string
+    citation_key: string
+  }>
+  relevance_score: number
+}
+
+export interface ResearchResult {
+  success: boolean
+  research_topic: string
+  findings: ResearchFinding[]
+  summary: string
+  total_proposed_rules: number
+  model: string
+  generated_at: string
+}
+
+export async function researchTopicForRules(topic: string): Promise<{
+  data: ResearchResult | null
+  error: Error | null
+}> {
+  try {
+    const { api } = await import('./api')
+    
+    const apiUrl = import.meta.env.VITE_API_URL
+    if (!apiUrl) {
+      throw new Error('API URL not configured. Please set VITE_API_URL environment variable.')
+    }
+    
+    const response = await api.post(`/api/v1/expert-capture/rules/research?topic=${encodeURIComponent(topic)}`)
+    return { data: response.data, error: null }
+  } catch (err: unknown) {
+    console.error('Error researching topic:', err)
+    
+    if (err instanceof Error) {
+      return { data: null, error: err }
+    }
+    return { data: null, error: new Error('Unknown error during research') }
+  }
+}
+
+export async function addResearchedRule(
+  ruleData: ResearchFinding['proposed_rules'][0],
+  citationData: ResearchFinding,
+  createdBy: string
+): Promise<{ data: ExpertRule | null; error: Error | null }> {
+  try {
+    const { api } = await import('./api')
+    
+    const response = await api.post(
+      `/api/v1/expert-capture/rules/research/add?created_by=${encodeURIComponent(createdBy)}`,
+      {
+        rule_data: ruleData,
+        citation_data: citationData,
+      }
+    )
+    
+    return { data: response.data?.rule, error: null }
+  } catch (err) {
+    console.error('Error adding researched rule:', err)
+    return { data: null, error: err as Error }
+  }
+}
+

@@ -216,6 +216,117 @@ async def generate_scenarios_with_ai(
     }
 
 
+@router.post("/rules/research", response_model=dict)
+async def research_topic_for_rule_creation(
+    topic: str = Query(..., min_length=3, max_length=200, description="Topic to research for rule creation"),
+    service: ExpertCaptureService = Depends(get_service)
+):
+    """
+    Use AI to research a topic and generate evidence-based rule proposals.
+    
+    The AI will:
+    1. Search for relevant peer-reviewed research
+    2. Extract key findings and citations
+    3. Generate proposed rules based on evidence
+    
+    Returns research findings with proposed rules that can be reviewed and added.
+    """
+    from .grok_service import research_topic_for_rules
+    
+    result = await research_topic_for_rules(topic)
+    
+    if "error" in result and result.get("error"):
+        raise HTTPException(status_code=500, detail=result["error"])
+    
+    return result
+
+
+@router.post("/rules/research/add", response_model=dict)
+async def add_researched_rule(
+    rule_data: dict,
+    citation_data: dict,
+    created_by: str = Query(..., description="User who is adding this rule"),
+    service: ExpertCaptureService = Depends(get_service)
+):
+    """
+    Add a rule generated from AI research, along with its literature citation.
+    
+    This saves both the literature reference and the rule to the database.
+    """
+    from .schemas import ExpertRuleCreate
+    
+    # First, save the literature reference if it has citation info
+    citation = citation_data.get("citation", {})
+    if citation.get("title"):
+        lit_ref_data = {
+            "citation_key": citation_data.get("citation_key", f"research_{citation.get('year', 2024)}"),
+            "authors": citation.get("authors", []),
+            "title": citation.get("title", ""),
+            "journal": citation.get("journal"),
+            "year": citation.get("year", 2024),
+            "volume": citation.get("volume"),
+            "pages": citation.get("pages"),
+            "doi": citation.get("doi"),
+            "pmid": citation.get("pmid"),
+            "study_type": citation_data.get("study_details", {}).get("study_type"),
+            "sample_size": citation_data.get("study_details", {}).get("sample_size"),
+            "population": citation_data.get("study_details", {}).get("population"),
+            "evidence_level": citation_data.get("study_details", {}).get("evidence_level"),
+            "key_findings": citation_data.get("key_findings", []),
+        }
+        
+        # Upsert literature reference
+        try:
+            supabase = get_supabase_client()
+            supabase.table("literature_references").upsert(
+                lit_ref_data,
+                on_conflict="citation_key"
+            ).execute()
+        except Exception as e:
+            print(f"Warning: Could not save literature reference: {e}")
+    
+    # Now create the rule
+    rule_create = ExpertRuleCreate(
+        name=rule_data.get("name"),
+        description=rule_data.get("description"),
+        conditions=rule_data.get("conditions", {}),
+        actions=rule_data.get("actions", []),
+        condition_fields=list(extract_condition_fields(rule_data.get("conditions", {}))),
+        rule_category=rule_data.get("rule_category", "performance"),
+        priority=rule_data.get("priority", 50),
+        confidence=rule_data.get("confidence", "medium"),
+        source="literature",
+        evidence=rule_data.get("evidence", ""),
+        contributors=[created_by],
+    )
+    
+    result = service.create_rule(rule_create, created_by)
+    
+    return {
+        "success": True,
+        "rule": result,
+        "citation_saved": bool(citation.get("title")),
+    }
+
+
+def extract_condition_fields(conditions: dict) -> set:
+    """Extract field names from condition structure"""
+    fields = set()
+    
+    if "ALL" in conditions:
+        for cond in conditions["ALL"]:
+            if "field" in cond:
+                fields.add(cond["field"])
+    if "ANY" in conditions:
+        for cond in conditions["ANY"]:
+            if "field" in cond:
+                fields.add(cond["field"])
+    if "field" in conditions:
+        fields.add(conditions["field"])
+    
+    return fields
+
+
 @router.post("/scenarios", response_model=dict)
 async def create_scenario(
     scenario: SyntheticScenarioCreate,

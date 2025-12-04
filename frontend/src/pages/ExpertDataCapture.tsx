@@ -14,11 +14,15 @@ import {
   getLiteratureReferences,
   generateScenariosWithAI,
   checkAIStatus,
+  researchTopicForRules,
+  addResearchedRule,
   type SyntheticScenario,
   type ExpertScenarioResponse,
   type ExpertRule,
   type RuleAuditLog,
   type LiteratureReference,
+  type ResearchFinding,
+  type ResearchResult,
   type SessionType,
   type CreateExpertResponseInput,
   type CreateScenarioInput,
@@ -1790,6 +1794,7 @@ function SessionStructureForm({ enabled, setEnabled, structure, setStructure }: 
 
 function RulesTab({ rules, onRefresh }: { rules: ExpertRule[]; onRefresh: () => void }) {
   const [selectedRule, setSelectedRule] = useState<ExpertRule | null>(null)
+  const [showResearchModal, setShowResearchModal] = useState(false)
   
   const categoryColors: Record<string, string> = {
     safety: 'bg-red-500/20 text-red-300 border-red-500/30',
@@ -1804,12 +1809,20 @@ function RulesTab({ rules, onRefresh }: { rules: ExpertRule[]; onRefresh: () => 
       <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
         <div className="p-4 border-b border-white/10 flex items-center justify-between">
           <h2 className="font-semibold">Expert Rules</h2>
-          <button
-            onClick={onRefresh}
-            className="text-xs text-slate-400 hover:text-white transition-colors"
-          >
-            🔄 Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowResearchModal(true)}
+              className="px-3 py-1.5 rounded-lg bg-violet-500/20 text-violet-300 hover:bg-violet-500/30 transition-colors text-sm flex items-center gap-2"
+            >
+              🔬 AI Research
+            </button>
+            <button
+              onClick={onRefresh}
+              className="text-xs text-slate-400 hover:text-white transition-colors"
+            >
+              🔄 Refresh
+            </button>
+          </div>
         </div>
 
         <div className="divide-y divide-white/5 max-h-[600px] overflow-y-auto">
@@ -1863,7 +1876,390 @@ function RulesTab({ rules, onRefresh }: { rules: ExpertRule[]; onRefresh: () => 
           onUpdate={onRefresh}
         />
       )}
+      
+      {showResearchModal && (
+        <AIResearchModal
+          onClose={() => setShowResearchModal(false)}
+          onRuleAdded={onRefresh}
+        />
+      )}
     </>
+  )
+}
+
+function AIResearchModal({
+  onClose,
+  onRuleAdded,
+}: {
+  onClose: () => void
+  onRuleAdded: () => void
+}) {
+  const { user } = useAuth()
+  const [searchTopic, setSearchTopic] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [researchResult, setResearchResult] = useState<ResearchResult | null>(null)
+  const [selectedFinding, setSelectedFinding] = useState<ResearchFinding | null>(null)
+  const [addingRules, setAddingRules] = useState<Set<string>>(new Set())
+  const [addedRules, setAddedRules] = useState<Set<string>>(new Set())
+  
+  const handleSearch = async () => {
+    if (!searchTopic.trim()) return
+    
+    setSearching(true)
+    setResearchResult(null)
+    setSelectedFinding(null)
+    
+    const result = await researchTopicForRules(searchTopic)
+    
+    setSearching(false)
+    
+    if (result.data) {
+      setResearchResult(result.data)
+    } else {
+      alert(result.error?.message || 'Research failed')
+    }
+  }
+  
+  const handleAddRule = async (finding: ResearchFinding, rule: ResearchFinding['proposed_rules'][0]) => {
+    const ruleKey = `${finding.citation_key}_${rule.name}`
+    setAddingRules(prev => new Set(prev).add(ruleKey))
+    
+    const result = await addResearchedRule(rule, finding, user?.email || 'unknown')
+    
+    setAddingRules(prev => {
+      const next = new Set(prev)
+      next.delete(ruleKey)
+      return next
+    })
+    
+    if (result.data) {
+      setAddedRules(prev => new Set(prev).add(ruleKey))
+      onRuleAdded()
+    } else {
+      alert(result.error?.message || 'Failed to add rule')
+    }
+  }
+  
+  const studyTypeLabels: Record<string, string> = {
+    meta_analysis: 'Meta-Analysis',
+    systematic_review: 'Systematic Review',
+    rct: 'RCT',
+    cohort: 'Cohort',
+    cross_sectional: 'Cross-Sectional',
+    case_control: 'Case-Control',
+    case_series: 'Case Series',
+    expert_opinion: 'Expert Opinion',
+  }
+  
+  const evidenceLevelColors: Record<string, string> = {
+    '1a': 'text-emerald-400',
+    '1b': 'text-emerald-400',
+    '2a': 'text-green-400',
+    '2b': 'text-green-400',
+    '3a': 'text-yellow-400',
+    '3b': 'text-yellow-400',
+    '4': 'text-orange-400',
+    '5': 'text-red-400',
+  }
+  
+  const categoryColors: Record<string, string> = {
+    safety: 'bg-red-500/20 text-red-300',
+    interaction: 'bg-blue-500/20 text-blue-300',
+    edge_case: 'bg-amber-500/20 text-amber-300',
+    conservative: 'bg-emerald-500/20 text-emerald-300',
+    performance: 'bg-violet-500/20 text-violet-300',
+  }
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="relative w-full max-w-6xl max-h-[90vh] rounded-2xl border border-white/10 bg-[#0f1312] shadow-2xl overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="p-6 border-b border-white/10">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold">🔬 AI Research for Rules</h2>
+              <p className="text-sm text-slate-400 mt-1">
+                Search for research topics to generate evidence-based rules
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+          
+          {/* Search Input */}
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={searchTopic}
+              onChange={(e) => setSearchTopic(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              placeholder="e.g., 'finger injury prevention', 'sleep and climbing performance', 'caffeine effects'"
+              className="flex-1 px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+            />
+            <button
+              onClick={handleSearch}
+              disabled={searching || !searchTopic.trim()}
+              className="px-6 py-3 rounded-xl bg-violet-500 text-white font-medium hover:bg-violet-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {searching ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Researching...
+                </>
+              ) : (
+                <>🔍 Search</>
+              )}
+            </button>
+          </div>
+        </div>
+        
+        {/* Content */}
+        <div className="flex-1 overflow-hidden flex">
+          {/* Left Panel - Research Findings */}
+          <div className="w-1/2 border-r border-white/10 overflow-y-auto p-6">
+            {!researchResult && !searching && (
+              <div className="text-center py-12">
+                <span className="text-5xl mb-4 block">📚</span>
+                <h3 className="text-lg font-medium mb-2">Search for Research</h3>
+                <p className="text-slate-400 text-sm">
+                  Enter a topic above to find relevant research and generate evidence-based rules.
+                </p>
+                <div className="mt-6 text-left max-w-md mx-auto">
+                  <p className="text-xs text-slate-500 mb-2">Example topics:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {['finger injury prevention', 'sleep deprivation', 'warmup protocols', 'caffeine performance', 'mental fatigue'].map((topic) => (
+                      <button
+                        key={topic}
+                        onClick={() => setSearchTopic(topic)}
+                        className="px-3 py-1 rounded-full bg-white/5 text-slate-400 hover:bg-white/10 text-xs"
+                      >
+                        {topic}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {searching && (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-500 mx-auto mb-4"></div>
+                <p className="text-slate-400">Researching "{searchTopic}"...</p>
+                <p className="text-xs text-slate-500 mt-2">This may take up to 90 seconds</p>
+              </div>
+            )}
+            
+            {researchResult && (
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-violet-500/10 border border-violet-500/20">
+                  <h3 className="font-medium text-violet-300 mb-1">Research Summary</h3>
+                  <p className="text-sm text-slate-300">{researchResult.summary}</p>
+                  <p className="text-xs text-slate-500 mt-2">
+                    Found {researchResult.findings.length} relevant studies • {researchResult.total_proposed_rules} proposed rules
+                  </p>
+                </div>
+                
+                <h3 className="font-medium text-sm text-slate-400 uppercase tracking-wider">Research Findings</h3>
+                
+                {researchResult.findings.map((finding, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => setSelectedFinding(finding)}
+                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                      selectedFinding === finding
+                        ? 'bg-white/10 border-violet-500/50'
+                        : 'bg-white/5 border-white/10 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <h4 className="font-medium text-sm line-clamp-2">{finding.citation.title}</h4>
+                      <span className="shrink-0 px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 text-xs">
+                        {finding.relevance_score}/10
+                      </span>
+                    </div>
+                    
+                    <p className="text-xs text-slate-400 mb-2">
+                      {finding.citation.authors.slice(0, 3).join(', ')}
+                      {finding.citation.authors.length > 3 && ' et al.'}
+                      {' '}({finding.citation.year})
+                    </p>
+                    
+                    <div className="flex gap-2 flex-wrap">
+                      {finding.citation.journal && (
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-slate-400 text-xs">
+                          {finding.citation.journal}
+                        </span>
+                      )}
+                      {finding.study_details.study_type && (
+                        <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 text-xs">
+                          {studyTypeLabels[finding.study_details.study_type] || finding.study_details.study_type}
+                        </span>
+                      )}
+                      {finding.study_details.evidence_level && (
+                        <span className={`px-2 py-0.5 rounded bg-white/5 text-xs ${evidenceLevelColors[finding.study_details.evidence_level] || 'text-slate-400'}`}>
+                          Level {finding.study_details.evidence_level}
+                        </span>
+                      )}
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-xs">
+                        {finding.proposed_rules.length} rules
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          {/* Right Panel - Selected Finding Details & Rules */}
+          <div className="w-1/2 overflow-y-auto p-6">
+            {!selectedFinding ? (
+              <div className="text-center py-12 text-slate-400">
+                <span className="text-4xl mb-4 block">👈</span>
+                <p>Select a research finding to view details and proposed rules</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Citation Details */}
+                <div className="p-5 rounded-xl bg-white/5 border border-white/10">
+                  <h3 className="font-medium mb-3">{selectedFinding.citation.title}</h3>
+                  <p className="text-sm text-slate-400 mb-3">
+                    {selectedFinding.citation.authors.join(', ')}
+                  </p>
+                  
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {selectedFinding.citation.journal && (
+                      <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-300 text-xs">
+                        📖 {selectedFinding.citation.journal}
+                      </span>
+                    )}
+                    <span className="px-2 py-1 rounded bg-violet-500/20 text-violet-300 text-xs">
+                      📅 {selectedFinding.citation.year}
+                    </span>
+                    {selectedFinding.study_details.sample_size && (
+                      <span className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 text-xs">
+                        n={selectedFinding.study_details.sample_size}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Links */}
+                  <div className="flex gap-2">
+                    {selectedFinding.citation.doi && (
+                      <a
+                        href={`https://doi.org/${selectedFinding.citation.doi}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded bg-white/5 text-slate-300 hover:bg-white/10 text-xs"
+                      >
+                        🔗 DOI
+                      </a>
+                    )}
+                    {selectedFinding.citation.pmid && (
+                      <a
+                        href={`https://pubmed.ncbi.nlm.nih.gov/${selectedFinding.citation.pmid}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded bg-white/5 text-slate-300 hover:bg-white/10 text-xs"
+                      >
+                        📄 PubMed
+                      </a>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Key Findings */}
+                <div>
+                  <h4 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">Key Findings</h4>
+                  <div className="space-y-2">
+                    {selectedFinding.key_findings.map((finding, idx) => (
+                      <div key={idx} className="p-3 rounded-lg bg-white/5 text-sm">
+                        <p className="text-slate-300">{finding.finding}</p>
+                        {finding.effect_size && (
+                          <p className="text-xs text-slate-500 mt-1">Effect: {finding.effect_size}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Proposed Rules */}
+                <div>
+                  <h4 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">
+                    Proposed Rules ({selectedFinding.proposed_rules.length})
+                  </h4>
+                  <div className="space-y-3">
+                    {selectedFinding.proposed_rules.map((rule, idx) => {
+                      const ruleKey = `${selectedFinding.citation_key}_${rule.name}`
+                      const isAdding = addingRules.has(ruleKey)
+                      const isAdded = addedRules.has(ruleKey)
+                      
+                      return (
+                        <div key={idx} className="p-4 rounded-xl bg-white/5 border border-white/10">
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded text-xs ${categoryColors[rule.rule_category] || 'bg-white/10 text-slate-300'}`}>
+                                {rule.rule_category}
+                              </span>
+                              <span className="text-xs text-slate-500">Priority: {rule.priority}</span>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded text-xs ${
+                              rule.confidence === 'high' ? 'bg-emerald-500/20 text-emerald-300' :
+                              rule.confidence === 'medium' ? 'bg-amber-500/20 text-amber-300' :
+                              'bg-slate-500/20 text-slate-300'
+                            }`}>
+                              {rule.confidence} confidence
+                            </span>
+                          </div>
+                          
+                          <h5 className="font-medium text-sm mb-1">{rule.name.replace(/_/g, ' ')}</h5>
+                          <p className="text-xs text-slate-400 mb-3">{rule.description}</p>
+                          
+                          {/* Conditions Preview */}
+                          <div className="p-2 rounded bg-black/30 text-xs text-slate-500 mb-3 font-mono overflow-x-auto">
+                            {JSON.stringify(rule.conditions, null, 1).substring(0, 150)}...
+                          </div>
+                          
+                          <button
+                            onClick={() => handleAddRule(selectedFinding, rule)}
+                            disabled={isAdding || isAdded}
+                            className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+                              isAdded
+                                ? 'bg-emerald-500/20 text-emerald-300 cursor-default'
+                                : isAdding
+                                ? 'bg-violet-500/20 text-violet-300 cursor-wait'
+                                : 'bg-violet-500/20 text-violet-300 hover:bg-violet-500/30'
+                            }`}
+                          >
+                            {isAdded ? '✓ Added to Database' : isAdding ? 'Adding...' : '+ Add Rule'}
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Footer */}
+        <div className="p-4 border-t border-white/10 flex justify-between items-center">
+          <p className="text-xs text-slate-500">
+            {addedRules.size > 0 && `${addedRules.size} rules added this session`}
+          </p>
+          <button
+            onClick={onClose}
+            className="px-6 py-2 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 

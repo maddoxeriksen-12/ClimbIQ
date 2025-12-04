@@ -266,3 +266,194 @@ def normalize_scenario(scenario: Dict[str, Any]) -> Dict[str, Any]:
     
     return scenario
 
+
+# ============================================================================
+# AI RESEARCH FOR RULE GENERATION
+# ============================================================================
+
+RESEARCH_PROMPT = """You are a sports science researcher with expertise in rock climbing, exercise physiology, and sports medicine. 
+
+The user wants to research: "{topic}"
+
+Search your knowledge for relevant peer-reviewed research on this topic as it relates to climbing performance, training, and injury prevention. Focus on:
+- Studies from sports medicine journals
+- Climbing-specific research
+- Exercise physiology findings applicable to climbing
+- Sports psychology research
+
+For EACH relevant research finding, provide:
+
+1. **citation**: Complete citation information
+   - authors: List of author names (array of strings)
+   - title: Full paper title
+   - journal: Journal name
+   - year: Publication year (integer)
+   - volume: Volume number (or null)
+   - pages: Page numbers (or null)
+   - doi: DOI if known (or null)
+   - pmid: PubMed ID if known (or null)
+
+2. **study_details**:
+   - study_type: One of: meta_analysis, systematic_review, rct, cohort, cross_sectional, case_control, case_series, expert_opinion
+   - sample_size: Number of participants (or null if not applicable)
+   - population: Description of study population
+   - evidence_level: One of: 1a, 1b, 2a, 2b, 3a, 3b, 4, 5
+
+3. **key_findings**: Array of objects with:
+   - finding: Clear description of finding
+   - effect_size: Quantified effect if available (or null)
+   - confidence: high, medium, or low
+
+4. **proposed_rules**: Array of rule objects that could be derived from this research:
+   - name: Descriptive rule name (snake_case)
+   - description: Clear description of what the rule does
+   - rule_category: One of: safety, interaction, edge_case, conservative, performance
+   - conditions: JSON conditions object with format {{"ALL": [{{"field": "field_name", "op": ">=", "value": number}}]}}
+   - actions: Array of action objects with format [{{"type": "add_recommendation", "message": "recommendation text", "reason": "reasoning"}}]
+   - priority: Suggested priority 0-100 (safety=90-100, conservative=70-89, performance=40-69)
+   - confidence: high, medium, or low based on evidence quality
+
+5. **relevance_score**: 1-10 how relevant this is to "{topic}"
+
+Return 3-6 research findings with their proposed rules. Focus on quality over quantity.
+Return valid JSON only with this structure:
+{{
+  "research_topic": "{topic}",
+  "findings": [
+    {{
+      "citation": {{...}},
+      "study_details": {{...}},
+      "key_findings": [...],
+      "proposed_rules": [...],
+      "relevance_score": 8
+    }}
+  ],
+  "summary": "Brief summary of research landscape",
+  "total_proposed_rules": 5
+}}
+"""
+
+
+async def research_topic_for_rules(topic: str) -> Dict[str, Any]:
+    """
+    Use Grok AI to research a topic and generate evidence-based rules.
+    
+    Args:
+        topic: The topic to research (e.g., "finger injury prevention", "sleep and performance")
+    
+    Returns:
+        Dictionary with research findings and proposed rules
+    """
+    
+    if not settings.GROK_API_KEY:
+        return {"error": "GROK_API_KEY not configured", "findings": []}
+    
+    prompt = RESEARCH_PROMPT.format(topic=topic)
+    
+    try:
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            response = await client.post(
+                GROK_API_URL,
+                headers={
+                    "Authorization": f"Bearer {settings.GROK_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "grok-4-1-fast-reasoning",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a sports science researcher. Always respond with valid JSON only, no markdown formatting. Provide real, accurate citations from peer-reviewed literature."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.3,  # Lower temp for more accurate research
+                    "max_tokens": 12000,
+                }
+            )
+            
+            if response.status_code != 200:
+                return {
+                    "error": f"Grok API error: {response.status_code} - {response.text}",
+                    "findings": []
+                }
+            
+            result = response.json()
+            content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            
+            # Parse the JSON response
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+            
+            research_data = json.loads(content.strip())
+            
+            # Validate and enrich the response
+            findings = research_data.get("findings", [])
+            
+            for finding in findings:
+                # Ensure citation has all required fields
+                citation = finding.get("citation", {})
+                citation.setdefault("authors", ["Unknown"])
+                citation.setdefault("title", "Untitled")
+                citation.setdefault("journal", None)
+                citation.setdefault("year", datetime.utcnow().year)
+                citation.setdefault("doi", None)
+                citation.setdefault("pmid", None)
+                finding["citation"] = citation
+                
+                # Ensure study_details has all required fields
+                study = finding.get("study_details", {})
+                study.setdefault("study_type", "cross_sectional")
+                study.setdefault("sample_size", None)
+                study.setdefault("population", "climbers")
+                study.setdefault("evidence_level", "3b")
+                finding["study_details"] = study
+                
+                # Generate citation key
+                first_author = citation["authors"][0].split()[-1].lower() if citation["authors"] else "unknown"
+                year = citation.get("year", datetime.utcnow().year)
+                topic_slug = topic.lower().replace(" ", "_")[:20]
+                finding["citation_key"] = f"{first_author}_{year}_{topic_slug}"
+                
+                # Ensure proposed_rules have all required fields
+                rules = finding.get("proposed_rules", [])
+                for rule in rules:
+                    rule.setdefault("name", f"rule_{uuid.uuid4().hex[:8]}")
+                    rule.setdefault("description", "Generated rule")
+                    rule.setdefault("rule_category", "performance")
+                    rule.setdefault("conditions", {"ALL": []})
+                    rule.setdefault("actions", [])
+                    rule.setdefault("priority", 50)
+                    rule.setdefault("confidence", "medium")
+                    # Add source info
+                    rule["source"] = "literature"
+                    rule["evidence"] = f"{', '.join(citation['authors'][:3])} ({citation['year']}): {citation['title'][:100]}"
+                    rule["citation_key"] = finding["citation_key"]
+                finding["proposed_rules"] = rules
+            
+            return {
+                "success": True,
+                "research_topic": topic,
+                "findings": findings,
+                "summary": research_data.get("summary", ""),
+                "total_proposed_rules": sum(len(f.get("proposed_rules", [])) for f in findings),
+                "model": "grok-4-1-fast-reasoning",
+                "generated_at": datetime.utcnow().isoformat(),
+            }
+            
+    except json.JSONDecodeError as e:
+        return {
+            "error": f"Failed to parse Grok response as JSON: {str(e)}",
+            "findings": [],
+            "raw_content": content[:1000] if 'content' in dir() else None
+        }
+    except httpx.TimeoutException:
+        return {"error": "Grok API request timed out (research may take up to 90s)", "findings": []}
+    except Exception as e:
+        return {"error": f"Error researching topic: {str(e)}", "findings": []}
+
