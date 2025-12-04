@@ -658,3 +658,48 @@ export async function getExpertDataStats(): Promise<{
   }
 }
 
+// ==================== AI Scenario Generation ====================
+
+export interface AIGenerationResult {
+  success: boolean
+  scenarios_generated: number
+  generation_batch: string
+  model: string
+  scenario_ids: string[]
+}
+
+export async function generateScenariosWithAI(options: {
+  count?: number
+  edge_case_focus?: string[]
+  difficulty_bias?: 'common' | 'edge_case' | 'extreme'
+}): Promise<{ data: AIGenerationResult | null; error: Error | null }> {
+  try {
+    const API_URL = import.meta.env.VITE_API_URL as string
+    
+    const params = new URLSearchParams()
+    if (options.count) params.append('count', options.count.toString())
+    if (options.difficulty_bias) params.append('difficulty_bias', options.difficulty_bias)
+    if (options.edge_case_focus) {
+      options.edge_case_focus.forEach(tag => params.append('edge_case_focus', tag))
+    }
+    
+    const response = await fetch(`${API_URL}/api/v1/expert-capture/scenarios/generate/ai?${params}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.detail || `API error: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    return { data, error: null }
+  } catch (err) {
+    console.error('Error generating scenarios with AI:', err)
+    return { data: null, error: err as Error }
+  }
+}
+

@@ -26,6 +26,9 @@ class Settings(BaseSettings):
   MLFLOW_TRACKING_URI: str = "mlruns"
   MODEL_VERSION: str = "v1.0.0"
 
+  # AI/LLM
+  GROK_API_KEY: str = ""
+
   class Config:
     env_file = ".env"
 

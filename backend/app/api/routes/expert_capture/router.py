@@ -137,6 +137,69 @@ async def generate_from_template(
     return result
 
 
+@router.post("/scenarios/generate/ai", response_model=dict)
+async def generate_scenarios_with_ai(
+    count: int = Query(5, ge=1, le=10, description="Number of scenarios to generate (1-10)"),
+    edge_case_focus: Optional[List[str]] = Query(None, description="Edge case types to focus on"),
+    difficulty_bias: Optional[str] = Query(None, description="Bias toward 'common', 'edge_case', or 'extreme'"),
+    service: ExpertCaptureService = Depends(get_service)
+):
+    """
+    Generate realistic synthetic scenarios using Grok AI.
+    
+    The AI will create diverse, realistic climbing scenarios covering:
+    - Different experience levels and demographics
+    - Various physical and psychological states
+    - Edge cases requiring nuanced recommendations
+    
+    Scenarios are automatically saved to the database with 'pending' status.
+    """
+    from .grok_service import generate_scenarios_with_grok, normalize_scenario
+    
+    result = await generate_scenarios_with_grok(count, edge_case_focus, difficulty_bias)
+    
+    if "error" in result and result.get("error"):
+        raise HTTPException(status_code=500, detail=result["error"])
+    
+    scenarios = result.get("scenarios", [])
+    saved_scenarios = []
+    
+    for scenario in scenarios:
+        # Normalize and validate
+        normalized = normalize_scenario(scenario)
+        
+        # Save to database
+        from .schemas import SyntheticScenarioCreate, DifficultyLevel
+        
+        try:
+            difficulty = DifficultyLevel(normalized.get("difficulty_level", "common"))
+        except ValueError:
+            difficulty = DifficultyLevel.common
+        
+        scenario_input = SyntheticScenarioCreate(
+            baseline_snapshot=normalized["baseline_snapshot"],
+            pre_session_snapshot=normalized["pre_session_snapshot"],
+            scenario_description=normalized.get("scenario_description", ""),
+            edge_case_tags=normalized.get("edge_case_tags", []),
+            difficulty_level=difficulty,
+            ai_recommendation=normalized.get("ai_recommendation"),
+            ai_reasoning=normalized.get("ai_reasoning"),
+            generation_batch=result.get("generation_batch"),
+        )
+        
+        saved = service.create_scenario(scenario_input)
+        if saved:
+            saved_scenarios.append(saved)
+    
+    return {
+        "success": True,
+        "scenarios_generated": len(saved_scenarios),
+        "generation_batch": result.get("generation_batch"),
+        "model": result.get("model", "grok-3-fast"),
+        "scenario_ids": [s.get("id") for s in saved_scenarios],
+    }
+
+
 @router.post("/scenarios", response_model=dict)
 async def create_scenario(
     scenario: SyntheticScenarioCreate,
