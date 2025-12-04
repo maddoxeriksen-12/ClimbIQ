@@ -148,7 +148,7 @@ async def check_ai_status():
     return {
         "ai_configured": api_key_configured,
         "api_key_preview": api_key_preview,
-        "model": "grok-2-1212",
+        "model": "grok-3-fast",
         "endpoint": "https://api.x.ai/v1/chat/completions",
     }
 
