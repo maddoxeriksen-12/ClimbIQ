@@ -337,6 +337,68 @@ function ScenarioListItem({
   )
 }
 
+// ================== TYPES FOR REVIEW INTERFACE ==================
+
+interface Counterfactual {
+  variable: string
+  actualValue: number
+  counterfactualValue: number
+  newPredictedQuality: number
+  wouldChangeSessionType: boolean
+  newSessionType?: SessionType
+}
+
+interface KeyDriver {
+  rank: number
+  variable: string
+  direction: 'positive' | 'negative'
+}
+
+interface InteractionEffect {
+  variables: string[]
+  description: string
+  recommendationWithout: string
+  recommendationWith: string
+}
+
+interface TreatmentRec {
+  value: string
+  importance: 'critical' | 'helpful' | 'neutral' | 'avoid'
+}
+
+interface SessionStructure {
+  warmup: {
+    durationMin: number
+    includeMobility: boolean
+    includeTraversing: boolean
+    intensity: 'very_light' | 'light' | 'moderate'
+  }
+  mainSession: {
+    focus: 'limit_attempts' | 'project_burns' | 'volume' | 'technique_drills'
+    durationMin: number
+    restBetweenAttempts: 'short' | 'medium' | 'long'
+    stopCondition: 'time_limit' | 'energy_drop' | 'skin_limit' | 'send_progress'
+  }
+  hangboard: {
+    include: boolean
+    contraindicated: boolean
+    structure?: 'max_hangs' | 'repeaters' | 'density_hangs'
+    volume?: 'reduced' | 'normal' | 'extended'
+    rationale?: string
+  }
+  cooldownDurationMin: number
+  antagonistWork: boolean
+}
+
+const AVAILABLE_VARIABLES = [
+  'sleep_quality', 'sleep_hours', 'energy_level', 'motivation', 'stress_level',
+  'muscle_soreness', 'days_since_last_session', 'days_since_rest_day', 'caffeine_today',
+  'alcohol_last_24h', 'performance_anxiety', 'fear_of_falling', 'injury_severity',
+  'hydration_status', 'time_available', 'temperature', 'humidity'
+]
+
+// ================== SCENARIO REVIEW PANEL ==================
+
 function ScenarioReviewPanel({
   scenario,
   existingResponse,
@@ -354,29 +416,68 @@ function ScenarioReviewPanel({
 }) {
   const [saving, setSaving] = useState(false)
   const [showAiSuggestion, setShowAiSuggestion] = useState(false)
+  const [expandedSection, setExpandedSection] = useState<number>(1)
+  const [showSessionStructure, setShowSessionStructure] = useState(false)
   
-  // Form state
+  // Form state - Section 1: Outcome Predictions
   const [qualityOptimal, setQualityOptimal] = useState(existingResponse?.predicted_quality_optimal || 5)
   const [qualityBaseline, setQualityBaseline] = useState(existingResponse?.predicted_quality_baseline || 5)
   const [predictionConfidence, setPredictionConfidence] = useState<'high' | 'medium' | 'low'>(existingResponse?.prediction_confidence || 'medium')
+  
+  // Section 2: Session Recommendation
   const [sessionType, setSessionType] = useState<SessionType | ''>(existingResponse?.recommended_session_type || '')
   const [sessionTypeConfidence, setSessionTypeConfidence] = useState<'high' | 'medium' | 'low'>(existingResponse?.session_type_confidence || 'medium')
-  const [agreesWithAi, setAgreesWithAi] = useState<'yes' | 'partially' | 'no' | ''>(existingResponse?.agrees_with_ai || '')
+  
+  // Section 3: Treatment Recommendations
+  const [treatments, setTreatments] = useState<Record<string, TreatmentRec>>({
+    caffeine: { value: 'none', importance: 'neutral' },
+    warmup_duration: { value: '15', importance: 'helpful' },
+    session_intensity: { value: 'moderate', importance: 'helpful' },
+    timing: { value: 'afternoon', importance: 'neutral' },
+  })
+  
+  // Section 4: Counterfactuals
+  const [counterfactuals, setCounterfactuals] = useState<Counterfactual[]>([])
+  
+  // Section 5: Key Drivers
+  const [keyDrivers, setKeyDrivers] = useState<KeyDriver[]>([
+    { rank: 1, variable: '', direction: 'positive' },
+    { rank: 2, variable: '', direction: 'positive' },
+    { rank: 3, variable: '', direction: 'positive' },
+  ])
+  
+  // Section 6: Interaction Effects
+  const [interactionEffects, setInteractionEffects] = useState<InteractionEffect[]>([])
+  
+  // Section 7: Session Structure
+  const [sessionStructure, setSessionStructure] = useState<SessionStructure>({
+    warmup: { durationMin: 15, includeMobility: true, includeTraversing: true, intensity: 'light' },
+    mainSession: { focus: 'volume', durationMin: 60, restBetweenAttempts: 'medium', stopCondition: 'time_limit' },
+    hangboard: { include: false, contraindicated: false },
+    cooldownDurationMin: 10,
+    antagonistWork: false,
+  })
+  
+  // Section 8: Reasoning
   const [reasoning, setReasoning] = useState(existingResponse?.reasoning || '')
-  const [keyDrivers, _setKeyDrivers] = useState<string[]>([]) // TODO: Add UI for key drivers
+  
+  // Section 9: Agreement
+  const [agreesWithAi, setAgreesWithAi] = useState<'yes' | 'partially' | 'no' | ''>(existingResponse?.agrees_with_ai || '')
 
-  // Update form when existing response changes
-  useEffect(() => {
-    if (existingResponse) {
-      setQualityOptimal(existingResponse.predicted_quality_optimal || 5)
-      setQualityBaseline(existingResponse.predicted_quality_baseline || 5)
-      setPredictionConfidence(existingResponse.prediction_confidence || 'medium')
-      setSessionType(existingResponse.recommended_session_type || '')
-      setSessionTypeConfidence(existingResponse.session_type_confidence || 'medium')
-      setAgreesWithAi(existingResponse.agrees_with_ai || '')
-      setReasoning(existingResponse.reasoning || '')
-    }
-  }, [existingResponse])
+  // Calculate progress
+  const sectionCompletion = {
+    1: qualityOptimal !== 5 || qualityBaseline !== 5,
+    2: sessionType !== '',
+    3: Object.values(treatments).some(t => t.importance !== 'neutral'),
+    4: counterfactuals.length > 0,
+    5: keyDrivers.filter(kd => kd.variable !== '').length >= 1,
+    6: true, // Optional
+    7: true, // Optional
+    8: reasoning.trim().length > 10,
+    9: agreesWithAi !== '' || !scenario.ai_recommendation,
+  }
+  const completedSections = Object.values(sectionCompletion).filter(Boolean).length
+  const requiredComplete = sectionCompletion[1] && sectionCompletion[2] && sectionCompletion[5] && sectionCompletion[8]
 
   const handleSave = async (isComplete: boolean) => {
     setSaving(true)
@@ -393,9 +494,34 @@ function ScenarioReviewPanel({
       prediction_confidence: predictionConfidence,
       recommended_session_type: sessionType || undefined,
       session_type_confidence: sessionTypeConfidence,
+      treatment_recommendations: treatments,
+      counterfactuals: counterfactuals.map(cf => ({
+        variable: cf.variable,
+        current_value: cf.actualValue,
+        hypothetical_value: cf.counterfactualValue,
+        expected_outcome_change: `${cf.newPredictedQuality - qualityOptimal > 0 ? '+' : ''}${(cf.newPredictedQuality - qualityOptimal).toFixed(1)}`,
+        confidence: 'medium' as const,
+      })),
+      key_drivers: keyDrivers.filter(kd => kd.variable).map(kd => ({
+        factor: kd.variable,
+        direction: kd.direction,
+        magnitude: 'medium' as const,
+        reasoning: '',
+      })),
+      interaction_effects: interactionEffects.map(ie => ({
+        factors: ie.variables,
+        effect_description: ie.description,
+        combined_impact: ie.recommendationWith,
+      })),
+      session_structure: showSessionStructure ? {
+        warm_up_duration: sessionStructure.warmup.durationMin,
+        main_session_duration: sessionStructure.mainSession.durationMin,
+        cool_down_duration: sessionStructure.cooldownDurationMin,
+        intensity_distribution: { moderate: 50, high: 30, low: 20 },
+        specific_recommendations: [],
+      } : undefined,
       agrees_with_ai: agreesWithAi || undefined,
       reasoning,
-      key_drivers: keyDrivers.map(d => ({ factor: d, direction: 'positive', magnitude: 'medium', reasoning: '' })),
       response_duration_sec: durationSec || undefined,
       is_complete: isComplete,
     }
@@ -405,7 +531,6 @@ function ScenarioReviewPanel({
     if (error) {
       alert('Failed to save response. Please try again.')
     } else {
-      // Update scenario status if needed
       if (scenario.status === 'pending') {
         await updateScenario(scenario.id, { status: 'in_review' })
       }
@@ -415,246 +540,1075 @@ function ScenarioReviewPanel({
     setSaving(false)
   }
 
-  const sessionTypes: { value: SessionType; label: string; icon: string }[] = [
-    { value: 'project', label: 'Project Session', icon: '🎯' },
-    { value: 'limit_bouldering', label: 'Limit Bouldering', icon: '💪' },
-    { value: 'volume', label: 'Volume', icon: '📊' },
-    { value: 'technique', label: 'Technique', icon: '🎨' },
-    { value: 'training', label: 'Training', icon: '🏋️' },
-    { value: 'light_session', label: 'Light Session', icon: '🌤️' },
-    { value: 'rest_day', label: 'Rest Day', icon: '😴' },
-    { value: 'active_recovery', label: 'Active Recovery', icon: '🧘' },
-  ]
+  const baseline = (scenario.baseline_snapshot || {}) as Record<string, unknown>
+  const preSession = (scenario.pre_session_snapshot || {}) as Record<string, unknown>
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="fixed inset-0 z-50 bg-[#0a0f0d]">
       {/* Header */}
-      <div className="p-4 border-b border-white/10 flex items-center justify-between">
-        <h2 className="font-semibold">Review Scenario</h2>
-        <button onClick={onClose} className="text-slate-400 hover:text-white">✕</button>
+      <div className="h-14 px-6 border-b border-white/10 flex items-center justify-between bg-[#0f1312]">
+        <div className="flex items-center gap-4">
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl">←</button>
+          <h2 className="font-semibold">Scenario Review</h2>
+          <span className={`px-2 py-0.5 rounded-full text-xs ${
+            scenario.difficulty_level === 'extreme' ? 'bg-red-500/20 text-red-300' :
+            scenario.difficulty_level === 'edge_case' ? 'bg-amber-500/20 text-amber-300' :
+            'bg-emerald-500/20 text-emerald-300'
+          }`}>
+            {scenario.difficulty_level || 'common'}
+          </span>
+        </div>
+        
+        {/* Progress Indicator */}
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+              <div
+                key={num}
+                className={`w-6 h-6 rounded-full text-xs flex items-center justify-center font-medium transition-all ${
+                  sectionCompletion[num as keyof typeof sectionCompletion]
+                    ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50'
+                    : expandedSection === num
+                    ? 'bg-violet-500/30 text-violet-300 border border-violet-500/50'
+                    : 'bg-white/5 text-slate-500 border border-white/10'
+                }`}
+              >
+                {num}
+              </div>
+            ))}
+          </div>
+          <span className="text-sm text-slate-400">{completedSections}/9 complete</span>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Scenario Info */}
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <h3 className="font-medium mb-3 flex items-center gap-2">
-            <span>📋</span> Scenario Details
-          </h3>
-          <p className="text-sm text-slate-300 mb-4">{scenario.scenario_description || 'No description'}</p>
-          
-          {/* Baseline Snapshot */}
-          <div className="mb-4">
-            <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Baseline Assessment</h4>
-            <pre className="text-xs bg-black/20 rounded-lg p-3 overflow-x-auto max-h-32">
-              {JSON.stringify(scenario.baseline_snapshot, null, 2)}
-            </pre>
+      <div className="h-[calc(100vh-56px)] flex">
+        {/* LEFT PANEL - Scenario Info */}
+        <div className="w-96 border-r border-white/10 overflow-y-auto bg-[#0c1210]">
+          {/* Climber Profile Panel */}
+          <div className="p-4 border-b border-white/10">
+            <h3 className="font-medium mb-3 flex items-center gap-2 text-sm uppercase tracking-wider text-slate-400">
+              <span>👤</span> Climber Profile
+            </h3>
+            <div className="space-y-2">
+              <ProfileItem label="Age" value={String(baseline.age || 'N/A')} />
+              <ProfileItem label="Years Climbing" value={String(baseline.years_climbing || baseline.climbing_experience_years || 'N/A')} />
+              <ProfileItem label="Boulder Grade" value={String(baseline.highest_boulder_grade || 'N/A')} />
+              <ProfileItem label="Sport Grade" value={String(baseline.highest_sport_grade || 'N/A')} />
+              <ProfileItem label="Sessions/Week" value={String(baseline.sessions_per_week || 'N/A')} />
+              <ProfileItem label="Training Focus" value={String(baseline.training_focus || 'General')} />
+              {Array.isArray(baseline.injury_history) && (baseline.injury_history as string[]).length > 0 && (
+                <ProfileItem label="Injury History" value={(baseline.injury_history as string[]).join(', ')} />
+              )}
+            </div>
+            
+            {/* Psychological Profile */}
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <h4 className="text-xs text-slate-500 uppercase tracking-wider mb-2">Psychological</h4>
+              <div className="space-y-2">
+                <ProfileSlider label="Fear of Falling" value={Number(baseline.fear_of_falling) || 5} max={10} color="amber" />
+                <ProfileSlider label="Performance Anxiety" value={Number(baseline.performance_anxiety_baseline || baseline.performance_anxiety) || 5} max={10} color="red" />
+              </div>
+            </div>
           </div>
 
-          {/* Pre-Session Snapshot */}
-          <div>
-            <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Pre-Session State</h4>
-            <pre className="text-xs bg-black/20 rounded-lg p-3 overflow-x-auto max-h-32">
-              {JSON.stringify(scenario.pre_session_snapshot, null, 2)}
-            </pre>
+          {/* Pre-Session State Panel */}
+          <div className="p-4 border-b border-white/10">
+            <h3 className="font-medium mb-3 flex items-center gap-2 text-sm uppercase tracking-wider text-slate-400">
+              <span>📊</span> Pre-Session State
+            </h3>
+            <div className="space-y-2">
+              <ProfileSlider label="Energy Level" value={Number(preSession.energy_level) || 5} max={10} color="emerald" />
+              <ProfileSlider label="Motivation" value={Number(preSession.motivation) || 5} max={10} color="cyan" />
+              <ProfileSlider label="Sleep Quality" value={Number(preSession.sleep_quality) || 5} max={10} color="violet" />
+              {typeof preSession.sleep_hours === 'number' && <ProfileItem label="Sleep Hours" value={String(preSession.sleep_hours)} />}
+              <ProfileSlider label="Stress Level" value={Number(preSession.stress_level) || 5} max={10} color="amber" inverted />
+              <ProfileSlider label="Muscle Soreness" value={Number(preSession.muscle_soreness) || 5} max={10} color="red" inverted />
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
+              <ProfileItem label="Days Since Last Session" value={String(preSession.days_since_last_session ?? 'N/A')} />
+              <ProfileItem label="Days Since Rest" value={String(preSession.days_since_rest_day ?? 'N/A')} />
+              <ProfileItem label="Planned Duration" value={preSession.planned_duration ? `${preSession.planned_duration} min` : 'N/A'} />
+              <ProfileItem label="Primary Goal" value={String(preSession.primary_goal || 'N/A').replace(/_/g, ' ')} />
+              <div className="flex gap-2 flex-wrap mt-2">
+                {Boolean(preSession.is_outdoor) && <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-xs">Outdoor</span>}
+                {Boolean(preSession.caffeine_today) && <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs">Caffeine</span>}
+                {Boolean(preSession.alcohol_last_24h) && <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-300 text-xs">Alcohol 24h</span>}
+                {Boolean(preSession.has_pain) && <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-300 text-xs">Pain</span>}
+              </div>
+            </div>
           </div>
+
+          {/* AI Suggestion Panel */}
+          {scenario.ai_recommendation && (
+            <div className="p-4">
+              <button
+                onClick={() => setShowAiSuggestion(!showAiSuggestion)}
+                className="w-full flex items-center justify-between p-3 rounded-xl border border-cyan-500/30 bg-cyan-500/10"
+              >
+                <h3 className="font-medium flex items-center gap-2 text-sm">
+                  <span>🤖</span> AI Suggestion
+                </h3>
+                <span className="text-xs text-cyan-400">{showAiSuggestion ? '▲ Collapse' : '▼ Expand'}</span>
+              </button>
+              
+              {showAiSuggestion && (
+                <div className="mt-3 p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/20 space-y-3">
+                  <div>
+                    <span className="text-xs text-slate-500 uppercase">Recommended</span>
+                    <p className="text-sm font-medium text-cyan-300">
+                      {String((scenario.ai_recommendation as Record<string, unknown>)?.session_type || 'N/A')}
+                    </p>
+                  </div>
+                  {scenario.ai_reasoning && (
+                    <div>
+                      <span className="text-xs text-slate-500 uppercase">Reasoning</span>
+                      <p className="text-xs text-slate-300 mt-1">{String(scenario.ai_reasoning)}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* AI Suggestion (Collapsible) */}
-        {scenario.ai_recommendation && (
-          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4">
-            <button
-              onClick={() => setShowAiSuggestion(!showAiSuggestion)}
-              className="w-full flex items-center justify-between"
+        {/* RIGHT PANEL - Expert Input Form */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto p-6 space-y-4">
+            {/* Section 1: Outcome Predictions */}
+            <FormSection
+              number={1}
+              title="Outcome Predictions"
+              icon="📈"
+              isExpanded={expandedSection === 1}
+              isComplete={sectionCompletion[1]}
+              onToggle={() => setExpandedSection(expandedSection === 1 ? 0 : 1)}
             >
-              <h3 className="font-medium flex items-center gap-2">
-                <span>🤖</span> AI Suggestion
-              </h3>
-              <span className="text-sm text-cyan-400">{showAiSuggestion ? '▲ Hide' : '▼ Show'}</span>
-            </button>
-            
-            {showAiSuggestion && (
-              <div className="mt-3 space-y-2">
-                <pre className="text-xs bg-black/20 rounded-lg p-3 overflow-x-auto">
-                  {JSON.stringify(scenario.ai_recommendation, null, 2)}
-                </pre>
-                {scenario.ai_reasoning && (
-                  <p className="text-sm text-slate-300">{scenario.ai_reasoning}</p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+              <OutcomePredictionsForm
+                qualityOptimal={qualityOptimal}
+                setQualityOptimal={setQualityOptimal}
+                qualityBaseline={qualityBaseline}
+                setQualityBaseline={setQualityBaseline}
+                confidence={predictionConfidence}
+                setConfidence={setPredictionConfidence}
+              />
+            </FormSection>
 
-        {/* Response Form */}
-        <div className="space-y-6">
-          {/* Quality Predictions */}
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <h3 className="font-medium mb-4 flex items-center gap-2">
-              <span>📈</span> Outcome Predictions
-            </h3>
-            
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <label className="text-slate-300">Expected Quality (with optimal recommendation)</label>
-                  <span className="text-emerald-400 font-medium">{qualityOptimal}/10</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  step="0.5"
-                  value={qualityOptimal}
-                  onChange={(e) => setQualityOptimal(parseFloat(e.target.value))}
-                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-              </div>
-              
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <label className="text-slate-300">Expected Quality (with baseline/no intervention)</label>
-                  <span className="text-amber-400 font-medium">{qualityBaseline}/10</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  step="0.5"
-                  value={qualityBaseline}
-                  onChange={(e) => setQualityBaseline(parseFloat(e.target.value))}
-                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                />
-              </div>
+            {/* Section 2: Session Recommendation */}
+            <FormSection
+              number={2}
+              title="Session Recommendation"
+              icon="🎯"
+              isExpanded={expandedSection === 2}
+              isComplete={sectionCompletion[2]}
+              onToggle={() => setExpandedSection(expandedSection === 2 ? 0 : 2)}
+            >
+              <SessionRecommendationForm
+                sessionType={sessionType}
+                setSessionType={setSessionType}
+                confidence={sessionTypeConfidence}
+                setConfidence={setSessionTypeConfidence}
+              />
+            </FormSection>
 
-              <div>
-                <label className="text-sm text-slate-300 block mb-2">Prediction Confidence</label>
-                <div className="flex gap-2">
-                  {(['high', 'medium', 'low'] as const).map((level) => (
+            {/* Section 3: Treatment Recommendations */}
+            <FormSection
+              number={3}
+              title="Treatment Recommendations"
+              icon="💊"
+              isExpanded={expandedSection === 3}
+              isComplete={sectionCompletion[3]}
+              onToggle={() => setExpandedSection(expandedSection === 3 ? 0 : 3)}
+            >
+              <TreatmentForm treatments={treatments} setTreatments={setTreatments} />
+            </FormSection>
+
+            {/* Section 4: Counterfactuals */}
+            <FormSection
+              number={4}
+              title="Counterfactuals"
+              icon="🔄"
+              isExpanded={expandedSection === 4}
+              isComplete={sectionCompletion[4]}
+              onToggle={() => setExpandedSection(expandedSection === 4 ? 0 : 4)}
+            >
+              <CounterfactualInput
+                counterfactuals={counterfactuals}
+                setCounterfactuals={setCounterfactuals}
+                preSession={preSession}
+              />
+            </FormSection>
+
+            {/* Section 5: Key Drivers */}
+            <FormSection
+              number={5}
+              title="Key Drivers (Top 3)"
+              icon="🔑"
+              isExpanded={expandedSection === 5}
+              isComplete={sectionCompletion[5]}
+              onToggle={() => setExpandedSection(expandedSection === 5 ? 0 : 5)}
+            >
+              <KeyDriversInput keyDrivers={keyDrivers} setKeyDrivers={setKeyDrivers} />
+            </FormSection>
+
+            {/* Section 6: Interaction Effects (Optional) */}
+            <FormSection
+              number={6}
+              title="Interaction Effects"
+              icon="🔗"
+              isExpanded={expandedSection === 6}
+              isComplete={sectionCompletion[6]}
+              onToggle={() => setExpandedSection(expandedSection === 6 ? 0 : 6)}
+              optional
+            >
+              <InteractionEffectsInput
+                effects={interactionEffects}
+                setEffects={setInteractionEffects}
+              />
+            </FormSection>
+
+            {/* Section 7: Session Structure (Optional) */}
+            <FormSection
+              number={7}
+              title="Session Structure"
+              icon="📋"
+              isExpanded={expandedSection === 7}
+              isComplete={sectionCompletion[7]}
+              onToggle={() => setExpandedSection(expandedSection === 7 ? 0 : 7)}
+              optional
+            >
+              <SessionStructureForm
+                enabled={showSessionStructure}
+                setEnabled={setShowSessionStructure}
+                structure={sessionStructure}
+                setStructure={setSessionStructure}
+              />
+            </FormSection>
+
+            {/* Section 8: Reasoning */}
+            <FormSection
+              number={8}
+              title="Reasoning"
+              icon="💭"
+              isExpanded={expandedSection === 8}
+              isComplete={sectionCompletion[8]}
+              onToggle={() => setExpandedSection(expandedSection === 8 ? 0 : 8)}
+            >
+              <textarea
+                value={reasoning}
+                onChange={(e) => setReasoning(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 min-h-[150px]"
+                placeholder="Explain your reasoning for this recommendation. What factors were most important? Why did you choose this session type? What would change your recommendation?"
+              />
+            </FormSection>
+
+            {/* Section 9: Agreement with AI */}
+            {scenario.ai_recommendation && (
+              <FormSection
+                number={9}
+                title="Agreement with AI"
+                icon="🤝"
+                isExpanded={expandedSection === 9}
+                isComplete={sectionCompletion[9]}
+                onToggle={() => setExpandedSection(expandedSection === 9 ? 0 : 9)}
+              >
+                <div className="flex gap-3">
+                  {[
+                    { value: 'yes' as const, label: 'Agree', desc: 'AI recommendation is appropriate', color: 'emerald' },
+                    { value: 'partially' as const, label: 'Partially', desc: 'Some aspects are correct', color: 'amber' },
+                    { value: 'no' as const, label: 'Disagree', desc: 'Recommendation needs changes', color: 'red' },
+                  ].map((option) => (
                     <button
-                      key={level}
-                      onClick={() => setPredictionConfidence(level)}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
-                        predictionConfidence === level
-                          ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                          : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+                      key={option.value}
+                      onClick={() => setAgreesWithAi(option.value)}
+                      className={`flex-1 p-4 rounded-xl text-left transition-all ${
+                        agreesWithAi === option.value
+                          ? option.color === 'emerald' ? 'bg-emerald-500/20 border-2 border-emerald-500/50'
+                            : option.color === 'amber' ? 'bg-amber-500/20 border-2 border-amber-500/50'
+                            : 'bg-red-500/20 border-2 border-red-500/50'
+                          : 'bg-white/5 border border-white/10 hover:bg-white/10'
                       }`}
                     >
-                      {level}
+                      <span className="font-medium">{option.label}</span>
+                      <p className="text-xs text-slate-400 mt-1">{option.desc}</p>
                     </button>
                   ))}
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Session Type Recommendation */}
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <h3 className="font-medium mb-4 flex items-center gap-2">
-              <span>🎯</span> Recommended Session Type
-            </h3>
-            
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              {sessionTypes.map((type) => (
-                <button
-                  key={type.value}
-                  onClick={() => setSessionType(type.value)}
-                  className={`p-3 rounded-xl text-left transition-all ${
-                    sessionType === type.value
-                      ? 'bg-violet-500/20 border border-violet-500/30'
-                      : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span>{type.icon}</span>
-                    <span className="text-sm font-medium">{type.label}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            <div>
-              <label className="text-sm text-slate-300 block mb-2">Session Type Confidence</label>
-              <div className="flex gap-2">
-                {(['high', 'medium', 'low'] as const).map((level) => (
-                  <button
-                    key={level}
-                    onClick={() => setSessionTypeConfidence(level)}
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
-                      sessionTypeConfidence === level
-                        ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                        : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
-                    }`}
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* AI Agreement */}
-          {scenario.ai_recommendation && (
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-              <h3 className="font-medium mb-4 flex items-center gap-2">
-                <span>🤝</span> Agreement with AI
-              </h3>
-              <div className="flex gap-2">
-                {[
-                  { value: 'yes' as const, label: 'Agree', color: 'emerald' },
-                  { value: 'partially' as const, label: 'Partially', color: 'amber' },
-                  { value: 'no' as const, label: 'Disagree', color: 'red' },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setAgreesWithAi(option.value)}
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                      agreesWithAi === option.value
-                        ? option.color === 'emerald' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          : option.color === 'amber' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                          : 'bg-red-500/20 text-red-300 border border-red-500/30'
-                        : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Reasoning */}
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <h3 className="font-medium mb-4 flex items-center gap-2">
-              <span>💭</span> Reasoning
-            </h3>
-            <textarea
-              value={reasoning}
-              onChange={(e) => setReasoning(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-              placeholder="Explain your reasoning for this recommendation..."
-              rows={4}
-            />
+              </FormSection>
+            )}
           </div>
         </div>
       </div>
 
       {/* Footer Actions */}
-      <div className="p-4 border-t border-white/10 flex gap-3">
+      <div className="fixed bottom-0 left-0 right-0 p-4 border-t border-white/10 bg-[#0f1312] flex gap-3 justify-end">
+        <button
+          onClick={onClose}
+          className="px-6 py-3 rounded-xl border border-white/10 text-slate-300 font-medium hover:bg-white/5 transition-all"
+        >
+          Cancel
+        </button>
         <button
           onClick={() => handleSave(false)}
           disabled={saving}
-          className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 font-medium hover:bg-white/5 transition-all disabled:opacity-50"
+          className="px-6 py-3 rounded-xl border border-violet-500/30 text-violet-300 font-medium hover:bg-violet-500/10 transition-all disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save Draft'}
         </button>
         <button
           onClick={() => handleSave(true)}
-          disabled={saving || !sessionType}
-          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-medium shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all disabled:opacity-50"
+          disabled={saving || !requiredComplete}
+          className="px-8 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-medium shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all disabled:opacity-50"
         >
-          {saving ? 'Saving...' : 'Submit Response'}
+          {saving ? 'Submitting...' : 'Submit Response'}
         </button>
       </div>
+    </div>
+  )
+}
+
+// ================== HELPER COMPONENTS ==================
+
+function ProfileItem({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="flex justify-between text-sm">
+      <span className="text-slate-500">{label}</span>
+      <span className="text-slate-300 capitalize">{value}</span>
+    </div>
+  )
+}
+
+function ProfileSlider({ label, value, max, color, inverted }: { label: string; value: number; max: number; color: string; inverted?: boolean }) {
+  const pct = (value / max) * 100
+  const colorClass = inverted
+    ? (value > 6 ? 'bg-red-500' : value > 3 ? 'bg-amber-500' : 'bg-emerald-500')
+    : (value > 6 ? 'bg-emerald-500' : value > 3 ? 'bg-amber-500' : 'bg-red-500')
+  
+  return (
+    <div>
+      <div className="flex justify-between text-xs mb-1">
+        <span className="text-slate-500">{label}</span>
+        <span className={`text-${color}-400`}>{value}/{max}</span>
+      </div>
+      <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+        <div className={`h-full ${colorClass} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function FormSection({ 
+  number, title, icon, isExpanded, isComplete, onToggle, optional, children 
+}: { 
+  number: number; title: string; icon: string; isExpanded: boolean; isComplete: boolean; onToggle: () => void; optional?: boolean; children: React.ReactNode 
+}) {
+  return (
+    <div className={`rounded-xl border transition-all ${
+      isComplete ? 'border-emerald-500/30 bg-emerald-500/5' : 
+      isExpanded ? 'border-violet-500/30 bg-violet-500/5' : 'border-white/10 bg-white/5'
+    }`}>
+      <button
+        onClick={onToggle}
+        className="w-full p-4 flex items-center justify-between"
+      >
+        <div className="flex items-center gap-3">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+            isComplete ? 'bg-emerald-500/20' : 'bg-white/10'
+          }`}>
+            {isComplete ? '✓' : icon}
+          </div>
+          <div className="text-left">
+            <span className="font-medium">{number}. {title}</span>
+            {optional && <span className="text-xs text-slate-500 ml-2">(Optional)</span>}
+          </div>
+        </div>
+        <span className="text-slate-400">{isExpanded ? '▲' : '▼'}</span>
+      </button>
+      
+      {isExpanded && (
+        <div className="px-4 pb-4">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OutcomePredictionsForm({
+  qualityOptimal, setQualityOptimal,
+  qualityBaseline, setQualityBaseline,
+  confidence, setConfidence,
+}: {
+  qualityOptimal: number; setQualityOptimal: (v: number) => void
+  qualityBaseline: number; setQualityBaseline: (v: number) => void
+  confidence: 'high' | 'medium' | 'low'; setConfidence: (v: 'high' | 'medium' | 'low') => void
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="p-4 rounded-xl bg-white/5">
+        <div className="flex justify-between items-center mb-2">
+          <label className="text-sm text-slate-300">If they follow your recommendations</label>
+          <span className="text-2xl font-bold text-emerald-400">{qualityOptimal}/10</span>
+        </div>
+        <input
+          type="range" min="1" max="10" step="0.5"
+          value={qualityOptimal}
+          onChange={(e) => setQualityOptimal(parseFloat(e.target.value))}
+          className="w-full h-3 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+        />
+        <p className="text-xs text-slate-500 mt-2">Expected session quality with optimal intervention</p>
+      </div>
+      
+      <div className="p-4 rounded-xl bg-white/5">
+        <div className="flex justify-between items-center mb-2">
+          <label className="text-sm text-slate-300">If they proceed with original plan</label>
+          <span className="text-2xl font-bold text-amber-400">{qualityBaseline}/10</span>
+        </div>
+        <input
+          type="range" min="1" max="10" step="0.5"
+          value={qualityBaseline}
+          onChange={(e) => setQualityBaseline(parseFloat(e.target.value))}
+          className="w-full h-3 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+        />
+        <p className="text-xs text-slate-500 mt-2">Expected session quality without intervention</p>
+      </div>
+
+      <div>
+        <label className="text-sm text-slate-300 block mb-2">Prediction Confidence</label>
+        <div className="flex gap-2">
+          {(['high', 'medium', 'low'] as const).map((level) => (
+            <button
+              key={level}
+              onClick={() => setConfidence(level)}
+              className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium capitalize transition-all ${
+                confidence === level
+                  ? 'bg-violet-500/20 text-violet-300 border-2 border-violet-500/50'
+                  : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+              }`}
+            >
+              {level}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SessionRecommendationForm({
+  sessionType, setSessionType,
+  confidence, setConfidence,
+}: {
+  sessionType: SessionType | ''; setSessionType: (v: SessionType) => void
+  confidence: 'high' | 'medium' | 'low'; setConfidence: (v: 'high' | 'medium' | 'low') => void
+}) {
+  const sessionTypes: { value: SessionType; label: string; icon: string; desc: string }[] = [
+    { value: 'project', label: 'Project Session', icon: '🎯', desc: 'Work on specific project' },
+    { value: 'limit_bouldering', label: 'Limit Bouldering', icon: '💪', desc: 'Max effort attempts' },
+    { value: 'volume', label: 'Volume', icon: '📊', desc: 'High rep count, moderate intensity' },
+    { value: 'technique', label: 'Technique', icon: '🎨', desc: 'Focus on movement quality' },
+    { value: 'training', label: 'Training', icon: '🏋️', desc: 'Structured training exercises' },
+    { value: 'light_session', label: 'Light Session', icon: '🌤️', desc: 'Easy climbing, low intensity' },
+    { value: 'rest_day', label: 'Rest Day', icon: '😴', desc: 'Complete rest recommended' },
+    { value: 'active_recovery', label: 'Active Recovery', icon: '🧘', desc: 'Light movement, mobility' },
+  ]
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        {sessionTypes.map((type) => (
+          <button
+            key={type.value}
+            onClick={() => setSessionType(type.value)}
+            className={`p-4 rounded-xl text-left transition-all ${
+              sessionType === type.value
+                ? 'bg-violet-500/20 border-2 border-violet-500/50'
+                : 'bg-white/5 border border-white/10 hover:bg-white/10'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xl">{type.icon}</span>
+              <span className="font-medium text-sm">{type.label}</span>
+            </div>
+            <p className="text-xs text-slate-400">{type.desc}</p>
+          </button>
+        ))}
+      </div>
+
+      <div>
+        <label className="text-sm text-slate-300 block mb-2">Confidence in this recommendation</label>
+        <div className="flex gap-2">
+          {(['high', 'medium', 'low'] as const).map((level) => (
+            <button
+              key={level}
+              onClick={() => setConfidence(level)}
+              className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium capitalize transition-all ${
+                confidence === level
+                  ? 'bg-violet-500/20 text-violet-300 border-2 border-violet-500/50'
+                  : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+              }`}
+            >
+              {level}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TreatmentForm({ treatments, setTreatments }: {
+  treatments: Record<string, TreatmentRec>
+  setTreatments: (t: Record<string, TreatmentRec>) => void
+}) {
+  const updateTreatment = (key: string, field: 'value' | 'importance', val: string) => {
+    setTreatments({ ...treatments, [key]: { ...treatments[key], [field]: val } })
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Caffeine */}
+      <div className="p-4 rounded-xl bg-white/5">
+        <div className="flex items-center justify-between mb-3">
+          <span className="font-medium">☕ Caffeine</span>
+          <ImportanceSelector value={treatments.caffeine.importance} onChange={(v) => updateTreatment('caffeine', 'importance', v)} />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {['none', '50-100mg', '100-200mg', '200-300mg', '300+mg'].map((opt) => (
+            <button
+              key={opt}
+              onClick={() => updateTreatment('caffeine', 'value', opt)}
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                treatments.caffeine.value === opt
+                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                  : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+              }`}
+            >
+              {opt === 'none' ? 'None' : opt}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Warmup Duration */}
+      <div className="p-4 rounded-xl bg-white/5">
+        <div className="flex items-center justify-between mb-3">
+          <span className="font-medium">🔥 Warmup Duration</span>
+          <ImportanceSelector value={treatments.warmup_duration.importance} onChange={(v) => updateTreatment('warmup_duration', 'importance', v)} />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {['10', '15', '20', '25', '30+'].map((opt) => (
+            <button
+              key={opt}
+              onClick={() => updateTreatment('warmup_duration', 'value', opt)}
+              className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${
+                treatments.warmup_duration.value === opt
+                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                  : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+              }`}
+            >
+              {opt} min
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Session Intensity */}
+      <div className="p-4 rounded-xl bg-white/5">
+        <div className="flex items-center justify-between mb-3">
+          <span className="font-medium">⚡ Session Intensity</span>
+          <ImportanceSelector value={treatments.session_intensity.importance} onChange={(v) => updateTreatment('session_intensity', 'importance', v)} />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {['very_light', 'light', 'moderate', 'high', 'max_effort'].map((opt) => (
+            <button
+              key={opt}
+              onClick={() => updateTreatment('session_intensity', 'value', opt)}
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all capitalize ${
+                treatments.session_intensity.value === opt
+                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                  : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+              }`}
+            >
+              {opt.replace(/_/g, ' ')}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Timing */}
+      <div className="p-4 rounded-xl bg-white/5">
+        <div className="flex items-center justify-between mb-3">
+          <span className="font-medium">🕐 Session Timing</span>
+          <ImportanceSelector value={treatments.timing.importance} onChange={(v) => updateTreatment('timing', 'importance', v)} />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {['morning', 'midday', 'afternoon', 'evening', 'any'].map((opt) => (
+            <button
+              key={opt}
+              onClick={() => updateTreatment('timing', 'value', opt)}
+              className={`px-4 py-2 rounded-lg text-xs font-medium transition-all capitalize ${
+                treatments.timing.value === opt
+                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                  : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+              }`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ImportanceSelector({ value, onChange }: { value: string; onChange: (v: 'critical' | 'helpful' | 'neutral' | 'avoid') => void }) {
+  const options: { v: 'critical' | 'helpful' | 'neutral' | 'avoid'; label: string; color: string }[] = [
+    { v: 'critical', label: 'Critical', color: 'red' },
+    { v: 'helpful', label: 'Helpful', color: 'emerald' },
+    { v: 'neutral', label: 'Neutral', color: 'slate' },
+    { v: 'avoid', label: 'Avoid', color: 'amber' },
+  ]
+
+  return (
+    <div className="flex gap-1">
+      {options.map((opt) => (
+        <button
+          key={opt.v}
+          onClick={() => onChange(opt.v)}
+          className={`px-2 py-1 rounded text-xs transition-all ${
+            value === opt.v
+              ? opt.color === 'red' ? 'bg-red-500/20 text-red-300'
+                : opt.color === 'emerald' ? 'bg-emerald-500/20 text-emerald-300'
+                : opt.color === 'amber' ? 'bg-amber-500/20 text-amber-300'
+                : 'bg-slate-500/20 text-slate-300'
+              : 'bg-white/5 text-slate-500 hover:bg-white/10'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function CounterfactualInput({ counterfactuals, setCounterfactuals, preSession }: {
+  counterfactuals: Counterfactual[]
+  setCounterfactuals: (cf: Counterfactual[]) => void
+  preSession: Record<string, unknown>
+}) {
+  const addCounterfactual = () => {
+    setCounterfactuals([...counterfactuals, {
+      variable: '',
+      actualValue: 0,
+      counterfactualValue: 0,
+      newPredictedQuality: 5,
+      wouldChangeSessionType: false,
+    }])
+  }
+
+  const updateCounterfactual = (idx: number, field: string, value: unknown) => {
+    const updated = [...counterfactuals]
+    updated[idx] = { ...updated[idx], [field]: value }
+    
+    // Auto-fill actual value when variable changes
+    if (field === 'variable' && typeof value === 'string') {
+      const actualVal = preSession[value]
+      if (typeof actualVal === 'number') {
+        updated[idx].actualValue = actualVal
+      }
+    }
+    
+    setCounterfactuals(updated)
+  }
+
+  const removeCounterfactual = (idx: number) => {
+    setCounterfactuals(counterfactuals.filter((_, i) => i !== idx))
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-slate-400">
+        Add counterfactual judgments: "If X were different, what would happen?"
+      </p>
+      
+      {counterfactuals.map((cf, idx) => (
+        <div key={idx} className="p-4 rounded-xl bg-white/5 space-y-3">
+          <div className="flex items-start justify-between">
+            <span className="text-xs text-slate-500">Counterfactual #{idx + 1}</span>
+            <button onClick={() => removeCounterfactual(idx)} className="text-red-400 hover:text-red-300 text-sm">×</button>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">Variable</label>
+              <select
+                value={cf.variable}
+                onChange={(e) => updateCounterfactual(idx, 'variable', e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+              >
+                <option value="">Select...</option>
+                {AVAILABLE_VARIABLES.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">Actual Value</label>
+              <input
+                type="number"
+                value={cf.actualValue}
+                onChange={(e) => updateCounterfactual(idx, 'actualValue', parseFloat(e.target.value))}
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">Counterfactual Value</label>
+              <input
+                type="number"
+                value={cf.counterfactualValue}
+                onChange={(e) => updateCounterfactual(idx, 'counterfactualValue', parseFloat(e.target.value))}
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label className="text-xs text-slate-500 mb-1 block">New Expected Quality: {cf.newPredictedQuality}/10</label>
+            <input
+              type="range" min="1" max="10" step="0.5"
+              value={cf.newPredictedQuality}
+              onChange={(e) => updateCounterfactual(idx, 'newPredictedQuality', parseFloat(e.target.value))}
+              className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+            />
+          </div>
+          
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={cf.wouldChangeSessionType}
+              onChange={(e) => updateCounterfactual(idx, 'wouldChangeSessionType', e.target.checked)}
+              className="rounded border-white/20 bg-white/5 text-violet-500"
+            />
+            <span className="text-sm">Would change session type recommendation</span>
+          </label>
+        </div>
+      ))}
+      
+      <button
+        onClick={addCounterfactual}
+        className="w-full py-3 rounded-xl border border-dashed border-white/20 text-slate-400 hover:border-violet-500/50 hover:text-violet-300 transition-all"
+      >
+        + Add Counterfactual
+      </button>
+    </div>
+  )
+}
+
+function KeyDriversInput({ keyDrivers, setKeyDrivers }: {
+  keyDrivers: KeyDriver[]
+  setKeyDrivers: (kd: KeyDriver[]) => void
+}) {
+  const updateDriver = (rank: number, field: 'variable' | 'direction', value: string) => {
+    const updated = keyDrivers.map(kd => 
+      kd.rank === rank ? { ...kd, [field]: value } : kd
+    )
+    setKeyDrivers(updated)
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-slate-400">
+        Rank the top 3 factors driving your recommendation.
+      </p>
+      
+      {keyDrivers.map((driver) => (
+        <div key={driver.rank} className="p-4 rounded-xl bg-white/5 flex items-center gap-4">
+          <div className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center font-bold text-violet-300">
+            {driver.rank}
+          </div>
+          
+          <div className="flex-1">
+            <select
+              value={driver.variable}
+              onChange={(e) => updateDriver(driver.rank, 'variable', e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            >
+              <option value="">Select variable...</option>
+              {AVAILABLE_VARIABLES.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
+            </select>
+          </div>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={() => updateDriver(driver.rank, 'direction', 'positive')}
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                driver.direction === 'positive'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+              }`}
+            >
+              ↑ Positive
+            </button>
+            <button
+              onClick={() => updateDriver(driver.rank, 'direction', 'negative')}
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                driver.direction === 'negative'
+                  ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                  : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+              }`}
+            >
+              ↓ Negative
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function InteractionEffectsInput({ effects, setEffects }: {
+  effects: InteractionEffect[]
+  setEffects: (e: InteractionEffect[]) => void
+}) {
+  const addEffect = () => {
+    setEffects([...effects, {
+      variables: ['', ''],
+      description: '',
+      recommendationWithout: '',
+      recommendationWith: '',
+    }])
+  }
+
+  const removeEffect = (idx: number) => {
+    setEffects(effects.filter((_, i) => i !== idx))
+  }
+
+  const updateEffect = (idx: number, field: string, value: unknown) => {
+    const updated = [...effects]
+    updated[idx] = { ...updated[idx], [field]: value }
+    setEffects(updated)
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-slate-400">
+        Describe any interaction effects between variables that influence your recommendation.
+      </p>
+      
+      {effects.length === 0 ? (
+        <p className="text-sm text-slate-500 italic">No interaction effects added yet.</p>
+      ) : effects.map((effect, idx) => (
+        <div key={idx} className="p-4 rounded-xl bg-white/5 space-y-3">
+          <div className="flex justify-between">
+            <span className="text-xs text-slate-500">Interaction #{idx + 1}</span>
+            <button onClick={() => removeEffect(idx)} className="text-red-400 hover:text-red-300 text-sm">×</button>
+          </div>
+          
+          <div className="flex gap-2 items-center">
+            <select
+              value={effect.variables[0]}
+              onChange={(e) => updateEffect(idx, 'variables', [e.target.value, effect.variables[1]])}
+              className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            >
+              <option value="">Variable 1</option>
+              {AVAILABLE_VARIABLES.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
+            </select>
+            <span className="text-slate-500">×</span>
+            <select
+              value={effect.variables[1]}
+              onChange={(e) => updateEffect(idx, 'variables', [effect.variables[0], e.target.value])}
+              className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            >
+              <option value="">Variable 2</option>
+              {AVAILABLE_VARIABLES.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
+            </select>
+          </div>
+          
+          <textarea
+            value={effect.description}
+            onChange={(e) => updateEffect(idx, 'description', e.target.value)}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            placeholder="Describe how these variables interact..."
+            rows={2}
+          />
+        </div>
+      ))}
+      
+      <button
+        onClick={addEffect}
+        className="w-full py-3 rounded-xl border border-dashed border-white/20 text-slate-400 hover:border-violet-500/50 hover:text-violet-300 transition-all"
+      >
+        + Add Interaction Effect
+      </button>
+    </div>
+  )
+}
+
+function SessionStructureForm({ enabled, setEnabled, structure, setStructure }: {
+  enabled: boolean
+  setEnabled: (e: boolean) => void
+  structure: SessionStructure
+  setStructure: (s: SessionStructure) => void
+}) {
+  return (
+    <div className="space-y-4">
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => setEnabled(e.target.checked)}
+          className="rounded border-white/20 bg-white/5 text-violet-500"
+        />
+        <span className="text-sm">Include detailed session structure recommendation</span>
+      </label>
+      
+      {enabled && (
+        <div className="space-y-4 pl-6 border-l-2 border-violet-500/30">
+          {/* Warmup */}
+          <div className="p-4 rounded-xl bg-white/5">
+            <h4 className="font-medium mb-3">Warmup</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Duration (min)</label>
+                <input
+                  type="number"
+                  value={structure.warmup.durationMin}
+                  onChange={(e) => setStructure({
+                    ...structure,
+                    warmup: { ...structure.warmup, durationMin: parseInt(e.target.value) || 15 }
+                  })}
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Intensity</label>
+                <select
+                  value={structure.warmup.intensity}
+                  onChange={(e) => setStructure({
+                    ...structure,
+                    warmup: { ...structure.warmup, intensity: e.target.value as 'very_light' | 'light' | 'moderate' }
+                  })}
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                >
+                  <option value="very_light">Very Light</option>
+                  <option value="light">Light</option>
+                  <option value="moderate">Moderate</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-4 mt-3">
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={structure.warmup.includeMobility}
+                  onChange={(e) => setStructure({
+                    ...structure,
+                    warmup: { ...structure.warmup, includeMobility: e.target.checked }
+                  })}
+                  className="rounded border-white/20 bg-white/5 text-violet-500"
+                />
+                Mobility
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={structure.warmup.includeTraversing}
+                  onChange={(e) => setStructure({
+                    ...structure,
+                    warmup: { ...structure.warmup, includeTraversing: e.target.checked }
+                  })}
+                  className="rounded border-white/20 bg-white/5 text-violet-500"
+                />
+                Traversing
+              </label>
+            </div>
+          </div>
+
+          {/* Hangboard */}
+          <div className="p-4 rounded-xl bg-white/5">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-medium">Hangboard</h4>
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={structure.hangboard.include}
+                  onChange={(e) => setStructure({
+                    ...structure,
+                    hangboard: { ...structure.hangboard, include: e.target.checked }
+                  })}
+                  className="rounded border-white/20 bg-white/5 text-violet-500"
+                />
+                Include
+              </label>
+            </div>
+            {structure.hangboard.include && (
+              <div className="grid grid-cols-2 gap-3">
+                <select
+                  value={structure.hangboard.structure || ''}
+                  onChange={(e) => setStructure({
+                    ...structure,
+                    hangboard: { ...structure.hangboard, structure: e.target.value as 'max_hangs' | 'repeaters' | 'density_hangs' }
+                  })}
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                >
+                  <option value="">Structure...</option>
+                  <option value="max_hangs">Max Hangs</option>
+                  <option value="repeaters">Repeaters</option>
+                  <option value="density_hangs">Density Hangs</option>
+                </select>
+                <select
+                  value={structure.hangboard.volume || ''}
+                  onChange={(e) => setStructure({
+                    ...structure,
+                    hangboard: { ...structure.hangboard, volume: e.target.value as 'reduced' | 'normal' | 'extended' }
+                  })}
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                >
+                  <option value="">Volume...</option>
+                  <option value="reduced">Reduced</option>
+                  <option value="normal">Normal</option>
+                  <option value="extended">Extended</option>
+                </select>
+              </div>
+            )}
+            <label className="flex items-center gap-2 cursor-pointer text-sm mt-2 text-red-400">
+              <input
+                type="checkbox"
+                checked={structure.hangboard.contraindicated}
+                onChange={(e) => setStructure({
+                  ...structure,
+                  hangboard: { ...structure.hangboard, contraindicated: e.target.checked, include: e.target.checked ? false : structure.hangboard.include }
+                })}
+                className="rounded border-white/20 bg-white/5 text-red-500"
+              />
+              Contraindicated (avoid hangboard)
+            </label>
+          </div>
+
+          {/* Cooldown */}
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="text-xs text-slate-500 mb-1 block">Cooldown Duration (min)</label>
+              <input
+                type="number"
+                value={structure.cooldownDurationMin}
+                onChange={(e) => setStructure({ ...structure, cooldownDurationMin: parseInt(e.target.value) || 10 })}
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+              />
+            </div>
+            <div className="flex-1 flex items-end pb-2">
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={structure.antagonistWork}
+                  onChange={(e) => setStructure({ ...structure, antagonistWork: e.target.checked })}
+                  className="rounded border-white/20 bg-white/5 text-violet-500"
+                />
+                Antagonist Work
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
