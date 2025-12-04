@@ -906,7 +906,9 @@ export function Stats() {
   // Render widget menu
   const renderWidgetMenu = (widget: WidgetConfig) => (
     <div 
-      className="absolute top-2 right-2 z-20"
+      className={`absolute top-2 right-2 z-20 transition-opacity duration-200 ${
+        activeMenu === widget.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+      }`}
       onMouseDown={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
     >
@@ -1302,11 +1304,11 @@ export function Stats() {
         {widgets.map(widget => (
           <div
             key={widget.id}
-            className={`rounded-2xl border bg-white/5 backdrop-blur-sm overflow-hidden ${
+            className={`group rounded-2xl border bg-white/5 backdrop-blur-sm overflow-visible widget-container ${
               widget.locked ? 'border-amber-500/30' : 'border-white/10'
             }`}
           >
-            <div className="h-full flex flex-col">
+            <div className="h-full flex flex-col rounded-2xl overflow-hidden">
               {/* Widget Header */}
               <div className="drag-handle cursor-move px-4 py-3 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                 <h3 className="font-semibold text-sm flex items-center gap-2">

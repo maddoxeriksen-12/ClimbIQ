@@ -24,3 +24,13 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
+
+/* Hide resize handles until hover on widget containers */
+.widget-container .react-resizable-handle {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.widget-container:hover .react-resizable-handle {
+  opacity: 1;
+}
