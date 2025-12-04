@@ -6,6 +6,40 @@
 -- ============================================================================
 
 -- ============================================================================
+-- 0. POPULATION PRIORS TABLE (Create if not exists)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS population_priors (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    variable_name TEXT NOT NULL UNIQUE,
+    population_mean DECIMAL NOT NULL,
+    population_std DECIMAL NOT NULL,
+    individual_variance DECIMAL DEFAULT 0.5,
+    source TEXT NOT NULL CHECK (source IN ('blended', 'expert_only', 'literature_only', 'manual')),
+    confidence TEXT CHECK (confidence IN ('high', 'medium', 'low')),
+    n_scenarios INTEGER DEFAULT 0,
+    total_judgments INTEGER DEFAULT 0,
+    effect_direction TEXT CHECK (effect_direction IN ('positive', 'negative', 'nonlinear', 'contextual')),
+    variable_category TEXT,
+    description TEXT,
+    literature_refs TEXT[] DEFAULT '{}',
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_population_priors_variable ON population_priors (variable_name);
+CREATE INDEX IF NOT EXISTS idx_population_priors_source ON population_priors (source);
+
+ALTER TABLE population_priors ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can read population priors" ON population_priors;
+CREATE POLICY "Anyone can read population priors" ON population_priors FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Service role can modify priors" ON population_priors;
+CREATE POLICY "Service role can modify priors" ON population_priors FOR ALL USING (auth.role() = 'service_role');
+
+-- ============================================================================
 -- 1. LITERATURE REFERENCES TABLE
 -- ============================================================================
 -- Store citations for all research used to derive priors
@@ -349,14 +383,6 @@ ON CONFLICT (citation_key) DO NOTHING;
 -- ============================================================================
 -- 3. EXPANDED POPULATION PRIORS WITH LITERATURE BACKING
 -- ============================================================================
-
--- Drop and recreate with more comprehensive structure
-ALTER TABLE population_priors ADD COLUMN IF NOT EXISTS literature_refs TEXT[] DEFAULT '{}';
-ALTER TABLE population_priors ADD COLUMN IF NOT EXISTS effect_direction TEXT CHECK (effect_direction IN ('positive', 'negative', 'nonlinear', 'contextual'));
-ALTER TABLE population_priors ADD COLUMN IF NOT EXISTS variable_category TEXT;
-ALTER TABLE population_priors ADD COLUMN IF NOT EXISTS description TEXT;
-ALTER TABLE population_priors ADD COLUMN IF NOT EXISTS individual_variance DECIMAL DEFAULT 0.5;
-ALTER TABLE population_priors ADD COLUMN IF NOT EXISTS total_judgments INTEGER DEFAULT 0;
 
 -- Clear existing and insert comprehensive priors
 DELETE FROM population_priors;
