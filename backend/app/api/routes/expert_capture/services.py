@@ -168,8 +168,11 @@ class ExpertCaptureService:
     
     # ============ EXPERT RESPONSES ============
     
+    # Minimum number of expert responses needed before calculating consensus
+    MIN_EXPERTS_FOR_CONSENSUS = 2
+    
     def create_response(self, response: ExpertResponseCreate) -> Dict[str, Any]:
-        """Create a new expert response"""
+        """Create a new expert response and auto-trigger consensus if enough experts"""
         data = {
             "scenario_id": response.scenario_id,
             "expert_id": response.expert_id,
@@ -194,7 +197,27 @@ class ExpertCaptureService:
         # Update scenario status to in_review if it was pending
         self.supabase.table("synthetic_scenarios").update({"status": "in_review"}).eq("id", response.scenario_id).eq("status", "pending").execute()
         
+        # AUTO-CALCULATE CONSENSUS if enough experts have responded
+        self._auto_calculate_consensus_if_ready(response.scenario_id)
+        
         return result.data[0] if result.data else {}
+    
+    def _auto_calculate_consensus_if_ready(self, scenario_id: str) -> Optional[Dict[str, Any]]:
+        """Automatically calculate consensus if enough experts have responded"""
+        # Count complete responses for this scenario
+        count_result = self.supabase.table("expert_scenario_responses")\
+            .select("id", count="exact")\
+            .eq("scenario_id", scenario_id)\
+            .eq("is_complete", True)\
+            .execute()
+        
+        response_count = count_result.count or 0
+        
+        if response_count >= self.MIN_EXPERTS_FOR_CONSENSUS:
+            print(f"[AUTO] {response_count} experts have responded to scenario {scenario_id}. Calculating consensus...")
+            return self.calculate_consensus(scenario_id)
+        
+        return None
     
     def get_response(self, response_id: str) -> Dict[str, Any]:
         """Get a specific expert response"""
@@ -309,7 +332,33 @@ class ExpertCaptureService:
         new_status = "consensus_reached" if agreement_score and agreement_score > 0.7 else "disputed"
         self.update_scenario_status(scenario_id, ScenarioStatus(new_status))
         
+        # AUTO-EXTRACT PRIORS if consensus was reached
+        if new_status == "consensus_reached":
+            print(f"[AUTO] Consensus reached for scenario {scenario_id}. Triggering prior extraction...")
+            self._auto_extract_priors_if_ready()
+        
         return result.data[0] if result.data else consensus_data
+    
+    def _auto_extract_priors_if_ready(self) -> Optional[Dict[str, Any]]:
+        """Automatically extract priors if there are unprocessed consensus records"""
+        from .prior_extractor import PriorExtractor
+        
+        # Check how many unprocessed consensus records we have
+        count_result = self.supabase.table("scenario_consensus")\
+            .select("id", count="exact")\
+            .eq("processed_into_priors", False)\
+            .execute()
+        
+        unprocessed_count = count_result.count or 0
+        
+        # Extract priors if we have at least 1 unprocessed (immediate extraction)
+        # You can change this threshold if you want to batch more
+        if unprocessed_count >= 1:
+            print(f"[AUTO] {unprocessed_count} unprocessed consensus records. Extracting priors...")
+            extractor = PriorExtractor(self.supabase)
+            return extractor.extract_and_aggregate_priors()
+        
+        return None
     
     def _extract_coefficient_signals(self, responses: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Extract coefficient signals from expert counterfactuals"""
