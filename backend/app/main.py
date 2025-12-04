@@ -1,12 +1,25 @@
 from contextlib import asynccontextmanager
+import logging
 
 import redis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 from app.api.routes import health, recommendations, sessions, webhooks
-from app.api.routes.expert_capture import router as expert_capture_router
 from app.core.config import settings
+
+# Try to import expert_capture with error handling
+try:
+    from app.api.routes.expert_capture import router as expert_capture_router
+    logger.info("✅ Successfully imported expert_capture router")
+    EXPERT_CAPTURE_AVAILABLE = True
+except Exception as e:
+    logger.error(f"❌ Failed to import expert_capture router: {e}")
+    expert_capture_router = None
+    EXPERT_CAPTURE_AVAILABLE = False
 
 
 @asynccontextmanager
@@ -49,10 +62,14 @@ app.include_router(
   prefix=settings.API_V1_PREFIX,
   tags=["Webhooks"],
 )
-app.include_router(
-  expert_capture_router,
-  prefix=settings.API_V1_PREFIX,
-  tags=["Expert Capture"],
-)
+if EXPERT_CAPTURE_AVAILABLE and expert_capture_router:
+    app.include_router(
+      expert_capture_router,
+      prefix=settings.API_V1_PREFIX,
+      tags=["Expert Capture"],
+    )
+    logger.info("✅ Expert Capture router registered")
+else:
+    logger.warning("⚠️ Expert Capture router not available")
 
 
