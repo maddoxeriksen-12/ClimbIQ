@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import health, recommendations, sessions, webhooks
+from app.api.routes.expert_capture import router as expert_capture_router
 from app.core.config import settings
 
 
@@ -47,6 +48,11 @@ app.include_router(
   webhooks.router,
   prefix=settings.API_V1_PREFIX,
   tags=["Webhooks"],
+)
+app.include_router(
+  expert_capture_router,
+  prefix=settings.API_V1_PREFIX,
+  tags=["Expert Capture"],
 )
 
 
