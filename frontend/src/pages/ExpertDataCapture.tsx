@@ -602,7 +602,6 @@ function ScenarioReviewPanel({
   
   // Section 8: Outcome Predictions (last - after reviewing everything)
   const [qualityOptimal, setQualityOptimal] = useState(existingResponse?.predicted_quality_optimal || 5)
-  const [qualityBaseline, setQualityBaseline] = useState(existingResponse?.predicted_quality_baseline || 5)
   const [predictionConfidence, setPredictionConfidence] = useState<'high' | 'medium' | 'low'>(existingResponse?.prediction_confidence || 'medium')
   
   // Calculate progress
@@ -614,7 +613,7 @@ function ScenarioReviewPanel({
     5: true,                                                          // Interaction Effects (optional)
     6: true,                                                          // Session Structure (optional)
     7: reasoning.trim().length > 10,                                 // Reasoning
-    8: qualityOptimal !== 5 || qualityBaseline !== 5,                // Outcome Predictions
+    8: qualityOptimal !== 5,                                         // Outcome Predictions
   }
   const completedSections = Object.values(sectionCompletion).filter(Boolean).length
   const requiredComplete = sectionCompletion[1] && sectionCompletion[4] && sectionCompletion[7] && sectionCompletion[8]
@@ -630,7 +629,6 @@ function ScenarioReviewPanel({
       scenario_id: scenario.id,
       expert_id: expertId,
       predicted_quality_optimal: qualityOptimal,
-      predicted_quality_baseline: qualityBaseline,
       prediction_confidence: predictionConfidence,
       recommended_session_type: sessionType || undefined,
       session_type_confidence: sessionTypeConfidence,
@@ -943,8 +941,6 @@ function ScenarioReviewPanel({
               <OutcomePredictionsForm
                 qualityOptimal={qualityOptimal}
                 setQualityOptimal={setQualityOptimal}
-                qualityBaseline={qualityBaseline}
-                setQualityBaseline={setQualityBaseline}
                 confidence={predictionConfidence}
                 setConfidence={setPredictionConfidence}
               />
@@ -1051,18 +1047,16 @@ function FormSection({
 
 function OutcomePredictionsForm({
   qualityOptimal, setQualityOptimal,
-  qualityBaseline, setQualityBaseline,
   confidence, setConfidence,
 }: {
   qualityOptimal: number; setQualityOptimal: (v: number) => void
-  qualityBaseline: number; setQualityBaseline: (v: number) => void
   confidence: 'high' | 'medium' | 'low'; setConfidence: (v: 'high' | 'medium' | 'low') => void
 }) {
   return (
     <div className="space-y-6">
       <div className="p-4 rounded-xl bg-white/5">
         <div className="flex justify-between items-center mb-2">
-          <label className="text-sm text-slate-300">If they follow your recommendations</label>
+          <label className="text-sm text-slate-300">Predicted session quality</label>
           <span className="text-2xl font-bold text-emerald-400">{qualityOptimal}/10</span>
         </div>
         <input
@@ -1071,21 +1065,7 @@ function OutcomePredictionsForm({
           onChange={(e) => setQualityOptimal(parseFloat(e.target.value))}
           className="w-full h-3 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
         />
-        <p className="text-xs text-slate-500 mt-2">Expected session quality with optimal intervention</p>
-      </div>
-      
-      <div className="p-4 rounded-xl bg-white/5">
-        <div className="flex justify-between items-center mb-2">
-          <label className="text-sm text-slate-300">If they proceed with original plan</label>
-          <span className="text-2xl font-bold text-amber-400">{qualityBaseline}/10</span>
-        </div>
-        <input
-          type="range" min="1" max="10" step="0.5"
-          value={qualityBaseline}
-          onChange={(e) => setQualityBaseline(parseFloat(e.target.value))}
-          className="w-full h-3 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
-        />
-        <p className="text-xs text-slate-500 mt-2">Expected session quality without intervention</p>
+        <p className="text-xs text-slate-500 mt-2">Expected session quality if they follow your recommendations</p>
       </div>
 
       <div>
