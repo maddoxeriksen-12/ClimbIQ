@@ -4,7 +4,41 @@ import { useAuth, type UserRole } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { GOAL_TYPES, createGoal, saveGoal, setActiveGoal, type GoalType } from '../lib/goalStorage'
 
-type OnboardingStep = 'welcome' | 'role' | 'profile' | 'goal' | 'complete'
+type OnboardingStep = 'welcome' | 'role' | 'profile' | 'injury' | 'training' | 'goal' | 'complete'
+
+// Body regions for injury tracking
+const BODY_REGIONS = ['fingers', 'shoulders', 'elbows', 'wrists', 'skin'] as const
+type BodyRegion = typeof BODY_REGIONS[number]
+type InjuryStatus = 'none' | 'niggle' | 'injury' | 'recovering'
+
+interface RegionInjury {
+  status: InjuryStatus
+  severity?: number // 1-10
+  affectedSide?: 'left' | 'right' | 'both'
+  duration?: string // weeks/months
+  limitingActivities?: boolean
+}
+
+interface PastInjury {
+  type: string
+  details: string
+  howLongAgo: string
+  fullyRecovered: boolean
+}
+
+interface TrainingData {
+  totalYearsClimbing: number
+  yearsClimbingConsistently: number
+  highestBoulderRedpoint: string
+  highestSportRedpoint: string
+  highestOnsight: string
+  currentBoulderGrade: string
+  currentSportGrade: string
+  sessionsPerWeek: number
+  hoursPerSession: number
+  trainingSessionsPerWeek: number
+  indoorOutdoorSplit: number // 0-100 (% indoor)
+}
 
 export function Onboarding() {
   const { user, loading: authLoading } = useAuth()
@@ -16,6 +50,33 @@ export function Onboarding() {
   const [selectedGoalType, setSelectedGoalType] = useState<GoalType | null>(null)
   const [goalTargetDate, setGoalTargetDate] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // Injury History State
+  const [regionInjuries, setRegionInjuries] = useState<Record<BodyRegion, RegionInjury>>({
+    fingers: { status: 'none' },
+    shoulders: { status: 'none' },
+    elbows: { status: 'none' },
+    wrists: { status: 'none' },
+    skin: { status: 'none' },
+  })
+  const [pastInjuries, setPastInjuries] = useState<PastInjury[]>([])
+  const [chronicConditions, setChronicConditions] = useState<string[]>([])
+  const [surgeryHistory, setSurgeryHistory] = useState('')
+
+  // Training History State
+  const [trainingData, setTrainingData] = useState<TrainingData>({
+    totalYearsClimbing: 0,
+    yearsClimbingConsistently: 0,
+    highestBoulderRedpoint: '',
+    highestSportRedpoint: '',
+    highestOnsight: '',
+    currentBoulderGrade: '',
+    currentSportGrade: '',
+    sessionsPerWeek: 2,
+    hoursPerSession: 2,
+    trainingSessionsPerWeek: 0,
+    indoorOutdoorSplit: 80,
+  })
 
   // Check if user has already completed onboarding
   useEffect(() => {
@@ -61,9 +122,9 @@ export function Onboarding() {
       })
       
       if (role === 'athlete') {
-        setStep('goal')
+        setStep('injury') // Go to injury history step
       } else {
-        // Coaches skip goal, complete onboarding
+        // Coaches skip injury/training/goal, complete onboarding
         await completeOnboarding()
       }
     } catch (error) {
@@ -71,6 +132,60 @@ export function Onboarding() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleInjurySubmit = async () => {
+    setSaving(true)
+    try {
+      // Save injury data to user metadata
+      await supabase.auth.updateUser({
+        data: {
+          injury_history: {
+            current_injuries: regionInjuries,
+            past_injuries: pastInjuries,
+            chronic_conditions: chronicConditions,
+            surgery_history: surgeryHistory,
+          }
+        }
+      })
+      setStep('training')
+    } catch (error) {
+      console.error('Error saving injury history:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleTrainingSubmit = async () => {
+    setSaving(true)
+    try {
+      // Save training data to user metadata
+      await supabase.auth.updateUser({
+        data: {
+          training_history: trainingData
+        }
+      })
+      setStep('goal')
+    } catch (error) {
+      console.error('Error saving training history:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const updateRegionInjury = (region: BodyRegion, updates: Partial<RegionInjury>) => {
+    setRegionInjuries(prev => ({
+      ...prev,
+      [region]: { ...prev[region], ...updates }
+    }))
+  }
+
+  const toggleChronicCondition = (condition: string) => {
+    setChronicConditions(prev => 
+      prev.includes(condition) 
+        ? prev.filter(c => c !== condition)
+        : [...prev, condition]
+    )
   }
 
   const handleGoalSubmit = async () => {
@@ -156,12 +271,12 @@ export function Onboarding() {
       {/* Progress indicator */}
       <div className="fixed top-8 left-1/2 -translate-x-1/2 z-20">
         <div className="flex items-center gap-2">
-          {['welcome', 'role', 'profile', 'goal'].map((s, i) => (
+          {['welcome', 'role', 'profile', 'injury', 'training', 'goal'].map((s, i) => (
             <div
               key={s}
               className={`w-2 h-2 rounded-full transition-all ${
-                ['welcome', 'role', 'profile', 'goal'].indexOf(step) >= i
-                  ? 'bg-cyan-400 w-8'
+                ['welcome', 'role', 'profile', 'injury', 'training', 'goal'].indexOf(step) >= i
+                  ? 'bg-cyan-400 w-6'
                   : 'bg-white/20'
               }`}
             />
@@ -294,6 +409,380 @@ export function Onboarding() {
           </div>
         )}
 
+        {/* Injury History Step (Athletes only) */}
+        {step === 'injury' && (
+          <div className="animate-fade-in-up max-w-4xl mx-auto">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-amber-500/20 to-red-500/20 border border-white/10 flex items-center justify-center text-3xl mb-4">
+                🩹
+              </div>
+              <h1 className="text-3xl font-bold mb-2">
+                Injury History & Status
+              </h1>
+              <p className="text-slate-400 max-w-xl mx-auto">
+                Previous injury is a significant risk factor for reinjury. This helps us provide safe recommendations.
+              </p>
+            </div>
+
+            <div className="space-y-8">
+              {/* Current Injury Status */}
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <span>🔍</span> Current Injury/Niggle Status
+                </h2>
+                <p className="text-sm text-slate-400 mb-4">For each body region, select your current status:</p>
+                
+                <div className="space-y-4">
+                  {BODY_REGIONS.map((region) => (
+                    <div key={region} className="p-4 rounded-xl bg-white/5 border border-white/5">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium capitalize">{region}</span>
+                        <div className="flex gap-2">
+                          {(['none', 'niggle', 'injury', 'recovering'] as InjuryStatus[]).map((status) => (
+                            <button
+                              key={status}
+                              onClick={() => updateRegionInjury(region, { status })}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                regionInjuries[region].status === status
+                                  ? status === 'none' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                  : status === 'niggle' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : status === 'injury' ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                                  : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                                  : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+                              }`}
+                            >
+                              {status === 'none' ? 'None' : status.charAt(0).toUpperCase() + status.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Show details if not "none" */}
+                      {regionInjuries[region].status !== 'none' && (
+                        <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-white/10 animate-fade-in-up">
+                          <div>
+                            <label className="text-xs text-slate-400 block mb-1">Severity (1-10)</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={regionInjuries[region].severity || ''}
+                              onChange={(e) => updateRegionInjury(region, { severity: parseInt(e.target.value) || undefined })}
+                              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                              placeholder="1-10"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-slate-400 block mb-1">Side</label>
+                            <select
+                              value={regionInjuries[region].affectedSide || ''}
+                              onChange={(e) => updateRegionInjury(region, { affectedSide: e.target.value as 'left' | 'right' | 'both' })}
+                              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                            >
+                              <option value="">Select</option>
+                              <option value="left">Left</option>
+                              <option value="right">Right</option>
+                              <option value="both">Both</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-xs text-slate-400 block mb-1">Duration</label>
+                            <input
+                              type="text"
+                              value={regionInjuries[region].duration || ''}
+                              onChange={(e) => updateRegionInjury(region, { duration: e.target.value })}
+                              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                              placeholder="e.g., 2 weeks"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chronic Conditions */}
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <span>🔄</span> Chronic Conditions
+                </h2>
+                <p className="text-sm text-slate-400 mb-4">Select any chronic conditions you experience:</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    'Finger joint capsulitis',
+                    'Chronic tendonitis',
+                    'Nerve compression issues',
+                    'Recurring skin issues (splits/flappers)',
+                    'None'
+                  ].map((condition) => (
+                    <button
+                      key={condition}
+                      onClick={() => toggleChronicCondition(condition)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                        chronicConditions.includes(condition)
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                          : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+                      }`}
+                    >
+                      {condition}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Surgery History */}
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <span>🏥</span> Surgery History
+                </h2>
+                <textarea
+                  value={surgeryHistory}
+                  onChange={(e) => setSurgeryHistory(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  placeholder="List any climbing-related surgeries (e.g., 'Pulley repair, 2021')..."
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4 mt-8">
+              <button
+                onClick={() => setStep('profile')}
+                className="flex-1 py-4 rounded-xl border border-white/10 text-slate-400 font-medium hover:bg-white/5 transition-all"
+              >
+                ← Back
+              </button>
+              <button
+                onClick={handleInjurySubmit}
+                disabled={saving}
+                className="flex-[2] py-4 rounded-xl bg-gradient-to-r from-cyan-600 via-emerald-600 to-fuchsia-600 text-white font-semibold shadow-lg shadow-cyan-500/25 disabled:opacity-50 transition-all"
+              >
+                {saving ? 'Saving...' : 'Continue'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Training History Step (Athletes only) */}
+        {step === 'training' && (
+          <div className="animate-fade-in-up max-w-4xl mx-auto">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center text-3xl mb-4">
+                📊
+              </div>
+              <h1 className="text-3xl font-bold mb-2">
+                Training History & Context
+              </h1>
+              <p className="text-slate-400 max-w-xl mx-auto">
+                This helps us understand your experience level and provide tailored recommendations.
+              </p>
+            </div>
+
+            <div className="space-y-8">
+              {/* Climbing Experience */}
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <span>🧗</span> Climbing Experience
+                </h2>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-sm text-slate-300 block mb-2">Total years climbing</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={trainingData.totalYearsClimbing || ''}
+                      onChange={(e) => setTrainingData(prev => ({ ...prev, totalYearsClimbing: parseFloat(e.target.value) || 0 }))}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white"
+                      placeholder="e.g., 3"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-300 block mb-2">Years climbing consistently (2+ sessions/week)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={trainingData.yearsClimbingConsistently || ''}
+                      onChange={(e) => setTrainingData(prev => ({ ...prev, yearsClimbingConsistently: parseFloat(e.target.value) || 0 }))}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white"
+                      placeholder="e.g., 2"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Highest Grades */}
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <span>🏆</span> Highest Grades Achieved
+                </h2>
+                
+                <div className="grid md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="text-sm text-slate-300 block mb-2">Boulder Redpoint</label>
+                    <select
+                      value={trainingData.highestBoulderRedpoint}
+                      onChange={(e) => setTrainingData(prev => ({ ...prev, highestBoulderRedpoint: e.target.value }))}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white"
+                    >
+                      <option value="">Select grade</option>
+                      {['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13+'].map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-300 block mb-2">Sport Redpoint</label>
+                    <select
+                      value={trainingData.highestSportRedpoint}
+                      onChange={(e) => setTrainingData(prev => ({ ...prev, highestSportRedpoint: e.target.value }))}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white"
+                    >
+                      <option value="">Select grade</option>
+                      {['5.6', '5.7', '5.8', '5.9', '5.10a', '5.10b', '5.10c', '5.10d', '5.11a', '5.11b', '5.11c', '5.11d', '5.12a', '5.12b', '5.12c', '5.12d', '5.13a', '5.13b', '5.13c', '5.13d', '5.14a+'].map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-300 block mb-2">Onsight Grade</label>
+                    <select
+                      value={trainingData.highestOnsight}
+                      onChange={(e) => setTrainingData(prev => ({ ...prev, highestOnsight: e.target.value }))}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white"
+                    >
+                      <option value="">Select grade</option>
+                      {['5.6', '5.7', '5.8', '5.9', '5.10a', '5.10b', '5.10c', '5.10d', '5.11a', '5.11b', '5.11c', '5.11d', '5.12a', '5.12b', '5.12c', '5.12d', '5.13a+'].map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Current Working Grades */}
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <span>📈</span> Current Working Grades
+                </h2>
+                <p className="text-sm text-slate-400 mb-4">What grades constitute a "session day" for you?</p>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-sm text-slate-300 block mb-2">Boulder Working Grade</label>
+                    <select
+                      value={trainingData.currentBoulderGrade}
+                      onChange={(e) => setTrainingData(prev => ({ ...prev, currentBoulderGrade: e.target.value }))}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white"
+                    >
+                      <option value="">Select grade</option>
+                      {['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10+'].map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-300 block mb-2">Sport Working Grade</label>
+                    <select
+                      value={trainingData.currentSportGrade}
+                      onChange={(e) => setTrainingData(prev => ({ ...prev, currentSportGrade: e.target.value }))}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white"
+                    >
+                      <option value="">Select grade</option>
+                      {['5.6', '5.7', '5.8', '5.9', '5.10a', '5.10b', '5.10c', '5.10d', '5.11a', '5.11b', '5.11c', '5.11d', '5.12a', '5.12b', '5.12c', '5.12d', '5.13a+'].map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Current Training Volume */}
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <span>📅</span> Current Training Volume
+                </h2>
+                
+                <div className="grid md:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <label className="text-sm text-slate-300 block mb-2">Climbing sessions per week</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="14"
+                      value={trainingData.sessionsPerWeek}
+                      onChange={(e) => setTrainingData(prev => ({ ...prev, sessionsPerWeek: parseInt(e.target.value) || 0 }))}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-300 block mb-2">Hours per session</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="8"
+                      step="0.5"
+                      value={trainingData.hoursPerSession}
+                      onChange={(e) => setTrainingData(prev => ({ ...prev, hoursPerSession: parseFloat(e.target.value) || 0 }))}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white"
+                    />
+                  </div>
+                </div>
+                
+                <div className="mb-6">
+                  <label className="text-sm text-slate-300 block mb-2">Non-climbing training sessions per week (hangboard, S&C, etc.)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="14"
+                    value={trainingData.trainingSessionsPerWeek}
+                    onChange={(e) => setTrainingData(prev => ({ ...prev, trainingSessionsPerWeek: parseInt(e.target.value) || 0 }))}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-slate-300 block mb-2">Indoor / Outdoor split</label>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-slate-400">🏢 Indoor</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={trainingData.indoorOutdoorSplit}
+                      onChange={(e) => setTrainingData(prev => ({ ...prev, indoorOutdoorSplit: parseInt(e.target.value) }))}
+                      className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                    />
+                    <span className="text-sm text-slate-400">🏔️ Outdoor</span>
+                  </div>
+                  <p className="text-xs text-slate-500 text-center mt-2">
+                    {trainingData.indoorOutdoorSplit}% Indoor / {100 - trainingData.indoorOutdoorSplit}% Outdoor
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-4 mt-8">
+              <button
+                onClick={() => setStep('injury')}
+                className="flex-1 py-4 rounded-xl border border-white/10 text-slate-400 font-medium hover:bg-white/5 transition-all"
+              >
+                ← Back
+              </button>
+              <button
+                onClick={handleTrainingSubmit}
+                disabled={saving}
+                className="flex-[2] py-4 rounded-xl bg-gradient-to-r from-cyan-600 via-emerald-600 to-fuchsia-600 text-white font-semibold shadow-lg shadow-cyan-500/25 disabled:opacity-50 transition-all"
+              >
+                {saving ? 'Saving...' : 'Continue'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Goal Selection Step (Athletes only) */}
         {step === 'goal' && (
           <div className="animate-fade-in-up">
@@ -353,6 +842,12 @@ export function Onboarding() {
             )}
 
             <div className="flex gap-4 max-w-md mx-auto">
+              <button
+                onClick={() => setStep('training')}
+                className="py-4 px-6 rounded-xl border border-white/10 text-slate-400 font-medium hover:bg-white/5 transition-all"
+              >
+                ← Back
+              </button>
               <button
                 onClick={skipGoal}
                 disabled={saving}
