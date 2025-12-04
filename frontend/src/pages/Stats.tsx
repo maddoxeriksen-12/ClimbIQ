@@ -389,6 +389,27 @@ export function Stats() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [editingWidget, setEditingWidget] = useState<WidgetConfig | null>(null)
 
+  // Close menu when clicking outside (especially useful for mobile)
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement
+      // Check if click is outside the menu
+      if (activeMenu && !target.closest('.widget-menu-container')) {
+        setActiveMenu(null)
+      }
+    }
+
+    if (activeMenu) {
+      document.addEventListener('click', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [activeMenu])
+
   // Fetch all sessions
   useEffect(() => {
     async function fetchData() {
@@ -1002,8 +1023,10 @@ export function Stats() {
   // Render widget menu
   const renderWidgetMenu = (widget: WidgetConfig) => (
     <div 
-      className={`absolute top-2 right-2 z-20 transition-opacity duration-200 ${
-        activeMenu === widget.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+      className={`widget-menu-container absolute top-2 right-2 z-20 transition-opacity duration-200 ${
+        activeMenu === widget.id 
+          ? 'opacity-100' 
+          : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'
       }`}
       onMouseDown={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
@@ -1403,6 +1426,14 @@ export function Stats() {
             className={`group rounded-2xl border bg-white/5 backdrop-blur-sm overflow-visible widget-container ${
               widget.locked ? 'border-amber-500/30' : 'border-white/10'
             }`}
+            onClick={(e) => {
+              // On mobile/tablet, tapping the widget opens the menu
+              // Check if it's a touch device or small screen
+              if (window.innerWidth < 1024 && !activeMenu) {
+                e.stopPropagation()
+                setActiveMenu(widget.id)
+              }
+            }}
           >
             <div className="h-full flex flex-col rounded-2xl overflow-hidden">
               {/* Widget Header */}
