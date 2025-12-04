@@ -610,7 +610,7 @@ function ScenarioReviewPanel({
     1: qualityOptimal !== 5 || qualityBaseline !== 5,
     2: sessionType !== '',
     3: Object.values(treatments).some(t => t.importance !== 'neutral'),
-    4: counterfactuals.length > 0,
+    4: true, // Optional - counterfactuals
     5: keyDrivers.filter(kd => kd.variable !== '').length >= 1,
     6: true, // Optional
     7: true, // Optional
@@ -874,7 +874,7 @@ function ScenarioReviewPanel({
             {/* Section 4: Counterfactuals */}
             <FormSection
               number={4}
-              title="Counterfactuals"
+              title="Counterfactuals (Optional)"
               icon="🔄"
               isExpanded={expandedSection === 4}
               isComplete={sectionCompletion[4]}
