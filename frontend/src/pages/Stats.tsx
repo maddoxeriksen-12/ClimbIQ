@@ -114,6 +114,7 @@ const CHART_TYPES = [
   { value: 'bar', label: 'Bar' },
   { value: 'line', label: 'Line' },
   { value: 'numeric', label: 'Number' },
+  { value: 'summary-number', label: 'Big Number' },
   { value: 'combo', label: 'Combo' },
   { value: 'stacked-bar', label: 'Stacked' },
   { value: 'stacked-area', label: 'Area' },
@@ -143,6 +144,7 @@ const AVAILABLE_MEASURES = [
     { value: 'total_sends', label: 'Total Sends', type: 'number' },
     { value: 'flash_count', label: 'Flash Count', type: 'number' },
     { value: 'end_energy', label: 'End Energy', type: 'number' },
+    { value: 'sessions', label: 'Sessions Count', type: 'number' },
   ]},
   { category: 'Climbing', items: [
     { value: 'grade', label: 'Grade', type: 'string' },
@@ -171,6 +173,7 @@ const COLOR_PALETTES = [
   { name: 'Vibrant', colors: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dfe6e9', '#fd79a8', '#a29bfe'] },
   { name: 'Earth', colors: ['#8d6e63', '#a1887f', '#bcaaa4', '#d7ccc8', '#795548', '#6d4c41', '#5d4037', '#4e342e'] },
   { name: 'Ocean', colors: ['#0077b6', '#00b4d8', '#90e0ef', '#caf0f8', '#03045e', '#023e8a', '#0096c7', '#48cae4'] },
+  { name: 'Forest', colors: ['#2d6a4f', '#40916c', '#52b788', '#74c69d', '#95d5b2', '#b7e4c7', '#1b4332', '#081c15'] },
 ]
 
 // Time frame options
@@ -281,6 +284,62 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
     sortBy: null,
     sortOrder: 'asc'
   },
+  { 
+    id: 'summary-total-climbs', 
+    title: 'Total Climbs', 
+    chartType: 'summary-number',
+    measures: ['total_climbs'],
+    dimensions: [],
+    colorPalette: 0,
+    colorByMeasure: null,
+    filters: [],
+    gradeType: 'boulder',
+    locked: false,
+    sortBy: null,
+    sortOrder: 'asc'
+  },
+  { 
+    id: 'summary-total-sends', 
+    title: 'Total Sends', 
+    chartType: 'summary-number',
+    measures: ['sends'],
+    dimensions: [],
+    colorPalette: 0,
+    colorByMeasure: null,
+    filters: [],
+    gradeType: 'boulder',
+    locked: false,
+    sortBy: null,
+    sortOrder: 'asc'
+  },
+  { 
+    id: 'summary-total-flashes', 
+    title: 'Total Flashes', 
+    chartType: 'summary-number',
+    measures: ['flashes'],
+    dimensions: [],
+    colorPalette: 0,
+    colorByMeasure: null,
+    filters: [],
+    gradeType: 'boulder',
+    locked: false,
+    sortBy: null,
+    sortOrder: 'asc'
+  },
+  { 
+    id: 'summary-sessions', 
+    title: 'Sessions', 
+    chartType: 'summary-number',
+    measures: ['sessions'],
+    dimensions: [],
+    colorPalette: 0,
+    colorByMeasure: null,
+    filters: [],
+    gradeType: 'boulder',
+    locked: false,
+    sortBy: null,
+    sortOrder: 'asc'
+  },
 ]
 
 // Layout item type
@@ -301,6 +360,10 @@ const DEFAULT_LAYOUT: LayoutItem[] = [
   { i: 'personal-records', x: 0, y: 4, w: 4, h: 3, minW: 2, minH: 2 },
   { i: 'session-stats', x: 4, y: 4, w: 4, h: 3, minW: 2, minH: 2 },
   { i: 'climb-log', x: 8, y: 4, w: 4, h: 3, minW: 2, minH: 2 },
+  { i: 'summary-total-climbs', x: 0, y: 7, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: 'summary-total-sends', x: 3, y: 7, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: 'summary-total-flashes', x: 6, y: 7, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: 'summary-sessions', x: 9, y: 7, w: 3, h: 2, minW: 2, minH: 2 },
 ]
 
 export function Stats() {
@@ -899,9 +962,42 @@ export function Stats() {
       )
     }
 
+    // Summary number widgets (big single numbers)
+    if (widget.chartType === 'summary-number') {
+      const primaryColor = colors[0] || '#a855f7'
+      let value = 0
+      let label = widget.title
+
+      // Calculate value based on measures
+      if (widget.measures.includes('total_climbs')) {
+        value = filteredData.climbs.length
+      } else if (widget.measures.includes('sends')) {
+        value = filteredData.climbs.filter(c => c.sent).length
+      } else if (widget.measures.includes('flashes')) {
+        value = filteredData.climbs.filter(c => c.flashed).length
+      } else if (widget.measures.includes('sessions')) {
+        value = filteredData.sessions.length
+      } else if (widget.measures.includes('session_rpe')) {
+        const totalRpe = filteredData.sessions.reduce((sum, s) => sum + (s.session_rpe || 0), 0)
+        value = filteredData.sessions.length > 0 ? Math.round(totalRpe / filteredData.sessions.length * 10) / 10 : 0
+        label = 'Avg RPE'
+      } else if (widget.measures.includes('satisfaction')) {
+        const totalSat = filteredData.sessions.reduce((sum, s) => sum + (s.satisfaction || 0), 0)
+        value = filteredData.sessions.length > 0 ? Math.round(totalSat / filteredData.sessions.length * 10) / 10 : 0
+        label = 'Avg Satisfaction'
+      }
+
+      return (
+        <div className="h-full flex flex-col items-center justify-center">
+          <p className="text-4xl md:text-5xl font-bold" style={{ color: primaryColor }}>{value}</p>
+          <p className="text-sm text-slate-400 mt-1">{label}</p>
+        </div>
+      )
+    }
+
     // Default chart rendering
     return renderChart(widget, [], colors)
-  }, [getHistogramData, getTimelineData, getPersonalRecords, getSessionStats, filteredData.climbs, renderChart, handleWidgetUpdate])
+  }, [getHistogramData, getTimelineData, getPersonalRecords, getSessionStats, filteredData.climbs, filteredData.sessions, renderChart, handleWidgetUpdate])
 
   // Render widget menu
   const renderWidgetMenu = (widget: WidgetConfig) => (
@@ -1326,26 +1422,6 @@ export function Stats() {
           </div>
         ))}
       </GridLayout>
-
-      {/* Summary Stats */}
-      <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl border border-white/10 bg-white/5 text-center">
-          <p className="text-3xl font-bold text-fuchsia-400">{filteredData.climbs.length}</p>
-          <p className="text-sm text-slate-400">Total Climbs</p>
-        </div>
-        <div className="p-4 rounded-2xl border border-white/10 bg-white/5 text-center">
-          <p className="text-3xl font-bold text-emerald-400">{filteredData.climbs.filter(c => c.sent).length}</p>
-          <p className="text-sm text-slate-400">Total Sends</p>
-        </div>
-        <div className="p-4 rounded-2xl border border-white/10 bg-white/5 text-center">
-          <p className="text-3xl font-bold text-cyan-400">{filteredData.climbs.filter(c => c.flashed).length}</p>
-          <p className="text-sm text-slate-400">Total Flashes</p>
-        </div>
-        <div className="p-4 rounded-2xl border border-white/10 bg-white/5 text-center">
-          <p className="text-3xl font-bold">{filteredData.sessions.length}</p>
-          <p className="text-sm text-slate-400">Sessions</p>
-        </div>
-      </div>
 
       {/* Edit Sidebar Panel */}
       {renderEditPanel()}
