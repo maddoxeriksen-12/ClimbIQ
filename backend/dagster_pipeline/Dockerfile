@@ -1,4 +1,4 @@
-# Dagster Pipeline Dockerfile
+# Dagster Pipeline Dockerfile - Standalone
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -9,12 +9,12 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Copy ONLY Dagster requirements (not the full backend requirements)
+COPY dagster_pipeline/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the entire backend (needed for dagster_pipeline module)
-COPY . .
+# Copy ONLY the dagster_pipeline module
+COPY dagster_pipeline/ /app/dagster_pipeline/
 
 # Set environment variables
 ENV DAGSTER_HOME=/app/dagster_home
@@ -22,7 +22,7 @@ ENV PYTHONPATH=/app
 RUN mkdir -p $DAGSTER_HOME
 
 # Create dagster.yaml config
-RUN echo 'run_coordinator:\n  module: dagster.core.run_coordinator\n  class: QueuedRunCoordinator\n\nrun_launcher:\n  module: dagster.core.launcher\n  class: DefaultRunLauncher' > $DAGSTER_HOME/dagster.yaml
+RUN printf 'run_coordinator:\n  module: dagster.core.run_coordinator\n  class: QueuedRunCoordinator\n\nrun_launcher:\n  module: dagster.core.launcher\n  class: DefaultRunLauncher\n' > $DAGSTER_HOME/dagster.yaml
 
 # Copy and setup startup script
 COPY dagster_pipeline/start.sh /app/start.sh

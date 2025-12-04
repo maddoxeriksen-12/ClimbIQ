@@ -1,6 +1,6 @@
 [build]
 builder = "dockerfile"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "dagster_pipeline/Dockerfile"
 
 [deploy]
 startCommand = "dagster-webserver -h 0.0.0.0 -p $PORT -m dagster_pipeline"
