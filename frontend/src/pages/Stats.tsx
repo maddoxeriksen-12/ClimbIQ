@@ -1428,9 +1428,9 @@ export function Stats() {
             } ${activeMenu === widget.id ? 'ring-2 ring-fuchsia-500/50' : ''}`}
           >
             <div className="h-full flex flex-col rounded-2xl overflow-hidden relative">
-              {/* Mobile tap overlay - visible tap target for mobile */}
+              {/* Mobile/Tablet tap overlay - visible tap target for mobile and tablets */}
               <button
-                className="lg:hidden absolute top-2 right-2 z-30 p-2 rounded-lg bg-white/20 active:bg-white/30"
+                className="xl:hidden absolute top-2 right-2 z-30 p-2 rounded-lg bg-white/20 active:bg-white/30"
                 onClick={(e) => {
                   e.stopPropagation()
                   e.preventDefault()
@@ -1442,10 +1442,10 @@ export function Stats() {
                 </svg>
               </button>
 
-              {/* Mobile dropdown menu */}
+              {/* Mobile/Tablet dropdown menu */}
               {activeMenu === widget.id && (
                 <div 
-                  className="lg:hidden absolute top-12 right-2 z-40 w-48 rounded-xl border border-white/20 bg-[#1a1f1e] shadow-2xl overflow-hidden"
+                  className="xl:hidden absolute top-12 right-2 z-40 w-48 rounded-xl border border-white/20 bg-[#1a1f1e] shadow-2xl overflow-hidden"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
@@ -1484,8 +1484,8 @@ export function Stats() {
                   {widget.locked && <span className="text-amber-400">🔒</span>}
                   {widget.title}
                 </h3>
-                {/* Desktop menu - hidden on mobile */}
-                <div className="hidden lg:block">
+                {/* Desktop menu - hidden on mobile/tablet */}
+                <div className="hidden xl:block">
                   {renderWidgetMenu(widget)}
                 </div>
               </div>
