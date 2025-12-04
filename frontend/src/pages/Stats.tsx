@@ -1020,13 +1020,13 @@ export function Stats() {
     return renderChart(widget, [], colors)
   }, [getHistogramData, getTimelineData, getPersonalRecords, getSessionStats, filteredData.climbs, filteredData.sessions, renderChart, handleWidgetUpdate])
 
-  // Render widget menu
+  // Render widget menu - only visible when activeMenu matches or on desktop hover
   const renderWidgetMenu = (widget: WidgetConfig) => (
     <div 
       className={`widget-menu-container absolute top-2 right-2 z-20 transition-opacity duration-200 ${
         activeMenu === widget.id 
           ? 'opacity-100' 
-          : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'
+          : 'opacity-0 group-hover:opacity-100'
       }`}
       onMouseDown={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
@@ -1040,9 +1040,9 @@ export function Stats() {
         onMouseDown={(e) => {
           e.stopPropagation()
         }}
-        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+        className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
         </svg>
       </button>
@@ -1425,13 +1425,20 @@ export function Stats() {
             key={widget.id}
             className={`group rounded-2xl border bg-white/5 backdrop-blur-sm overflow-visible widget-container ${
               widget.locked ? 'border-amber-500/30' : 'border-white/10'
-            }`}
+            } ${activeMenu === widget.id ? 'ring-2 ring-fuchsia-500/50' : ''}`}
             onClick={(e) => {
-              // On mobile/tablet, tapping the widget opens the menu
-              // Check if it's a touch device or small screen
-              if (window.innerWidth < 1024 && !activeMenu) {
+              // On mobile/tablet (< 1024px), tapping the widget toggles the menu
+              if (window.innerWidth < 1024) {
                 e.stopPropagation()
-                setActiveMenu(widget.id)
+                // Toggle menu for this widget
+                setActiveMenu(activeMenu === widget.id ? null : widget.id)
+              }
+            }}
+            onTouchEnd={(e) => {
+              // Ensure touch events work on mobile
+              if (window.innerWidth < 1024) {
+                e.stopPropagation()
+                setActiveMenu(activeMenu === widget.id ? null : widget.id)
               }
             }}
           >
