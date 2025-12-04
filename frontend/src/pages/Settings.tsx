@@ -3,7 +3,7 @@ import { useAuth, type UserRole } from '../hooks/useAuth'
 import { SubscriptionManager } from '../components/SubscriptionManager'
 import { CustomVariableManager } from '../components/CustomVariableManager'
 import { useLocation } from 'react-router-dom'
-import { useTheme, type ThemeMode, type BackgroundType } from '../contexts/ThemeContext'
+import { useTheme } from '../contexts/ThemeContext'
 
 type SettingsTab = 'profile' | 'subscription' | 'preferences' | 'tracking' | 'account'
 
