@@ -8,6 +8,7 @@ import { CoachLayout } from './components/CoachLayout'
 import { SessionFlow, CompleteSessionFlow } from './components/SessionFlow'
 import { Login } from './pages/Login'
 import { SignUp } from './pages/SignUp'
+import { Onboarding } from './pages/Onboarding'
 import { Dashboard } from './pages/Dashboard'
 import { CoachDashboard } from './pages/CoachDashboard'
 import { AthleteDetail } from './pages/AthleteDetail'
@@ -110,7 +111,7 @@ function SmartDashboard() {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, loading, needsOnboarding } = useAuth()
 
   if (loading) {
     return (
@@ -124,6 +125,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return <Navigate to="/login" />
+  
+  // Redirect to onboarding if not completed
+  if (needsOnboarding()) return <Navigate to="/onboarding" />
 
   return <Layout>{children}</Layout>
 }
@@ -158,6 +162,7 @@ export default function App() {
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/accept-invitation/:invitationId" element={<AcceptInvitation />} />
 
           {/* Protected routes - Smart routing based on role */}

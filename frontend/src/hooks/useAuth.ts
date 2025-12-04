@@ -37,11 +37,16 @@ export function useAuth() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: `${window.location.origin}/onboarding`,
         queryParams: role ? { user_role: role } : undefined,
       },
     })
     if (error) throw error
+  }
+
+  // Check if user needs onboarding
+  const needsOnboarding = (): boolean => {
+    return user !== null && !user.user_metadata?.onboarding_completed
   }
 
   const signUp = async (email: string, password: string, fullName: string, role: UserRole = 'athlete') => {
@@ -88,5 +93,6 @@ export function useAuth() {
     updateUserRole,
     getUserRole,
     isCoach,
+    needsOnboarding,
   }
 }
