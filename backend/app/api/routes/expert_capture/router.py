@@ -137,6 +137,22 @@ async def generate_from_template(
     return result
 
 
+@router.get("/ai/status", response_model=dict)
+async def check_ai_status():
+    """Check if AI generation is configured and working"""
+    from app.core.config import settings
+    
+    api_key_configured = bool(settings.GROK_API_KEY and len(settings.GROK_API_KEY) > 10)
+    api_key_preview = settings.GROK_API_KEY[:10] + "..." if api_key_configured else "NOT SET"
+    
+    return {
+        "ai_configured": api_key_configured,
+        "api_key_preview": api_key_preview,
+        "model": "grok-2-1212",
+        "endpoint": "https://api.x.ai/v1/chat/completions",
+    }
+
+
 @router.post("/scenarios/generate/ai", response_model=dict)
 async def generate_scenarios_with_ai(
     count: int = Query(5, ge=1, le=10, description="Number of scenarios to generate (1-10)"),

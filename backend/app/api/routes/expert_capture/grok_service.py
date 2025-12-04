@@ -121,7 +121,7 @@ async def generate_scenarios_with_grok(
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "grok-3-fast",
+                    "model": "grok-2-1212",
                     "messages": [
                         {
                             "role": "system",
@@ -174,7 +174,7 @@ async def generate_scenarios_with_grok(
                 "scenarios": scenarios,
                 "generation_batch": generation_batch,
                 "count": len(scenarios),
-                "model": "grok-3-fast",
+                "model": "grok-2-1212",
             }
             
     except json.JSONDecodeError as e:

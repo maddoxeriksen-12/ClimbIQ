@@ -674,7 +674,13 @@ export async function generateScenariosWithAI(options: {
   difficulty_bias?: 'common' | 'edge_case' | 'extreme'
 }): Promise<{ data: AIGenerationResult | null; error: Error | null }> {
   try {
-    const API_URL = import.meta.env.VITE_API_URL as string
+    const { api } = await import('./api')
+    
+    // Check if API is configured
+    const apiUrl = import.meta.env.VITE_API_URL
+    if (!apiUrl) {
+      throw new Error('API URL not configured. Please set VITE_API_URL environment variable.')
+    }
     
     const params = new URLSearchParams()
     if (options.count) params.append('count', options.count.toString())
@@ -683,22 +689,44 @@ export async function generateScenariosWithAI(options: {
       options.edge_case_focus.forEach(tag => params.append('edge_case_focus', tag))
     }
     
-    const response = await fetch(`${API_URL}/api/v1/expert-capture/scenarios/generate/ai?${params}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
+    const response = await api.post(`/api/v1/expert-capture/scenarios/generate/ai?${params}`)
+    return { data: response.data, error: null }
+  } catch (err: unknown) {
+    console.error('Error generating scenarios with AI:', err)
     
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.detail || `API error: ${response.status}`)
+    // Handle different error types
+    if (err instanceof Error) {
+      if (err.message.includes('Network Error') || err.message.includes('Failed to fetch')) {
+        return { 
+          data: null, 
+          error: new Error('Cannot connect to the API server. Please check that:\n1. VITE_API_URL is set in Vercel\n2. The backend is running on Railway\n3. CORS is configured correctly') 
+        }
+      }
+      return { data: null, error: err }
     }
     
-    const data = await response.json()
-    return { data, error: null }
+    const axiosError = err as { response?: { data?: { detail?: string }, status?: number } }
+    if (axiosError.response?.data?.detail) {
+      return { data: null, error: new Error(axiosError.response.data.detail) }
+    }
+    if (axiosError.response?.status) {
+      return { data: null, error: new Error(`API error: ${axiosError.response.status}`) }
+    }
+    
+    return { data: null, error: new Error('Unknown error occurred') }
+  }
+}
+
+export async function checkAIStatus(): Promise<{ 
+  data: { ai_configured: boolean; api_key_preview: string; model: string } | null
+  error: Error | null 
+}> {
+  try {
+    const { api } = await import('./api')
+    const response = await api.get('/api/v1/expert-capture/ai/status')
+    return { data: response.data, error: null }
   } catch (err) {
-    console.error('Error generating scenarios with AI:', err)
+    console.error('Error checking AI status:', err)
     return { data: null, error: err as Error }
   }
 }

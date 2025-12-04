@@ -9,6 +9,7 @@ import {
   createScenario,
   getRules,
   generateScenariosWithAI,
+  checkAIStatus,
   type SyntheticScenario,
   type ExpertScenarioResponse,
   type ExpertRule,
@@ -51,6 +52,7 @@ export function ExpertDataCapture() {
   const [isGeneratingAI, setIsGeneratingAI] = useState(false)
   const [aiGenerationCount, setAiGenerationCount] = useState(5)
   const [showAIOptions, setShowAIOptions] = useState(false)
+  const [aiStatus, setAiStatus] = useState<{ configured: boolean; preview: string } | null>(null)
 
   const expertId = user?.id || ''
 
@@ -77,6 +79,17 @@ export function ExpertDataCapture() {
     fetchData()
   }, [fetchData])
 
+  // Check AI status when opening options
+  const handleOpenAIOptions = async () => {
+    setShowAIOptions(true)
+    
+    // Check AI status
+    const { data } = await checkAIStatus()
+    if (data) {
+      setAiStatus({ configured: data.ai_configured, preview: data.api_key_preview })
+    }
+  }
+
   // AI Generation handler
   const handleGenerateWithAI = async () => {
     setIsGeneratingAI(true)
@@ -88,7 +101,7 @@ export function ExpertDataCapture() {
       })
       
       if (error) {
-        alert(`Failed to generate scenarios: ${error.message}`)
+        alert(`Failed to generate scenarios:\n\n${error.message}`)
       } else if (data) {
         alert(`✅ Generated ${data.scenarios_generated} scenarios!\nBatch: ${data.generation_batch}`)
         fetchData() // Refresh the list
@@ -189,7 +202,7 @@ export function ExpertDataCapture() {
                   {/* AI Generation Button */}
                   <div className="relative">
                     <button
-                      onClick={() => setShowAIOptions(!showAIOptions)}
+                      onClick={() => showAIOptions ? setShowAIOptions(false) : handleOpenAIOptions()}
                       disabled={isGeneratingAI}
                       className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500/20 to-violet-500/20 text-cyan-300 text-xs font-medium hover:from-cyan-500/30 hover:to-violet-500/30 transition-all border border-cyan-500/30 flex items-center gap-1.5 disabled:opacity-50"
                     >
@@ -207,8 +220,23 @@ export function ExpertDataCapture() {
                     
                     {/* AI Options Dropdown */}
                     {showAIOptions && !isGeneratingAI && (
-                      <div className="absolute top-full right-0 mt-2 w-64 p-4 rounded-xl border border-white/10 bg-[#0f1312] shadow-2xl z-50">
+                      <div className="absolute top-full right-0 mt-2 w-72 p-4 rounded-xl border border-white/10 bg-[#0f1312] shadow-2xl z-50">
                         <h4 className="text-sm font-medium mb-3">AI Generation Options</h4>
+                        
+                        {/* AI Status */}
+                        {aiStatus && (
+                          <div className={`mb-4 p-2 rounded-lg text-xs ${
+                            aiStatus.configured 
+                              ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                              : 'bg-red-500/10 border border-red-500/30 text-red-300'
+                          }`}>
+                            {aiStatus.configured ? (
+                              <>✓ API Key: {aiStatus.preview}</>
+                            ) : (
+                              <>⚠ GROK_API_KEY not configured in Railway</>
+                            )}
+                          </div>
+                        )}
                         
                         <div className="mb-4">
                           <label className="text-xs text-slate-400 mb-2 block">Number of scenarios</label>
@@ -231,13 +259,14 @@ export function ExpertDataCapture() {
                         
                         <button
                           onClick={handleGenerateWithAI}
-                          className="w-full py-2.5 rounded-lg bg-gradient-to-r from-cyan-600 to-violet-600 text-white text-sm font-medium shadow-lg hover:shadow-cyan-500/25 transition-all"
+                          disabled={aiStatus !== null && !aiStatus.configured}
+                          className="w-full py-2.5 rounded-lg bg-gradient-to-r from-cyan-600 to-violet-600 text-white text-sm font-medium shadow-lg hover:shadow-cyan-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Generate {aiGenerationCount} Scenarios
                         </button>
                         
                         <p className="text-xs text-slate-500 mt-3 text-center">
-                          Powered by Grok AI
+                          Powered by Grok AI (grok-2-1212)
                         </p>
                       </div>
                     )}
