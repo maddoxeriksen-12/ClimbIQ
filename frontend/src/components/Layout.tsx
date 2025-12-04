@@ -103,9 +103,9 @@ export function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0f0d] text-white flex flex-col md:flex-row">
+    <div className="min-h-screen text-white flex flex-col md:flex-row">
       {/* Mobile Header - Only visible on mobile */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#0a0f0d]/95 backdrop-blur-xl border-b border-white/10">
+      <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-black/70 backdrop-blur-xl border-b border-white/10">
         <div className="flex items-center justify-center px-4 py-3 relative">
           {/* Logo - centered, navigates to dashboard */}
           <button 

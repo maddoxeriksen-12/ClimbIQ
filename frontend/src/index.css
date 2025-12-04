@@ -1,5 +1,88 @@
 @import "tailwindcss";
 
+/* Theme variables */
+:root {
+  --bg-primary: #0f1312;
+  --bg-secondary: rgba(255, 255, 255, 0.05);
+  --bg-tertiary: rgba(255, 255, 255, 0.02);
+  --border-primary: rgba(255, 255, 255, 0.1);
+  --border-secondary: rgba(255, 255, 255, 0.05);
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+}
+
+.theme-light {
+  --bg-primary: #f5f7fa;
+  --bg-secondary: rgba(0, 0, 0, 0.03);
+  --bg-tertiary: rgba(0, 0, 0, 0.01);
+  --border-primary: rgba(0, 0, 0, 0.1);
+  --border-secondary: rgba(0, 0, 0, 0.05);
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+}
+
+/* Light theme text adjustments */
+.theme-light {
+  color: var(--text-primary);
+}
+
+.theme-light .text-white {
+  color: var(--text-primary);
+}
+
+.theme-light .text-slate-400 {
+  color: var(--text-secondary);
+}
+
+.theme-light .text-slate-500 {
+  color: var(--text-muted);
+}
+
+/* Light theme background adjustments */
+.theme-light .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.theme-light .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.theme-light .bg-white\/\[0\.02\] {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.theme-light .bg-white\/\[0\.07\] {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Light theme border adjustments */
+.theme-light .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.theme-light .border-white\/5 {
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+.theme-light .border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+/* Light theme scrollbar */
+.theme-light .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.theme-light .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.theme-light .scrollbar-thin {
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
 /* Custom scrollbar styles */
 .scrollbar-thin::-webkit-scrollbar {
   height: 6px;

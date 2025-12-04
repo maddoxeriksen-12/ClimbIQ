@@ -3,12 +3,14 @@ import { useAuth, type UserRole } from '../hooks/useAuth'
 import { SubscriptionManager } from '../components/SubscriptionManager'
 import { CustomVariableManager } from '../components/CustomVariableManager'
 import { useLocation } from 'react-router-dom'
+import { useTheme, type ThemeMode, type BackgroundType } from '../contexts/ThemeContext'
 
 type SettingsTab = 'profile' | 'subscription' | 'preferences' | 'tracking' | 'account'
 
 export function Settings() {
   const { user, getUserRole, updateUserRole, isCoach } = useAuth()
   const location = useLocation()
+  const { themeMode, backgroundType, setThemeMode, setBackgroundType } = useTheme()
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [profileData, setProfileData] = useState({
     fullName: user?.user_metadata?.full_name || '',
@@ -205,6 +207,113 @@ export function Settings() {
           <h2 className="text-xl font-semibold mb-6">Preferences</h2>
           
           <div className="space-y-6">
+            {/* Appearance Settings */}
+            <div>
+              <h3 className="font-medium mb-4">Appearance</h3>
+              <p className="text-sm text-slate-400 mb-4">Customize the look and feel of your app</p>
+              
+              {/* Theme Mode */}
+              <div className="mb-6">
+                <label className="text-sm font-medium text-slate-300 block mb-3">Theme</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setThemeMode('dark')}
+                    className={`p-4 rounded-xl border transition-all ${
+                      themeMode === 'dark'
+                        ? isCoach()
+                          ? 'border-amber-500/50 bg-amber-500/10'
+                          : 'border-fuchsia-500/50 bg-fuchsia-500/10'
+                        : 'border-white/10 bg-white/5 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-[#0f1312] border border-white/20 flex items-center justify-center">
+                        🌙
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-sm">Dark</p>
+                        <p className="text-xs text-slate-400">Easy on the eyes</p>
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setThemeMode('light')}
+                    className={`p-4 rounded-xl border transition-all ${
+                      themeMode === 'light'
+                        ? isCoach()
+                          ? 'border-amber-500/50 bg-amber-500/10'
+                          : 'border-fuchsia-500/50 bg-fuchsia-500/10'
+                        : 'border-white/10 bg-white/5 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-[#f5f7fa] border border-slate-200 flex items-center justify-center">
+                        ☀️
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-sm">Light</p>
+                        <p className="text-xs text-slate-400">Bright and clean</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Background Type */}
+              <div>
+                <label className="text-sm font-medium text-slate-300 block mb-3">Background</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setBackgroundType('solid')}
+                    className={`p-4 rounded-xl border transition-all ${
+                      backgroundType === 'solid'
+                        ? isCoach()
+                          ? 'border-amber-500/50 bg-amber-500/10'
+                          : 'border-fuchsia-500/50 bg-fuchsia-500/10'
+                        : 'border-white/10 bg-white/5 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg ${themeMode === 'dark' ? 'bg-[#0f1312]' : 'bg-[#f5f7fa]'} border border-white/20 flex items-center justify-center`}>
+                        <div className="w-4 h-4 rounded bg-current opacity-30" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-sm">Solid</p>
+                        <p className="text-xs text-slate-400">Simple background</p>
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setBackgroundType('mountains')}
+                    className={`p-4 rounded-xl border transition-all ${
+                      backgroundType === 'mountains'
+                        ? isCoach()
+                          ? 'border-amber-500/50 bg-amber-500/10'
+                          : 'border-fuchsia-500/50 bg-fuchsia-500/10'
+                        : 'border-white/10 bg-white/5 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/20 relative">
+                        {/* Mini mountain preview */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-[#1b263b] to-[#2d3a4a]" />
+                        <svg viewBox="0 0 40 40" className="absolute inset-0 w-full h-full">
+                          <path d="M0 40 L0 28 Q10 22 20 26 Q30 20 40 25 L40 40 Z" fill="#3d5a6c" opacity="0.7" />
+                          <path d="M0 40 L0 32 Q12 26 24 30 Q32 26 40 32 L40 40 Z" fill="#2d4a3e" opacity="0.9" />
+                        </svg>
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-sm">Mountains</p>
+                        <p className="text-xs text-slate-400">Scenic landscape</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-white/10 pt-6" />
+
             {/* Navigation Items */}
             <div>
               <h3 className="font-medium mb-4">Navigation</h3>
