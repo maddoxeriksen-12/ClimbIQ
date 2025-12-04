@@ -63,25 +63,29 @@ export function Dashboard() {
       label: 'Sessions This Week', 
       value: stats?.sessionsThisWeek?.toString() ?? '0', 
       change: stats ? `${stats.sessionsThisWeek - stats.sessionsLastWeek >= 0 ? '+' : ''}${stats.sessionsThisWeek - stats.sessionsLastWeek} from last week` : '', 
-      trend: stats ? (stats.sessionsThisWeek > stats.sessionsLastWeek ? 'up' : stats.sessionsThisWeek < stats.sessionsLastWeek ? 'down' : 'neutral') : 'neutral' 
+      trend: stats ? (stats.sessionsThisWeek > stats.sessionsLastWeek ? 'up' : stats.sessionsThisWeek < stats.sessionsLastWeek ? 'down' : 'neutral') : 'neutral',
+      link: '/sessions'
     },
     { 
       label: 'Total Climbs', 
       value: stats?.totalClimbs?.toString() ?? '0', 
       change: stats?.totalSessions ? `${stats.totalSessions} sessions` : '', 
-      trend: 'neutral' as const
+      trend: 'neutral' as const,
+      link: '/stats'
     },
     { 
       label: 'Highest Grade', 
       value: stats?.highestGradeSent ?? 'N/A', 
       change: stats?.mostCommonType ? `Most: ${stats.mostCommonType}` : '', 
-      trend: 'neutral' as const
+      trend: 'neutral' as const,
+      link: null
     },
     { 
       label: 'Avg Duration', 
       value: stats?.avgDurationMinutes ? `${stats.avgDurationMinutes}m` : 'N/A', 
       change: stats?.avgSessionRpe ? `Avg RPE: ${stats.avgSessionRpe}` : '', 
-      trend: 'neutral' as const
+      trend: 'neutral' as const,
+      link: null
     },
   ]
 
@@ -234,21 +238,41 @@ export function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {displayStats.map((stat) => (
-          <div
-            key={stat.label}
-            className="p-5 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/[0.07] transition-colors"
-          >
-            <p className="text-sm text-slate-400 mb-1">{stat.label}</p>
-            <p className="text-3xl font-bold">{loading ? '...' : stat.value}</p>
-            <p className={`text-xs mt-2 ${
-              stat.trend === 'up' ? 'text-emerald-400' : 
-              stat.trend === 'down' ? 'text-red-400' : 'text-slate-500'
-            }`}>
-              {stat.change}
-            </p>
-          </div>
-        ))}
+        {displayStats.map((stat) => {
+          const content = (
+            <>
+              <p className="text-sm text-slate-400 mb-1">{stat.label}</p>
+              <p className="text-3xl font-bold">{loading ? '...' : stat.value}</p>
+              <p className={`text-xs mt-2 ${
+                stat.trend === 'up' ? 'text-emerald-400' : 
+                stat.trend === 'down' ? 'text-red-400' : 'text-slate-500'
+              }`}>
+                {stat.change}
+              </p>
+            </>
+          )
+          
+          if (stat.link) {
+            return (
+              <Link
+                key={stat.label}
+                to={stat.link}
+                className="p-5 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/[0.07] hover:border-fuchsia-500/30 transition-colors cursor-pointer"
+              >
+                {content}
+              </Link>
+            )
+          }
+          
+          return (
+            <div
+              key={stat.label}
+              className="p-5 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/[0.07] transition-colors"
+            >
+              {content}
+            </div>
+          )
+        })}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -277,7 +301,11 @@ export function Dashboard() {
               </div>
             ) : (
               recentSessions.map((session) => (
-                <div key={session.id} className="p-5 hover:bg-white/[0.02] transition-colors">
+                <Link 
+                  key={session.id} 
+                  to={`/sessions/${session.id}`}
+                  className="block p-5 hover:bg-white/[0.02] transition-colors cursor-pointer"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-fuchsia-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center">
@@ -302,7 +330,7 @@ export function Dashboard() {
                       <span>RPE: {session.session_rpe}/10</span>
                     )}
                   </div>
-                </div>
+                </Link>
               ))
             )}
           </div>
