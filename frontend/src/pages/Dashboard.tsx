@@ -213,6 +213,40 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Incomplete Onboarding Banner */}
+      {user?.user_metadata?.onboarding_pending_sections?.length > 0 && (
+        <div className="mb-6 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-5">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center text-2xl">
+                📋
+              </div>
+              <div>
+                <h2 className="font-semibold mb-1">Complete Your Profile</h2>
+                <p className="text-sm text-slate-400">
+                  You skipped some sections during onboarding. Complete them for better recommendations.
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {(user.user_metadata.onboarding_pending_sections as string[]).map((section: string) => (
+                    <span key={section} className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs capitalize">
+                      {section === 'psychological' ? 'Psychological Assessment' : 
+                       section === 'injury' ? 'Injury History' : 
+                       section === 'training' ? 'Training History' : section}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <Link
+              to="/settings?tab=profile"
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 text-white font-medium text-sm shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all whitespace-nowrap"
+            >
+              Complete Now →
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">

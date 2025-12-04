@@ -4,7 +4,36 @@ import { useAuth, type UserRole } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { GOAL_TYPES, createGoal, saveGoal, setActiveGoal, type GoalType } from '../lib/goalStorage'
 
-type OnboardingStep = 'welcome' | 'role' | 'profile' | 'injury' | 'training' | 'goal' | 'complete'
+type OnboardingStep = 'welcome' | 'role' | 'profile' | 'injury' | 'training' | 'psychological' | 'goal' | 'complete'
+
+// Track which sections were skipped
+interface SkippedSections {
+  injury: boolean
+  training: boolean
+  psychological: boolean
+}
+
+// Psychological assessment types
+interface PsychologicalData {
+  // Fear of Falling Scale
+  leadClimbingFear: number // 1-10
+  boulderingHighballFear: number // 1-10
+  outdoorVsIndoorDifference: 'much_worse_outdoor' | 'worse_outdoor' | 'same' | 'better_outdoor' | 'much_better_outdoor'
+  fearTrajectory: 'improving' | 'stable' | 'worsening'
+  
+  // Performance Anxiety Profile
+  cognitiveAnxiety: number // 1-10 (worry, negative thoughts)
+  somaticAnxiety: number // 1-10 (physical symptoms)
+  selfConfidenceBaseline: number // 1-10
+  
+  // Risk Tolerance Profile
+  dynoCommitmentTolerance: 'low' | 'medium' | 'high'
+  runoutComfort: 'low' | 'medium' | 'high'
+  tryingHardPublicly: 'low' | 'medium' | 'high'
+  
+  // Flow State Tendency
+  flowFrequency: 'never' | 'rarely' | 'sometimes' | 'often' | 'always'
+}
 
 // Body regions for injury tracking
 const BODY_REGIONS = ['fingers', 'shoulders', 'elbows', 'wrists', 'skin'] as const
@@ -76,6 +105,28 @@ export function Onboarding() {
     hoursPerSession: 2,
     trainingSessionsPerWeek: 0,
     indoorOutdoorSplit: 80,
+  })
+
+  // Psychological Assessment State
+  const [psychologicalData, setPsychologicalData] = useState<PsychologicalData>({
+    leadClimbingFear: 5,
+    boulderingHighballFear: 5,
+    outdoorVsIndoorDifference: 'same',
+    fearTrajectory: 'stable',
+    cognitiveAnxiety: 5,
+    somaticAnxiety: 5,
+    selfConfidenceBaseline: 5,
+    dynoCommitmentTolerance: 'medium',
+    runoutComfort: 'medium',
+    tryingHardPublicly: 'medium',
+    flowFrequency: 'sometimes',
+  })
+
+  // Track skipped sections
+  const [skippedSections, setSkippedSections] = useState<SkippedSections>({
+    injury: false,
+    training: false,
+    psychological: false,
   })
 
   // Check if user has already completed onboarding
@@ -165,12 +216,34 @@ export function Onboarding() {
           training_history: trainingData
         }
       })
-      setStep('goal')
+      setStep('psychological')
     } catch (error) {
       console.error('Error saving training history:', error)
     } finally {
       setSaving(false)
     }
+  }
+
+  const handlePsychologicalSubmit = async () => {
+    setSaving(true)
+    try {
+      // Save psychological data to user metadata
+      await supabase.auth.updateUser({
+        data: {
+          psychological_profile: psychologicalData
+        }
+      })
+      setStep('goal')
+    } catch (error) {
+      console.error('Error saving psychological profile:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const skipSection = async (section: keyof SkippedSections, nextStep: OnboardingStep) => {
+    setSkippedSections(prev => ({ ...prev, [section]: true }))
+    setStep(nextStep)
   }
 
   const updateRegionInjury = (region: BodyRegion, updates: Partial<RegionInjury>) => {
@@ -207,9 +280,15 @@ export function Onboarding() {
   }
 
   const completeOnboarding = async () => {
+    // Determine which sections are incomplete (skipped)
+    const pendingSections = Object.entries(skippedSections)
+      .filter(([_, skipped]) => skipped)
+      .map(([section]) => section)
+    
     await supabase.auth.updateUser({
       data: {
         onboarding_completed: true,
+        onboarding_pending_sections: pendingSections.length > 0 ? pendingSections : null,
       }
     })
     setStep('complete')
@@ -271,12 +350,12 @@ export function Onboarding() {
       {/* Progress indicator */}
       <div className="fixed top-8 left-1/2 -translate-x-1/2 z-20">
         <div className="flex items-center gap-2">
-          {['welcome', 'role', 'profile', 'injury', 'training', 'goal'].map((s, i) => (
+          {['welcome', 'role', 'profile', 'injury', 'training', 'psychological', 'goal'].map((s, i) => (
             <div
               key={s}
               className={`w-2 h-2 rounded-full transition-all ${
-                ['welcome', 'role', 'profile', 'injury', 'training', 'goal'].indexOf(step) >= i
-                  ? 'bg-cyan-400 w-6'
+                ['welcome', 'role', 'profile', 'injury', 'training', 'psychological', 'goal'].indexOf(step) >= i
+                  ? 'bg-cyan-400 w-5'
                   : 'bg-white/20'
               }`}
             />
@@ -546,17 +625,23 @@ export function Onboarding() {
               </div>
             </div>
 
-            <div className="flex gap-4 mt-8">
+            <div className="flex gap-3 mt-8">
               <button
                 onClick={() => setStep('profile')}
-                className="flex-1 py-4 rounded-xl border border-white/10 text-slate-400 font-medium hover:bg-white/5 transition-all"
+                className="py-4 px-5 rounded-xl border border-white/10 text-slate-400 font-medium hover:bg-white/5 transition-all"
               >
                 ← Back
               </button>
               <button
+                onClick={() => skipSection('injury', 'training')}
+                className="py-4 px-5 rounded-xl border border-amber-500/30 text-amber-400 font-medium hover:bg-amber-500/10 transition-all"
+              >
+                Skip for Now
+              </button>
+              <button
                 onClick={handleInjurySubmit}
                 disabled={saving}
-                className="flex-[2] py-4 rounded-xl bg-gradient-to-r from-cyan-600 via-emerald-600 to-fuchsia-600 text-white font-semibold shadow-lg shadow-cyan-500/25 disabled:opacity-50 transition-all"
+                className="flex-1 py-4 rounded-xl bg-gradient-to-r from-cyan-600 via-emerald-600 to-fuchsia-600 text-white font-semibold shadow-lg shadow-cyan-500/25 disabled:opacity-50 transition-all"
               >
                 {saving ? 'Saving...' : 'Continue'}
               </button>
@@ -765,17 +850,276 @@ export function Onboarding() {
               </div>
             </div>
 
-            <div className="flex gap-4 mt-8">
+            <div className="flex gap-3 mt-8">
               <button
                 onClick={() => setStep('injury')}
-                className="flex-1 py-4 rounded-xl border border-white/10 text-slate-400 font-medium hover:bg-white/5 transition-all"
+                className="py-4 px-5 rounded-xl border border-white/10 text-slate-400 font-medium hover:bg-white/5 transition-all"
               >
                 ← Back
               </button>
               <button
+                onClick={() => skipSection('training', 'psychological')}
+                className="py-4 px-5 rounded-xl border border-amber-500/30 text-amber-400 font-medium hover:bg-amber-500/10 transition-all"
+              >
+                Skip for Now
+              </button>
+              <button
                 onClick={handleTrainingSubmit}
                 disabled={saving}
-                className="flex-[2] py-4 rounded-xl bg-gradient-to-r from-cyan-600 via-emerald-600 to-fuchsia-600 text-white font-semibold shadow-lg shadow-cyan-500/25 disabled:opacity-50 transition-all"
+                className="flex-1 py-4 rounded-xl bg-gradient-to-r from-cyan-600 via-emerald-600 to-fuchsia-600 text-white font-semibold shadow-lg shadow-cyan-500/25 disabled:opacity-50 transition-all"
+              >
+                {saving ? 'Saving...' : 'Continue'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Psychological Assessment Step (Athletes only) */}
+        {step === 'psychological' && (
+          <div className="animate-fade-in-up max-w-4xl mx-auto">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 border border-white/10 flex items-center justify-center text-3xl mb-4">
+                🧠
+              </div>
+              <h1 className="text-3xl font-bold mb-2">
+                Psychological Assessment
+              </h1>
+              <p className="text-slate-400 max-w-xl mx-auto">
+                Research shows psychological factors significantly impact climbing performance. This helps us personalize your training.
+              </p>
+            </div>
+
+            <div className="space-y-8">
+              {/* Fear of Falling Scale */}
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <span>😰</span> Fear of Falling Scale
+                </h2>
+                <p className="text-sm text-slate-400 mb-4">Rate your fear intensity in different contexts (1 = no fear, 10 = extreme fear)</p>
+                
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-300">Lead climbing fear</label>
+                      <span className="text-cyan-400 font-medium">{psychologicalData.leadClimbingFear}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={psychologicalData.leadClimbingFear}
+                      onChange={(e) => setPsychologicalData(prev => ({ ...prev, leadClimbingFear: parseInt(e.target.value) }))}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-300">Bouldering/highball fear</label>
+                      <span className="text-cyan-400 font-medium">{psychologicalData.boulderingHighballFear}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={psychologicalData.boulderingHighballFear}
+                      onChange={(e) => setPsychologicalData(prev => ({ ...prev, boulderingHighballFear: parseInt(e.target.value) }))}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-slate-300 block mb-2">Outdoor vs indoor difference</label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: 'much_worse_outdoor', label: 'Much worse outdoors' },
+                        { value: 'worse_outdoor', label: 'Worse outdoors' },
+                        { value: 'same', label: 'Same' },
+                        { value: 'better_outdoor', label: 'Better outdoors' },
+                        { value: 'much_better_outdoor', label: 'Much better outdoors' },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => setPsychologicalData(prev => ({ ...prev, outdoorVsIndoorDifference: option.value as PsychologicalData['outdoorVsIndoorDifference'] }))}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                            psychologicalData.outdoorVsIndoorDifference === option.value
+                              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                              : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-slate-300 block mb-2">Fear trajectory</label>
+                    <div className="flex gap-2">
+                      {[
+                        { value: 'improving', label: '📈 Improving', color: 'emerald' },
+                        { value: 'stable', label: '➡️ Stable', color: 'cyan' },
+                        { value: 'worsening', label: '📉 Worsening', color: 'red' },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => setPsychologicalData(prev => ({ ...prev, fearTrajectory: option.value as PsychologicalData['fearTrajectory'] }))}
+                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                            psychologicalData.fearTrajectory === option.value
+                              ? option.color === 'emerald' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : option.color === 'red' ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                                : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                              : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Performance Anxiety Profile */}
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <span>💭</span> Performance Anxiety Profile
+                </h2>
+                <p className="text-sm text-slate-400 mb-4">Based on competitive state anxiety research (1 = low, 10 = high)</p>
+                
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-300">Cognitive anxiety (worry, negative thoughts)</label>
+                      <span className="text-fuchsia-400 font-medium">{psychologicalData.cognitiveAnxiety}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={psychologicalData.cognitiveAnxiety}
+                      onChange={(e) => setPsychologicalData(prev => ({ ...prev, cognitiveAnxiety: parseInt(e.target.value) }))}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-fuchsia-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-300">Somatic anxiety (physical symptoms under pressure)</label>
+                      <span className="text-fuchsia-400 font-medium">{psychologicalData.somaticAnxiety}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={psychologicalData.somaticAnxiety}
+                      onChange={(e) => setPsychologicalData(prev => ({ ...prev, somaticAnxiety: parseInt(e.target.value) }))}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-fuchsia-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-300">Self-confidence baseline</label>
+                      <span className="text-emerald-400 font-medium">{psychologicalData.selfConfidenceBaseline}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={psychologicalData.selfConfidenceBaseline}
+                      onChange={(e) => setPsychologicalData(prev => ({ ...prev, selfConfidenceBaseline: parseInt(e.target.value) }))}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Risk Tolerance Profile */}
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <span>⚡</span> Risk Tolerance Profile
+                </h2>
+                <p className="text-sm text-slate-400 mb-4">Your willingness to commit in ambiguous situations</p>
+                
+                <div className="space-y-5">
+                  {[
+                    { key: 'dynoCommitmentTolerance', label: 'Dynos and commitment moves' },
+                    { key: 'runoutComfort', label: 'Runout climbing comfort' },
+                    { key: 'tryingHardPublicly', label: 'Trying hard at limit (publicly)' },
+                  ].map((item) => (
+                    <div key={item.key}>
+                      <label className="text-sm text-slate-300 block mb-2">{item.label}</label>
+                      <div className="flex gap-2">
+                        {(['low', 'medium', 'high'] as const).map((level) => (
+                          <button
+                            key={level}
+                            onClick={() => setPsychologicalData(prev => ({ ...prev, [item.key]: level }))}
+                            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
+                              psychologicalData[item.key as keyof PsychologicalData] === level
+                                ? level === 'low' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : level === 'high' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                  : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                                : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+                            }`}
+                          >
+                            {level}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Flow State Tendency */}
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <span>🌊</span> Flow State Tendency
+                </h2>
+                <p className="text-sm text-slate-400 mb-4">How often do you lose track of time while climbing?</p>
+                
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: 'never', label: 'Never' },
+                    { value: 'rarely', label: 'Rarely' },
+                    { value: 'sometimes', label: 'Sometimes' },
+                    { value: 'often', label: 'Often' },
+                    { value: 'always', label: 'Always' },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setPsychologicalData(prev => ({ ...prev, flowFrequency: option.value as PsychologicalData['flowFrequency'] }))}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        psychologicalData.flowFrequency === option.value
+                          ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                          : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <button
+                onClick={() => setStep('training')}
+                className="py-4 px-5 rounded-xl border border-white/10 text-slate-400 font-medium hover:bg-white/5 transition-all"
+              >
+                ← Back
+              </button>
+              <button
+                onClick={() => skipSection('psychological', 'goal')}
+                className="py-4 px-5 rounded-xl border border-amber-500/30 text-amber-400 font-medium hover:bg-amber-500/10 transition-all"
+              >
+                Skip for Now
+              </button>
+              <button
+                onClick={handlePsychologicalSubmit}
+                disabled={saving}
+                className="flex-1 py-4 rounded-xl bg-gradient-to-r from-cyan-600 via-emerald-600 to-fuchsia-600 text-white font-semibold shadow-lg shadow-cyan-500/25 disabled:opacity-50 transition-all"
               >
                 {saving ? 'Saving...' : 'Continue'}
               </button>
