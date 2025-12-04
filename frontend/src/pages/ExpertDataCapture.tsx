@@ -500,6 +500,14 @@ interface TreatmentRec {
   importance: 'critical' | 'helpful' | 'neutral' | 'avoid'
 }
 
+interface SessionActivity {
+  id: string
+  type: 'warmup' | 'projecting' | 'limit_bouldering' | 'volume' | 'technique' | 'hangboard' | 'campus' | 'stretching' | 'cooldown' | 'antagonist' | 'cardio' | 'core' | 'custom'
+  durationMin: number
+  intensity?: 'very_light' | 'light' | 'moderate' | 'high' | 'max'
+  notes?: string
+}
+
 interface SessionStructure {
   warmup: {
     durationMin: number
@@ -522,6 +530,7 @@ interface SessionStructure {
   }
   cooldownDurationMin: number
   antagonistWork: boolean
+  activities: SessionActivity[]
 }
 
 const AVAILABLE_VARIABLES = [
@@ -590,14 +599,12 @@ function ScenarioReviewPanel({
     hangboard: { include: false, contraindicated: false },
     cooldownDurationMin: 10,
     antagonistWork: false,
+    activities: [],
   })
   
   // Section 8: Reasoning
   const [reasoning, setReasoning] = useState(existingResponse?.reasoning || '')
   
-  // Section 9: Agreement
-  const [agreesWithAi, setAgreesWithAi] = useState<'yes' | 'partially' | 'no' | ''>(existingResponse?.agrees_with_ai || '')
-
   // Calculate progress
   const sectionCompletion = {
     1: qualityOptimal !== 5 || qualityBaseline !== 5,
@@ -608,7 +615,6 @@ function ScenarioReviewPanel({
     6: true, // Optional
     7: true, // Optional
     8: reasoning.trim().length > 10,
-    9: agreesWithAi !== '' || !scenario.ai_recommendation,
   }
   const completedSections = Object.values(sectionCompletion).filter(Boolean).length
   const requiredComplete = sectionCompletion[1] && sectionCompletion[2] && sectionCompletion[5] && sectionCompletion[8]
@@ -654,7 +660,6 @@ function ScenarioReviewPanel({
         intensity_distribution: { moderate: 50, high: 30, low: 20 },
         specific_recommendations: [],
       } : undefined,
-      agrees_with_ai: agreesWithAi || undefined,
       reasoning,
       response_duration_sec: durationSec || undefined,
       is_complete: isComplete,
@@ -700,27 +705,27 @@ function ScenarioReviewPanel({
           
           {/* Progress Indicator */}
           <div className="flex items-center gap-6">
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                <div
-                  key={num}
-                  className={`w-10 h-10 rounded-xl text-base flex items-center justify-center font-bold transition-all cursor-pointer hover:scale-105 ${
-                    sectionCompletion[num as keyof typeof sectionCompletion]
-                      ? 'bg-emerald-500/30 text-emerald-300 border-2 border-emerald-500/50'
-                      : expandedSection === num
-                      ? 'bg-violet-500/30 text-violet-300 border-2 border-violet-500/50'
-                      : 'bg-white/5 text-slate-500 border border-white/10'
-                  }`}
-                  onClick={() => setExpandedSection(num)}
-                >
-                  {num}
-                </div>
-              ))}
-            </div>
-            <div className="text-right">
-              <span className="text-2xl font-bold text-white">{completedSections}/9</span>
-              <p className="text-sm text-slate-500">complete</p>
-            </div>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
+              <div
+                key={num}
+                className={`w-10 h-10 rounded-xl text-base flex items-center justify-center font-bold transition-all cursor-pointer hover:scale-105 ${
+                  sectionCompletion[num as keyof typeof sectionCompletion]
+                    ? 'bg-emerald-500/30 text-emerald-300 border-2 border-emerald-500/50'
+                    : expandedSection === num
+                    ? 'bg-violet-500/30 text-violet-300 border-2 border-violet-500/50'
+                    : 'bg-white/5 text-slate-500 border border-white/10'
+                }`}
+                onClick={() => setExpandedSection(num)}
+              >
+                {num}
+              </div>
+            ))}
+          </div>
+          <div className="text-right">
+            <span className="text-2xl font-bold text-white">{completedSections}/8</span>
+            <p className="text-sm text-slate-500">complete</p>
+          </div>
           </div>
         </div>
 
@@ -728,11 +733,11 @@ function ScenarioReviewPanel({
         {/* LEFT PANEL - Scenario Info */}
         <div className="w-[42%] min-w-[450px] max-w-[650px] border-r border-white/10 overflow-y-auto bg-[#0c1210]">
           {/* Climber Profile Panel */}
-          <div className="p-8 border-b border-white/10">
-            <h3 className="font-bold mb-6 flex items-center gap-3 text-lg uppercase tracking-wider text-slate-200">
-              <span className="text-2xl">👤</span> Climber Profile
+          <div className="p-5 border-b border-white/10">
+            <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider text-slate-300">
+              <span className="text-base">👤</span> Climber Profile
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-2">
               <ProfileItem label="Age" value={String(baseline.age || 'N/A')} />
               <ProfileItem label="Years Climbing" value={String(baseline.years_climbing || baseline.climbing_experience_years || 'N/A')} />
               <ProfileItem label="Boulder Grade" value={String(baseline.highest_boulder_grade || 'N/A')} />
@@ -745,9 +750,9 @@ function ScenarioReviewPanel({
             </div>
             
             {/* Psychological Profile */}
-            <div className="mt-8 pt-8 border-t border-white/10">
-              <h4 className="text-base text-slate-300 uppercase tracking-wider mb-5 font-semibold">Psychological</h4>
-              <div className="space-y-6">
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-medium">Psychological</h4>
+              <div className="space-y-3">
                 <ProfileSlider label="Fear of Falling" value={Number(baseline.fear_of_falling) || 5} max={10} color="amber" />
                 <ProfileSlider label="Performance Anxiety" value={Number(baseline.performance_anxiety_baseline || baseline.performance_anxiety) || 5} max={10} color="red" />
               </div>
@@ -755,11 +760,11 @@ function ScenarioReviewPanel({
           </div>
 
           {/* Pre-Session State Panel */}
-          <div className="p-8 border-b border-white/10">
-            <h3 className="font-bold mb-6 flex items-center gap-3 text-lg uppercase tracking-wider text-slate-200">
-              <span className="text-2xl">📊</span> Pre-Session State
+          <div className="p-5 border-b border-white/10">
+            <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider text-slate-300">
+              <span className="text-base">📊</span> Pre-Session State
             </h3>
-            <div className="space-y-6">
+            <div className="space-y-3">
               <ProfileSlider label="Energy Level" value={Number(preSession.energy_level) || 5} max={10} color="emerald" />
               <ProfileSlider label="Motivation" value={Number(preSession.motivation) || 5} max={10} color="cyan" />
               <ProfileSlider label="Sleep Quality" value={Number(preSession.sleep_quality) || 5} max={10} color="violet" />
@@ -768,45 +773,45 @@ function ScenarioReviewPanel({
               <ProfileSlider label="Muscle Soreness" value={Number(preSession.muscle_soreness) || 5} max={10} color="red" inverted />
             </div>
             
-            <div className="mt-8 pt-8 border-t border-white/10 space-y-4">
+            <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
               <ProfileItem label="Days Since Last Session" value={String(preSession.days_since_last_session ?? 'N/A')} />
               <ProfileItem label="Days Since Rest" value={String(preSession.days_since_rest_day ?? 'N/A')} />
               <ProfileItem label="Planned Duration" value={preSession.planned_duration ? `${preSession.planned_duration} min` : 'N/A'} />
               <ProfileItem label="Primary Goal" value={String(preSession.primary_goal || 'N/A').replace(/_/g, ' ')} />
-              <div className="flex gap-3 flex-wrap mt-4">
-                {Boolean(preSession.is_outdoor) && <span className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 text-base font-semibold">Outdoor</span>}
-                {Boolean(preSession.caffeine_today) && <span className="px-4 py-2 rounded-xl bg-amber-500/20 text-amber-300 text-base font-semibold">Caffeine</span>}
-                {Boolean(preSession.alcohol_last_24h) && <span className="px-4 py-2 rounded-xl bg-red-500/20 text-red-300 text-base font-semibold">Alcohol 24h</span>}
-                {Boolean(preSession.has_pain) && <span className="px-4 py-2 rounded-xl bg-red-500/20 text-red-300 text-base font-semibold">Pain</span>}
+              <div className="flex gap-2 flex-wrap mt-3">
+                {Boolean(preSession.is_outdoor) && <span className="px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-medium">Outdoor</span>}
+                {Boolean(preSession.caffeine_today) && <span className="px-2 py-1 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-medium">Caffeine</span>}
+                {Boolean(preSession.alcohol_last_24h) && <span className="px-2 py-1 rounded-lg bg-red-500/20 text-red-300 text-xs font-medium">Alcohol 24h</span>}
+                {Boolean(preSession.has_pain) && <span className="px-2 py-1 rounded-lg bg-red-500/20 text-red-300 text-xs font-medium">Pain</span>}
               </div>
             </div>
           </div>
 
           {/* AI Suggestion Panel */}
           {scenario.ai_recommendation && (
-            <div className="p-8">
+            <div className="p-5">
               <button
                 onClick={() => setShowAiSuggestion(!showAiSuggestion)}
-                className="w-full flex items-center justify-between p-5 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/15 transition-colors"
+                className="w-full flex items-center justify-between p-3 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/15 transition-colors"
               >
-                <h3 className="font-bold flex items-center gap-3 text-lg">
-                  <span className="text-2xl">🤖</span> AI Suggestion
+                <h3 className="font-medium flex items-center gap-2 text-sm">
+                  <span>🤖</span> AI Suggestion
                 </h3>
-                <span className="text-base text-cyan-400 font-medium">{showAiSuggestion ? '▲ Collapse' : '▼ Expand'}</span>
+                <span className="text-xs text-cyan-400">{showAiSuggestion ? '▲' : '▼'}</span>
               </button>
               
               {showAiSuggestion && (
-                <div className="mt-5 p-6 rounded-2xl bg-cyan-500/5 border border-cyan-500/20 space-y-5">
+                <div className="mt-3 p-4 rounded-xl bg-cyan-500/5 border border-cyan-500/20 space-y-3">
                   <div>
-                    <span className="text-base text-slate-400 uppercase font-semibold">Recommended</span>
-                    <p className="text-xl font-bold text-cyan-300 mt-2">
+                    <span className="text-xs text-slate-400 uppercase font-medium">Recommended</span>
+                    <p className="text-base font-semibold text-cyan-300 mt-1">
                       {String((scenario.ai_recommendation as Record<string, unknown>)?.session_type || 'N/A')}
                     </p>
                   </div>
                   {scenario.ai_reasoning && (
                     <div>
-                      <span className="text-base text-slate-400 uppercase font-semibold">Reasoning</span>
-                      <p className="text-base text-slate-300 mt-3 leading-relaxed">{String(scenario.ai_reasoning)}</p>
+                      <span className="text-xs text-slate-400 uppercase font-medium">Reasoning</span>
+                      <p className="text-sm text-slate-300 mt-1 leading-relaxed">{String(scenario.ai_reasoning)}</p>
                     </div>
                   )}
                 </div>
@@ -945,40 +950,6 @@ function ScenarioReviewPanel({
               />
             </FormSection>
 
-            {/* Section 9: Agreement with AI */}
-            {scenario.ai_recommendation && (
-              <FormSection
-                number={9}
-                title="Agreement with AI"
-                icon="🤝"
-                isExpanded={expandedSection === 9}
-                isComplete={sectionCompletion[9]}
-                onToggle={() => setExpandedSection(expandedSection === 9 ? 0 : 9)}
-              >
-                <div className="flex gap-3">
-                  {[
-                    { value: 'yes' as const, label: 'Agree', desc: 'AI recommendation is appropriate', color: 'emerald' },
-                    { value: 'partially' as const, label: 'Partially', desc: 'Some aspects are correct', color: 'amber' },
-                    { value: 'no' as const, label: 'Disagree', desc: 'Recommendation needs changes', color: 'red' },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => setAgreesWithAi(option.value)}
-                      className={`flex-1 p-4 rounded-xl text-left transition-all ${
-                        agreesWithAi === option.value
-                          ? option.color === 'emerald' ? 'bg-emerald-500/20 border-2 border-emerald-500/50'
-                            : option.color === 'amber' ? 'bg-amber-500/20 border-2 border-amber-500/50'
-                            : 'bg-red-500/20 border-2 border-red-500/50'
-                          : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                      }`}
-                    >
-                      <span className="font-medium">{option.label}</span>
-                      <p className="text-xs text-slate-400 mt-1">{option.desc}</p>
-                    </button>
-                  ))}
-                </div>
-              </FormSection>
-            )}
           </div>
         </div>
       </div>
@@ -1015,9 +986,9 @@ function ScenarioReviewPanel({
 
 function ProfileItem({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex justify-between items-center py-2">
-      <span className="text-slate-400 text-lg">{label}</span>
-      <span className="text-slate-100 font-semibold text-lg capitalize">{value}</span>
+    <div className="flex justify-between items-center py-1">
+      <span className="text-slate-400 text-sm">{label}</span>
+      <span className="text-slate-100 font-medium text-sm capitalize">{value}</span>
     </div>
   )
 }
@@ -1030,11 +1001,11 @@ function ProfileSlider({ label, value, max, color, inverted }: { label: string; 
   
   return (
     <div>
-      <div className="flex justify-between text-base mb-2">
+      <div className="flex justify-between text-sm mb-1">
         <span className="text-slate-400">{label}</span>
-        <span className={`text-${color}-400 font-bold text-lg`}>{value}/{max}</span>
+        <span className={`text-${color}-400 font-semibold`}>{value}/{max}</span>
       </div>
-      <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
         <div className={`h-full ${colorClass} rounded-full transition-all`} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -1587,12 +1558,64 @@ function InteractionEffectsInput({ effects, setEffects }: {
   )
 }
 
+const ACTIVITY_TYPES = [
+  { value: 'warmup', label: '🔥 Warmup', color: 'amber' },
+  { value: 'projecting', label: '🎯 Projecting', color: 'violet' },
+  { value: 'limit_bouldering', label: '💪 Limit Bouldering', color: 'red' },
+  { value: 'volume', label: '📊 Volume Climbing', color: 'blue' },
+  { value: 'technique', label: '🎨 Technique Drills', color: 'cyan' },
+  { value: 'hangboard', label: '🤏 Hangboard', color: 'orange' },
+  { value: 'campus', label: '⬆️ Campus Board', color: 'pink' },
+  { value: 'stretching', label: '🧘 Stretching', color: 'emerald' },
+  { value: 'cooldown', label: '❄️ Cooldown', color: 'sky' },
+  { value: 'antagonist', label: '🔄 Antagonist Work', color: 'lime' },
+  { value: 'cardio', label: '🏃 Cardio', color: 'rose' },
+  { value: 'core', label: '🎯 Core Training', color: 'fuchsia' },
+  { value: 'custom', label: '✏️ Custom', color: 'slate' },
+] as const
+
 function SessionStructureForm({ enabled, setEnabled, structure, setStructure }: {
   enabled: boolean
   setEnabled: (e: boolean) => void
   structure: SessionStructure
   setStructure: (s: SessionStructure) => void
 }) {
+  const addActivity = (type: SessionActivity['type']) => {
+    const newActivity: SessionActivity = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type,
+      durationMin: type === 'warmup' ? 15 : type === 'cooldown' ? 10 : type === 'stretching' ? 10 : 30,
+      intensity: type === 'warmup' ? 'light' : type === 'cooldown' || type === 'stretching' ? 'very_light' : 'moderate',
+    }
+    setStructure({ ...structure, activities: [...structure.activities, newActivity] })
+  }
+
+  const updateActivity = (id: string, updates: Partial<SessionActivity>) => {
+    setStructure({
+      ...structure,
+      activities: structure.activities.map(a => a.id === id ? { ...a, ...updates } : a)
+    })
+  }
+
+  const removeActivity = (id: string) => {
+    setStructure({
+      ...structure,
+      activities: structure.activities.filter(a => a.id !== id)
+    })
+  }
+
+  const moveActivity = (id: string, direction: 'up' | 'down') => {
+    const index = structure.activities.findIndex(a => a.id === id)
+    if (index === -1) return
+    if (direction === 'up' && index === 0) return
+    if (direction === 'down' && index === structure.activities.length - 1) return
+    
+    const newActivities = [...structure.activities]
+    const swapIndex = direction === 'up' ? index - 1 : index + 1
+    ;[newActivities[index], newActivities[swapIndex]] = [newActivities[swapIndex], newActivities[index]]
+    setStructure({ ...structure, activities: newActivities })
+  }
+
   return (
     <div className="space-y-4">
       <label className="flex items-center gap-2 cursor-pointer">
@@ -1606,151 +1629,173 @@ function SessionStructureForm({ enabled, setEnabled, structure, setStructure }: 
       </label>
       
       {enabled && (
-        <div className="space-y-4 pl-6 border-l-2 border-violet-500/30">
-          {/* Warmup */}
-          <div className="p-4 rounded-xl bg-white/5">
-            <h4 className="font-medium mb-3">Warmup</h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Duration (min)</label>
-                <input
-                  type="number"
-                  value={structure.warmup.durationMin}
-                  onChange={(e) => setStructure({
-                    ...structure,
-                    warmup: { ...structure.warmup, durationMin: parseInt(e.target.value) || 15 }
-                  })}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Intensity</label>
-                <select
-                  value={structure.warmup.intensity}
-                  onChange={(e) => setStructure({
-                    ...structure,
-                    warmup: { ...structure.warmup, intensity: e.target.value as 'very_light' | 'light' | 'moderate' }
-                  })}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
-                >
-                  <option value="very_light">Very Light</option>
-                  <option value="light">Light</option>
-                  <option value="moderate">Moderate</option>
-                </select>
-              </div>
+        <div className="space-y-4">
+          {/* Activity List */}
+          {structure.activities.length > 0 && (
+            <div className="space-y-2">
+              {structure.activities.map((activity, index) => (
+                <div key={activity.id} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-1">
+                      <button
+                        onClick={() => moveActivity(activity.id, 'up')}
+                        disabled={index === 0}
+                        className="text-xs text-slate-500 hover:text-white disabled:opacity-30"
+                      >▲</button>
+                      <button
+                        onClick={() => moveActivity(activity.id, 'down')}
+                        disabled={index === structure.activities.length - 1}
+                        className="text-xs text-slate-500 hover:text-white disabled:opacity-30"
+                      >▼</button>
+                    </div>
+                    
+                    <span className="text-xs text-slate-500 w-6">{index + 1}.</span>
+                    
+                    <select
+                      value={activity.type}
+                      onChange={(e) => updateActivity(activity.id, { type: e.target.value as SessionActivity['type'] })}
+                      className="flex-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white"
+                    >
+                      {ACTIVITY_TYPES.map(t => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+                    
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        value={activity.durationMin}
+                        onChange={(e) => updateActivity(activity.id, { durationMin: parseInt(e.target.value) || 10 })}
+                        className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white text-center"
+                      />
+                      <span className="text-xs text-slate-500">min</span>
+                    </div>
+                    
+                    <select
+                      value={activity.intensity || 'moderate'}
+                      onChange={(e) => updateActivity(activity.id, { intensity: e.target.value as SessionActivity['intensity'] })}
+                      className="w-24 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white"
+                    >
+                      <option value="very_light">Very Light</option>
+                      <option value="light">Light</option>
+                      <option value="moderate">Moderate</option>
+                      <option value="high">High</option>
+                      <option value="max">Max</option>
+                    </select>
+                    
+                    <button
+                      onClick={() => removeActivity(activity.id)}
+                      className="text-red-400 hover:text-red-300 text-lg px-2"
+                    >×</button>
+                  </div>
+                  
+                  {activity.type === 'custom' && (
+                    <input
+                      type="text"
+                      value={activity.notes || ''}
+                      onChange={(e) => updateActivity(activity.id, { notes: e.target.value })}
+                      placeholder="Describe the activity..."
+                      className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500"
+                    />
+                  )}
+                </div>
+              ))}
             </div>
-            <div className="flex gap-4 mt-3">
-              <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input
-                  type="checkbox"
-                  checked={structure.warmup.includeMobility}
-                  onChange={(e) => setStructure({
-                    ...structure,
-                    warmup: { ...structure.warmup, includeMobility: e.target.checked }
-                  })}
-                  className="rounded border-white/20 bg-white/5 text-violet-500"
-                />
-                Mobility
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input
-                  type="checkbox"
-                  checked={structure.warmup.includeTraversing}
-                  onChange={(e) => setStructure({
-                    ...structure,
-                    warmup: { ...structure.warmup, includeTraversing: e.target.checked }
-                  })}
-                  className="rounded border-white/20 bg-white/5 text-violet-500"
-                />
-                Traversing
-              </label>
+          )}
+
+          {/* Add Activity Buttons */}
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500">Add activities to the session:</p>
+            <div className="flex flex-wrap gap-2">
+              {ACTIVITY_TYPES.map(actType => (
+                <button
+                  key={actType.value}
+                  onClick={() => addActivity(actType.value as SessionActivity['type'])}
+                  className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs hover:bg-white/10 transition-colors"
+                >
+                  {actType.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Hangboard */}
-          <div className="p-4 rounded-xl bg-white/5">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium">Hangboard</h4>
-              <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input
-                  type="checkbox"
-                  checked={structure.hangboard.include}
-                  onChange={(e) => setStructure({
-                    ...structure,
-                    hangboard: { ...structure.hangboard, include: e.target.checked }
-                  })}
-                  className="rounded border-white/20 bg-white/5 text-violet-500"
-                />
-                Include
-              </label>
-            </div>
-            {structure.hangboard.include && (
-              <div className="grid grid-cols-2 gap-3">
-                <select
-                  value={structure.hangboard.structure || ''}
-                  onChange={(e) => setStructure({
-                    ...structure,
-                    hangboard: { ...structure.hangboard, structure: e.target.value as 'max_hangs' | 'repeaters' | 'density_hangs' }
-                  })}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
-                >
-                  <option value="">Structure...</option>
-                  <option value="max_hangs">Max Hangs</option>
-                  <option value="repeaters">Repeaters</option>
-                  <option value="density_hangs">Density Hangs</option>
-                </select>
-                <select
-                  value={structure.hangboard.volume || ''}
-                  onChange={(e) => setStructure({
-                    ...structure,
-                    hangboard: { ...structure.hangboard, volume: e.target.value as 'reduced' | 'normal' | 'extended' }
-                  })}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
-                >
-                  <option value="">Volume...</option>
-                  <option value="reduced">Reduced</option>
-                  <option value="normal">Normal</option>
-                  <option value="extended">Extended</option>
-                </select>
-              </div>
-            )}
-            <label className="flex items-center gap-2 cursor-pointer text-sm mt-2 text-red-400">
-              <input
-                type="checkbox"
-                checked={structure.hangboard.contraindicated}
-                onChange={(e) => setStructure({
+          {/* Quick Templates */}
+          <div className="pt-3 border-t border-white/10">
+            <p className="text-xs text-slate-500 mb-2">Quick templates:</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setStructure({
                   ...structure,
-                  hangboard: { ...structure.hangboard, contraindicated: e.target.checked, include: e.target.checked ? false : structure.hangboard.include }
+                  activities: [
+                    { id: '1', type: 'warmup', durationMin: 15, intensity: 'light' },
+                    { id: '2', type: 'projecting', durationMin: 60, intensity: 'high' },
+                    { id: '3', type: 'cooldown', durationMin: 10, intensity: 'very_light' },
+                  ]
                 })}
-                className="rounded border-white/20 bg-white/5 text-red-500"
-              />
-              Contraindicated (avoid hangboard)
-            </label>
+                className="px-3 py-1.5 rounded-lg bg-violet-500/20 border border-violet-500/30 text-violet-300 text-xs hover:bg-violet-500/30 transition-colors"
+              >
+                🎯 Project Session
+              </button>
+              <button
+                onClick={() => setStructure({
+                  ...structure,
+                  activities: [
+                    { id: '1', type: 'warmup', durationMin: 15, intensity: 'light' },
+                    { id: '2', type: 'volume', durationMin: 90, intensity: 'moderate' },
+                    { id: '3', type: 'stretching', durationMin: 15, intensity: 'very_light' },
+                  ]
+                })}
+                className="px-3 py-1.5 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs hover:bg-blue-500/30 transition-colors"
+              >
+                📊 Volume Session
+              </button>
+              <button
+                onClick={() => setStructure({
+                  ...structure,
+                  activities: [
+                    { id: '1', type: 'warmup', durationMin: 20, intensity: 'moderate' },
+                    { id: '2', type: 'hangboard', durationMin: 30, intensity: 'high' },
+                    { id: '3', type: 'limit_bouldering', durationMin: 45, intensity: 'max' },
+                    { id: '4', type: 'antagonist', durationMin: 15, intensity: 'moderate' },
+                    { id: '5', type: 'stretching', durationMin: 10, intensity: 'very_light' },
+                  ]
+                })}
+                className="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 text-xs hover:bg-red-500/30 transition-colors"
+              >
+                💪 Training Session
+              </button>
+              <button
+                onClick={() => setStructure({
+                  ...structure,
+                  activities: [
+                    { id: '1', type: 'warmup', durationMin: 10, intensity: 'very_light' },
+                    { id: '2', type: 'stretching', durationMin: 20, intensity: 'very_light' },
+                    { id: '3', type: 'technique', durationMin: 30, intensity: 'light' },
+                  ]
+                })}
+                className="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs hover:bg-emerald-500/30 transition-colors"
+              >
+                🌿 Recovery Session
+              </button>
+              <button
+                onClick={() => setStructure({ ...structure, activities: [] })}
+                className="px-3 py-1.5 rounded-lg bg-slate-500/20 border border-slate-500/30 text-slate-300 text-xs hover:bg-slate-500/30 transition-colors"
+              >
+                🗑️ Clear All
+              </button>
+            </div>
           </div>
 
-          {/* Cooldown */}
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="text-xs text-slate-500 mb-1 block">Cooldown Duration (min)</label>
-              <input
-                type="number"
-                value={structure.cooldownDurationMin}
-                onChange={(e) => setStructure({ ...structure, cooldownDurationMin: parseInt(e.target.value) || 10 })}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
-              />
+          {/* Session Summary */}
+          {structure.activities.length > 0 && (
+            <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20">
+              <p className="text-sm text-violet-300">
+                <strong>Total Duration:</strong> {structure.activities.reduce((sum, a) => sum + a.durationMin, 0)} minutes
+                <span className="mx-2">•</span>
+                <strong>{structure.activities.length}</strong> activities
+              </p>
             </div>
-            <div className="flex-1 flex items-end pb-2">
-              <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input
-                  type="checkbox"
-                  checked={structure.antagonistWork}
-                  onChange={(e) => setStructure({ ...structure, antagonistWork: e.target.checked })}
-                  className="rounded border-white/20 bg-white/5 text-violet-500"
-                />
-                Antagonist Work
-              </label>
-            </div>
-          </div>
+          )}
         </div>
       )}
     </div>
