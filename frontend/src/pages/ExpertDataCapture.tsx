@@ -329,29 +329,33 @@ export function ExpertDataCapture() {
             </div>
           </div>
 
-          {/* Scenario Review Panel */}
+          {/* Placeholder for selected scenario */}
           <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
-            {selectedScenario ? (
-              <ScenarioReviewPanel
-                scenario={selectedScenario}
-                existingResponse={existingResponse}
-                expertId={expertId}
-                responseStartTime={responseStartTime}
-                onResponseSaved={() => {
-                  fetchData()
-                  setSelectedScenario(null)
-                }}
-                onClose={() => setSelectedScenario(null)}
-              />
-            ) : (
-              <div className="p-8 text-center h-full flex flex-col items-center justify-center min-h-[400px]">
-                <span className="text-6xl mb-4">👈</span>
-                <h3 className="text-lg font-semibold mb-2">Select a Scenario</h3>
-                <p className="text-slate-400 text-sm max-w-xs">
-                  Choose a scenario from the list to review and provide your expert feedback.
-                </p>
-              </div>
-            )}
+            <div className="p-8 text-center h-full flex flex-col items-center justify-center min-h-[400px]">
+              {selectedScenario ? (
+                <>
+                  <span className="text-6xl mb-4">📋</span>
+                  <h3 className="text-lg font-semibold mb-2">Reviewing: {selectedScenario.scenario_description?.slice(0, 50) || 'Scenario'}...</h3>
+                  <p className="text-slate-400 text-sm max-w-xs mb-4">
+                    Full-screen review panel is open
+                  </p>
+                  <button
+                    onClick={() => setSelectedScenario(null)}
+                    className="px-4 py-2 rounded-lg bg-white/10 text-slate-300 text-sm hover:bg-white/20 transition-colors"
+                  >
+                    Close Review
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-6xl mb-4">👈</span>
+                  <h3 className="text-lg font-semibold mb-2">Select a Scenario</h3>
+                  <p className="text-slate-400 text-sm max-w-xs">
+                    Choose a scenario from the list to review and provide your expert feedback.
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -372,6 +376,21 @@ export function ExpertDataCapture() {
             setShowCreateModal(false)
             fetchData()
           }}
+        />
+      )}
+
+      {/* Full-Screen Scenario Review Panel - Rendered OUTSIDE the grid */}
+      {selectedScenario && (
+        <ScenarioReviewPanel
+          scenario={selectedScenario}
+          existingResponse={existingResponse}
+          expertId={expertId}
+          responseStartTime={responseStartTime}
+          onResponseSaved={() => {
+            fetchData()
+            setSelectedScenario(null)
+          }}
+          onClose={() => setSelectedScenario(null)}
         />
       )}
     </div>
