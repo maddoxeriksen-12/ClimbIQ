@@ -16,6 +16,17 @@ export function AnalysisScreen({ onComplete }: AnalysisScreenProps) {
     { icon: '✨', label: 'Generating recommendations...', detail: 'Creating personalized insights' },
   ]
 
+  // Lock body scroll when analysis screen is shown
+  useEffect(() => {
+    // Prevent scrolling on mount
+    document.body.style.overflow = 'hidden'
+    
+    // Re-enable scrolling on unmount
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [])
+
   useEffect(() => {
     // Simulate analysis progress
     const progressInterval = setInterval(() => {
@@ -51,7 +62,7 @@ export function AnalysisScreen({ onComplete }: AnalysisScreenProps) {
   }, [onComplete])
 
   return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
+    <div className="fixed inset-0 z-50 bg-[#0a0f0d] flex flex-col items-center justify-center px-4">
       {/* Animated brain/analysis icon */}
       <div className="relative mb-8">
         {/* Outer rotating ring */}
