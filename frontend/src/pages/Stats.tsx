@@ -905,11 +905,19 @@ export function Stats() {
 
   // Render widget menu
   const renderWidgetMenu = (widget: WidgetConfig) => (
-    <div className="absolute top-2 right-2 z-20">
+    <div 
+      className="absolute top-2 right-2 z-20"
+      onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
       <button
         onClick={(e) => {
           e.stopPropagation()
+          e.preventDefault()
           setActiveMenu(activeMenu === widget.id ? null : widget.id)
+        }}
+        onMouseDown={(e) => {
+          e.stopPropagation()
         }}
         className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
       >
@@ -922,6 +930,7 @@ export function Stats() {
         <div 
           className="absolute top-full right-0 mt-1 w-40 rounded-xl border border-white/10 bg-[#1a1f1e] shadow-xl overflow-hidden z-30"
           onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           <button
             onClick={() => handleSort(widget.id, widget.dimensions[0] || 'value')}
