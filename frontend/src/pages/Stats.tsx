@@ -716,10 +716,10 @@ export function Stats() {
       case 'bar':
         return (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 5, right: 5, bottom: 30, left: 0 }}>
+            <BarChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey={xKey} tick={{ fill: '#94a3b8', fontSize: 10 }} angle={-45} textAnchor="end" />
-              <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} />
+              <XAxis dataKey={xKey} tick={{ fill: '#94a3b8', fontSize: 9 }} angle={-45} textAnchor="end" height={30} />
+              <YAxis tick={{ fill: '#94a3b8', fontSize: 9 }} width={35} />
               <Tooltip contentStyle={{ backgroundColor: '#1a1f1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
               {yKeys.map((key, i) => (
                 <Bar key={key} dataKey={key} fill={colors[i % colors.length]} radius={[4, 4, 0, 0]} />
@@ -731,10 +731,10 @@ export function Stats() {
       case 'stacked-bar':
         return (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 5, right: 5, bottom: 30, left: 0 }}>
+            <BarChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey={xKey} tick={{ fill: '#94a3b8', fontSize: 10 }} angle={-45} textAnchor="end" />
-              <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} />
+              <XAxis dataKey={xKey} tick={{ fill: '#94a3b8', fontSize: 9 }} angle={-45} textAnchor="end" height={30} />
+              <YAxis tick={{ fill: '#94a3b8', fontSize: 9 }} width={35} />
               <Tooltip contentStyle={{ backgroundColor: '#1a1f1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
               {yKeys.map((key, i) => (
                 <Bar key={key} dataKey={key} stackId="a" fill={colors[i % colors.length]} radius={i === yKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]} />
@@ -746,10 +746,10 @@ export function Stats() {
       case 'line':
         return (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 5, right: 5, bottom: 30, left: 0 }}>
+            <LineChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey={xKey} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} />
+              <XAxis dataKey={xKey} tick={{ fill: '#94a3b8', fontSize: 9 }} height={25} />
+              <YAxis tick={{ fill: '#94a3b8', fontSize: 9 }} width={35} />
               <Tooltip contentStyle={{ backgroundColor: '#1a1f1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
               {yKeys.map((key, i) => (
                 <Line key={key} type="monotone" dataKey={key} stroke={colors[i % colors.length]} strokeWidth={2} dot={false} />
@@ -761,7 +761,7 @@ export function Stats() {
       case 'stacked-area':
         return (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 30, left: 0 }}>
+            <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
               <defs>
                 {yKeys.map((key, i) => (
                   <linearGradient key={key} id={`color-${key}`} x1="0" y1="0" x2="0" y2="1">
@@ -771,8 +771,8 @@ export function Stats() {
                 ))}
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey={xKey} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} />
+              <XAxis dataKey={xKey} tick={{ fill: '#94a3b8', fontSize: 9 }} height={25} />
+              <YAxis tick={{ fill: '#94a3b8', fontSize: 9 }} width={35} />
               <Tooltip contentStyle={{ backgroundColor: '#1a1f1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
               {yKeys.map((key, i) => (
                 <Area key={key} type="monotone" dataKey={key} stackId="1" stroke={colors[i % colors.length]} fill={`url(#color-${key})`} />
@@ -784,8 +784,8 @@ export function Stats() {
       case 'pie':
         return (
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={data} dataKey={yKeys[0]} nameKey={xKey} cx="50%" cy="50%" innerRadius={40} outerRadius={80} paddingAngle={2}>
+            <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+              <Pie data={data} dataKey={yKeys[0]} nameKey={xKey} cx="50%" cy="50%" innerRadius={30} outerRadius={70} paddingAngle={2}>
                 {data.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
                 ))}
@@ -798,10 +798,10 @@ export function Stats() {
       case 'scatter':
         return (
           <ResponsiveContainer width="100%" height="100%">
-            <ScatterChart margin={{ top: 5, right: 5, bottom: 30, left: 0 }}>
+            <ScatterChart margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey={xKey} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <YAxis dataKey={yKeys[0]} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+              <XAxis dataKey={xKey} tick={{ fill: '#94a3b8', fontSize: 9 }} height={25} />
+              <YAxis dataKey={yKeys[0]} tick={{ fill: '#94a3b8', fontSize: 9 }} width={35} />
               <Tooltip contentStyle={{ backgroundColor: '#1a1f1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
               <Scatter data={data} fill={colors[0]} />
             </ScatterChart>
@@ -811,10 +811,10 @@ export function Stats() {
       case 'combo':
         return (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={data} margin={{ top: 5, right: 5, bottom: 30, left: 0 }}>
+            <ComposedChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey={xKey} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} />
+              <XAxis dataKey={xKey} tick={{ fill: '#94a3b8', fontSize: 9 }} height={25} />
+              <YAxis tick={{ fill: '#94a3b8', fontSize: 9 }} width={35} />
               <Tooltip contentStyle={{ backgroundColor: '#1a1f1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
               {yKeys.slice(0, 1).map((key, i) => (
                 <Bar key={key} dataKey={key} fill={colors[i]} radius={[4, 4, 0, 0]} />
