@@ -21,6 +21,7 @@ import { EditSession } from './pages/EditSession'
 import { Stats } from './pages/Stats'
 import { Goals } from './pages/Goals'
 import { NewGoal } from './pages/NewGoal'
+import { ExpertDataCapture } from './pages/ExpertDataCapture'
 
 const queryClient = new QueryClient()
 
@@ -213,6 +214,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Stats />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/expert-data"
+            element={
+              <ProtectedRoute>
+                <ExpertDataCapture />
               </ProtectedRoute>
             }
           />

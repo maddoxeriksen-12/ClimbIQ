@@ -67,6 +67,7 @@ export function Layout({ children }: LayoutProps) {
 
   const coachNavItems = [
     { path: '/', label: 'Team Dashboard', icon: '👥' },
+    { path: '/expert-data', label: 'Expert Data', icon: '🧠' },
     { path: '/recommendations', label: 'Team Insights', icon: '💡' },
     { path: '/settings', label: 'Settings', icon: '⚙️' },
   ]
