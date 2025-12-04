@@ -227,7 +227,7 @@ export function Dashboard() {
                   You skipped some sections during onboarding. Complete them for better recommendations.
                 </p>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {(user.user_metadata.onboarding_pending_sections as string[]).map((section: string) => (
+                  {(user?.user_metadata?.onboarding_pending_sections as string[] || []).map((section: string) => (
                     <span key={section} className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs capitalize">
                       {section === 'psychological' ? 'Psychological Assessment' : 
                        section === 'injury' ? 'Injury History' : 

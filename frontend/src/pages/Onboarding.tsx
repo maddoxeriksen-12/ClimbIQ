@@ -88,7 +88,7 @@ export function Onboarding() {
     wrists: { status: 'none' },
     skin: { status: 'none' },
   })
-  const [pastInjuries, setPastInjuries] = useState<PastInjury[]>([])
+  const [pastInjuries, _setPastInjuries] = useState<PastInjury[]>([]) // TODO: Add UI for past injuries
   const [chronicConditions, setChronicConditions] = useState<string[]>([])
   const [surgeryHistory, setSurgeryHistory] = useState('')
 
