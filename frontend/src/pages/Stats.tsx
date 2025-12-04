@@ -14,19 +14,114 @@ import 'react-resizable/css/styles.css'
 const BOULDER_GRADES = ['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12+']
 const SPORT_GRADES = ['5.6', '5.7', '5.8', '5.9', '5.10a', '5.10b', '5.10c', '5.10d', '5.11a', '5.11b', '5.11c', '5.11d', '5.12a', '5.12b', '5.12c', '5.12d', '5.13a+']
 
+// Chart icon components
+const ChartIcons = {
+  bar: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <rect x="3" y="10" width="4" height="10" rx="1" />
+      <rect x="10" y="6" width="4" height="14" rx="1" />
+      <rect x="17" y="3" width="4" height="17" rx="1" />
+    </svg>
+  ),
+  line: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <polyline points="3,17 9,11 13,15 21,7" />
+      <circle cx="3" cy="17" r="1.5" fill="currentColor" />
+      <circle cx="9" cy="11" r="1.5" fill="currentColor" />
+      <circle cx="13" cy="15" r="1.5" fill="currentColor" />
+      <circle cx="21" cy="7" r="1.5" fill="currentColor" />
+    </svg>
+  ),
+  numeric: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <text x="4" y="17" fontSize="14" fill="currentColor" fontWeight="bold">42</text>
+    </svg>
+  ),
+  combo: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <rect x="3" y="12" width="3" height="8" rx="0.5" />
+      <rect x="10" y="8" width="3" height="12" rx="0.5" />
+      <rect x="17" y="5" width="3" height="15" rx="0.5" />
+      <polyline points="4,6 12,4 19,8" strokeWidth="1.5" />
+    </svg>
+  ),
+  'stacked-bar': () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <rect x="3" y="14" width="4" height="6" rx="0.5" />
+      <rect x="3" y="10" width="4" height="4" rx="0.5" fill="currentColor" opacity="0.3" />
+      <rect x="10" y="8" width="4" height="12" rx="0.5" />
+      <rect x="10" y="4" width="4" height="4" rx="0.5" fill="currentColor" opacity="0.3" />
+      <rect x="17" y="6" width="4" height="14" rx="0.5" />
+      <rect x="17" y="2" width="4" height="4" rx="0.5" fill="currentColor" opacity="0.3" />
+    </svg>
+  ),
+  'stacked-area': () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <path d="M3,18 L8,12 L14,15 L21,8 L21,20 L3,20 Z" fill="currentColor" opacity="0.2" />
+      <path d="M3,20 L8,16 L14,18 L21,14 L21,20 L3,20 Z" fill="currentColor" opacity="0.4" />
+      <polyline points="3,18 8,12 14,15 21,8" />
+    </svg>
+  ),
+  pie: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12,12 L12,3" />
+      <path d="M12,12 L19.8,16.5" />
+      <path d="M12,3 A9,9 0 0,1 19.8,16.5" fill="currentColor" opacity="0.3" />
+    </svg>
+  ),
+  heatmap: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
+      <rect x="3" y="3" width="5" height="5" rx="1" fill="currentColor" opacity="0.2" />
+      <rect x="9" y="3" width="5" height="5" rx="1" fill="currentColor" opacity="0.6" />
+      <rect x="15" y="3" width="5" height="5" rx="1" fill="currentColor" opacity="0.4" />
+      <rect x="3" y="9" width="5" height="5" rx="1" fill="currentColor" opacity="0.8" />
+      <rect x="9" y="9" width="5" height="5" rx="1" fill="currentColor" opacity="0.3" />
+      <rect x="15" y="9" width="5" height="5" rx="1" fill="currentColor" opacity="0.7" />
+      <rect x="3" y="15" width="5" height="5" rx="1" fill="currentColor" opacity="0.5" />
+      <rect x="9" y="15" width="5" height="5" rx="1" fill="currentColor" opacity="0.9" />
+      <rect x="15" y="15" width="5" height="5" rx="1" fill="currentColor" opacity="0.4" />
+    </svg>
+  ),
+  bubble: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <circle cx="8" cy="14" r="4" fill="currentColor" opacity="0.3" />
+      <circle cx="16" cy="8" r="5" fill="currentColor" opacity="0.3" />
+      <circle cx="14" cy="16" r="3" fill="currentColor" opacity="0.3" />
+    </svg>
+  ),
+  'cluster-bubble': () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <circle cx="8" cy="10" r="3" fill="currentColor" opacity="0.3" />
+      <circle cx="14" cy="8" r="2" fill="currentColor" opacity="0.3" />
+      <circle cx="12" cy="14" r="4" fill="currentColor" opacity="0.3" />
+      <circle cx="17" cy="13" r="2.5" fill="currentColor" opacity="0.3" />
+    </svg>
+  ),
+  scatter: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <circle cx="5" cy="16" r="2" fill="currentColor" />
+      <circle cx="9" cy="10" r="2" fill="currentColor" />
+      <circle cx="14" cy="14" r="2" fill="currentColor" />
+      <circle cx="18" cy="6" r="2" fill="currentColor" />
+      <circle cx="12" cy="8" r="2" fill="currentColor" />
+    </svg>
+  ),
+}
+
 // Chart type options
 const CHART_TYPES = [
-  { value: 'bar', label: 'Bar/Column', icon: '📊' },
-  { value: 'line', label: 'Line', icon: '📈' },
-  { value: 'numeric', label: 'Numeric Point', icon: '🔢' },
-  { value: 'combo', label: 'Combination Column & Line', icon: '📉' },
-  { value: 'stacked-bar', label: 'Stacked Bar/Column', icon: '📊' },
-  { value: 'stacked-area', label: 'Stacked Area', icon: '📈' },
-  { value: 'pie', label: 'Pie', icon: '🥧' },
-  { value: 'heatmap', label: 'Heat Map', icon: '🌡️' },
-  { value: 'bubble', label: 'Bubble', icon: '🫧' },
-  { value: 'cluster-bubble', label: 'Cluster Bubble', icon: '⭕' },
-  { value: 'scatter', label: 'Scatterplot', icon: '✨' },
+  { value: 'bar', label: 'Bar' },
+  { value: 'line', label: 'Line' },
+  { value: 'numeric', label: 'Number' },
+  { value: 'combo', label: 'Combo' },
+  { value: 'stacked-bar', label: 'Stacked' },
+  { value: 'stacked-area', label: 'Area' },
+  { value: 'pie', label: 'Pie' },
+  { value: 'heatmap', label: 'Heat' },
+  { value: 'bubble', label: 'Bubble' },
+  { value: 'cluster-bubble', label: 'Cluster' },
+  { value: 'scatter', label: 'Scatter' },
 ]
 
 // Available measures from pre/post session forms
@@ -860,238 +955,244 @@ export function Stats() {
     </div>
   )
 
-  // Edit Modal
-  const renderEditModal = () => {
+  // Edit Sidebar Panel
+  const renderEditPanel = () => {
     if (!editingWidget) return null
 
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setEditingWidget(null)} />
-        
-        <div className="relative bg-[#0f1412] border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-          <div className="sticky top-0 bg-[#0f1412] border-b border-white/10 p-6 flex items-center justify-between">
-            <h2 className="text-xl font-bold">Edit Chart</h2>
-            <button onClick={() => setEditingWidget(null)} className="p-2 hover:bg-white/5 rounded-lg">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          <div className="p-6 space-y-6">
-            {/* Title */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Chart Title</label>
-              <input
-                type="text"
-                value={editingWidget.title}
-                onChange={(e) => setEditingWidget({ ...editingWidget, title: e.target.value })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50"
-              />
-            </div>
+    const IconComponent = ChartIcons[editingWidget.chartType as keyof typeof ChartIcons] || ChartIcons.bar
 
-            {/* Chart Type */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Chart Type</label>
-              <div className="grid grid-cols-3 gap-2">
-                {CHART_TYPES.map(type => (
+    return (
+      <div className="fixed top-0 right-0 h-full w-80 bg-[#0f1412] border-l border-white/10 shadow-2xl z-50 flex flex-col animate-in slide-in-from-right duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded bg-fuchsia-500/20 flex items-center justify-center text-fuchsia-400">
+              <IconComponent />
+            </div>
+            <span className="font-medium text-sm">Edit Chart</span>
+          </div>
+          <button onClick={() => setEditingWidget(null)} className="p-1.5 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-4">
+          {/* Title */}
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1">Title</label>
+            <input
+              type="text"
+              value={editingWidget.title}
+              onChange={(e) => setEditingWidget({ ...editingWidget, title: e.target.value })}
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-fuchsia-500/50"
+            />
+          </div>
+
+          {/* Chart Type */}
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">Chart Type</label>
+            <div className="grid grid-cols-4 gap-1">
+              {CHART_TYPES.map(type => {
+                const TypeIcon = ChartIcons[type.value as keyof typeof ChartIcons] || ChartIcons.bar
+                return (
                   <button
                     key={type.value}
                     onClick={() => setEditingWidget({ ...editingWidget, chartType: type.value })}
-                    className={`p-3 rounded-xl border text-sm transition-all ${
+                    title={type.label}
+                    className={`p-2 rounded-lg border flex flex-col items-center gap-0.5 transition-all ${
                       editingWidget.chartType === type.value
                         ? 'border-fuchsia-500/50 bg-fuchsia-500/10 text-fuchsia-300'
-                        : 'border-white/10 hover:bg-white/5'
+                        : 'border-white/10 hover:bg-white/5 text-slate-400'
                     }`}
                   >
-                    <span className="text-lg block mb-1">{type.icon}</span>
-                    <span className="text-xs">{type.label}</span>
+                    <TypeIcon />
+                    <span className="text-[9px]">{type.label}</span>
                   </button>
-                ))}
-              </div>
+                )
+              })}
             </div>
+          </div>
 
-            {/* Measures */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Measures</label>
-              <div className="space-y-3">
-                {AVAILABLE_MEASURES.map(category => (
-                  <div key={category.category}>
-                    <p className="text-xs text-slate-500 mb-2">{category.category}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {category.items.map(measure => (
-                        <button
-                          key={measure.value}
-                          onClick={() => {
-                            const measures = editingWidget.measures.includes(measure.value)
-                              ? editingWidget.measures.filter(m => m !== measure.value)
-                              : [...editingWidget.measures, measure.value]
-                            setEditingWidget({ ...editingWidget, measures })
-                          }}
-                          className={`px-3 py-1.5 rounded-lg text-xs transition-all ${
-                            editingWidget.measures.includes(measure.value)
-                              ? 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30'
-                              : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                          }`}
-                        >
-                          {measure.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Dimensions */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Dimensions</label>
-              <div className="flex flex-wrap gap-2">
-                {AVAILABLE_DIMENSIONS.map(dim => (
-                  <button
-                    key={dim.value}
-                    onClick={() => {
-                      const dimensions = editingWidget.dimensions.includes(dim.value)
-                        ? editingWidget.dimensions.filter(d => d !== dim.value)
-                        : [...editingWidget.dimensions, dim.value]
-                      setEditingWidget({ ...editingWidget, dimensions })
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs transition-all ${
-                      editingWidget.dimensions.includes(dim.value)
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                        : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                    }`}
-                  >
-                    {dim.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Color Palette */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Color Palette</label>
-              <div className="space-y-2">
-                {COLOR_PALETTES.map((palette, index) => (
-                  <button
-                    key={palette.name}
-                    onClick={() => setEditingWidget({ ...editingWidget, colorPalette: index })}
-                    className={`w-full p-3 rounded-xl border flex items-center gap-3 transition-all ${
-                      editingWidget.colorPalette === index
-                        ? 'border-fuchsia-500/50 bg-fuchsia-500/10'
-                        : 'border-white/10 hover:bg-white/5'
-                    }`}
-                  >
-                    <span className="text-sm font-medium">{palette.name}</span>
-                    <div className="flex gap-1 ml-auto">
-                      {palette.colors.slice(0, 8).map((color, i) => (
-                        <div key={i} className="w-5 h-5 rounded" style={{ backgroundColor: color }} />
-                      ))}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Color by Measure */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Color by Measure (Optional)</label>
-              <select
-                value={editingWidget.colorByMeasure || ''}
-                onChange={(e) => setEditingWidget({ ...editingWidget, colorByMeasure: e.target.value || null })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50"
-              >
-                <option value="">None</option>
-                {editingWidget.measures.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filters */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Filters</label>
-              <p className="text-xs text-slate-500 mb-3">Add filters to narrow down the data</p>
-              
-              {editingWidget.filters.map((filter, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <select
-                    value={filter.field}
-                    onChange={(e) => {
-                      const newFilters = [...editingWidget.filters]
-                      newFilters[index].field = e.target.value
-                      setEditingWidget({ ...editingWidget, filters: newFilters })
-                    }}
-                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
-                  >
-                    {AVAILABLE_DIMENSIONS.map(dim => (
-                      <option key={dim.value} value={dim.value}>{dim.label}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={filter.operator}
-                    onChange={(e) => {
-                      const newFilters = [...editingWidget.filters]
-                      newFilters[index].operator = e.target.value
-                      setEditingWidget({ ...editingWidget, filters: newFilters })
-                    }}
-                    className="w-24 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
-                  >
-                    <option value="equals">=</option>
-                    <option value="not_equals">≠</option>
-                    <option value="greater">{'>'}</option>
-                    <option value="less">{'<'}</option>
-                    <option value="contains">Contains</option>
-                  </select>
-                  <input
-                    type="text"
-                    value={filter.value}
-                    onChange={(e) => {
-                      const newFilters = [...editingWidget.filters]
-                      newFilters[index].value = e.target.value
-                      setEditingWidget({ ...editingWidget, filters: newFilters })
-                    }}
-                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
-                    placeholder="Value"
-                  />
-                  <button
-                    onClick={() => {
-                      const newFilters = editingWidget.filters.filter((_, i) => i !== index)
-                      setEditingWidget({ ...editingWidget, filters: newFilters })
-                    }}
-                    className="p-2 rounded-lg hover:bg-red-500/10 text-red-400"
-                  >
-                    ✕
-                  </button>
+          {/* Measures */}
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">Measures</label>
+            {AVAILABLE_MEASURES.map(category => (
+              <div key={category.category} className="mb-2">
+                <p className="text-[10px] text-slate-500 mb-1">{category.category}</p>
+                <div className="flex flex-wrap gap-1">
+                  {category.items.map(measure => (
+                    <button
+                      key={measure.value}
+                      onClick={() => {
+                        const measures = editingWidget.measures.includes(measure.value)
+                          ? editingWidget.measures.filter(m => m !== measure.value)
+                          : [...editingWidget.measures, measure.value]
+                        setEditingWidget({ ...editingWidget, measures })
+                      }}
+                      className={`px-2 py-1 rounded text-[10px] transition-all ${
+                        editingWidget.measures.includes(measure.value)
+                          ? 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30'
+                          : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                      }`}
+                    >
+                      {measure.label}
+                    </button>
+                  ))}
                 </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Dimensions */}
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">Dimensions</label>
+            <div className="flex flex-wrap gap-1">
+              {AVAILABLE_DIMENSIONS.map(dim => (
+                <button
+                  key={dim.value}
+                  onClick={() => {
+                    const dimensions = editingWidget.dimensions.includes(dim.value)
+                      ? editingWidget.dimensions.filter(d => d !== dim.value)
+                      : [...editingWidget.dimensions, dim.value]
+                    setEditingWidget({ ...editingWidget, dimensions })
+                  }}
+                  className={`px-2 py-1 rounded text-[10px] transition-all ${
+                    editingWidget.dimensions.includes(dim.value)
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                      : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  {dim.label}
+                </button>
               ))}
-              
-              <button
-                onClick={() => {
-                  const newFilters = [...editingWidget.filters, { field: 'session_type', operator: 'equals', value: '' }]
-                  setEditingWidget({ ...editingWidget, filters: newFilters })
-                }}
-                className="w-full py-2 rounded-lg border border-dashed border-white/20 text-sm text-slate-400 hover:border-white/40 hover:text-white transition-colors"
-              >
-                + Add Filter
-              </button>
             </div>
           </div>
-          
-          <div className="sticky bottom-0 bg-[#0f1412] border-t border-white/10 p-6 flex justify-end gap-3">
-            <button
-              onClick={() => setEditingWidget(null)}
-              className="px-4 py-2 rounded-xl border border-white/10 hover:bg-white/5 transition-colors"
+
+          {/* Color Palette */}
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">Colors</label>
+            <div className="space-y-1">
+              {COLOR_PALETTES.map((palette, index) => (
+                <button
+                  key={palette.name}
+                  onClick={() => setEditingWidget({ ...editingWidget, colorPalette: index })}
+                  className={`w-full p-2 rounded-lg border flex items-center gap-2 transition-all ${
+                    editingWidget.colorPalette === index
+                      ? 'border-fuchsia-500/50 bg-fuchsia-500/10'
+                      : 'border-white/10 hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-[10px] font-medium w-12">{palette.name}</span>
+                  <div className="flex gap-0.5 ml-auto">
+                    {palette.colors.slice(0, 6).map((color, i) => (
+                      <div key={i} className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
+                    ))}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Color by Measure */}
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1">Color by Measure</label>
+            <select
+              value={editingWidget.colorByMeasure || ''}
+              onChange={(e) => setEditingWidget({ ...editingWidget, colorByMeasure: e.target.value || null })}
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-fuchsia-500/50"
             >
-              Cancel
-            </button>
+              <option value="">None</option>
+              {editingWidget.measures.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filters */}
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">Filters</label>
+            
+            {editingWidget.filters.map((filter, index) => (
+              <div key={index} className="flex gap-1 mb-1.5">
+                <select
+                  value={filter.field}
+                  onChange={(e) => {
+                    const newFilters = [...editingWidget.filters]
+                    newFilters[index].field = e.target.value
+                    setEditingWidget({ ...editingWidget, filters: newFilters })
+                  }}
+                  className="flex-1 rounded border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white"
+                >
+                  {AVAILABLE_DIMENSIONS.map(dim => (
+                    <option key={dim.value} value={dim.value}>{dim.label}</option>
+                  ))}
+                </select>
+                <select
+                  value={filter.operator}
+                  onChange={(e) => {
+                    const newFilters = [...editingWidget.filters]
+                    newFilters[index].operator = e.target.value
+                    setEditingWidget({ ...editingWidget, filters: newFilters })
+                  }}
+                  className="w-12 rounded border border-white/10 bg-white/5 px-1 py-1 text-[10px] text-white"
+                >
+                  <option value="equals">=</option>
+                  <option value="not_equals">≠</option>
+                  <option value="greater">{'>'}</option>
+                  <option value="less">{'<'}</option>
+                </select>
+                <input
+                  type="text"
+                  value={filter.value}
+                  onChange={(e) => {
+                    const newFilters = [...editingWidget.filters]
+                    newFilters[index].value = e.target.value
+                    setEditingWidget({ ...editingWidget, filters: newFilters })
+                  }}
+                  className="flex-1 rounded border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white"
+                  placeholder="Value"
+                />
+                <button
+                  onClick={() => {
+                    const newFilters = editingWidget.filters.filter((_, i) => i !== index)
+                    setEditingWidget({ ...editingWidget, filters: newFilters })
+                  }}
+                  className="p-1 rounded hover:bg-red-500/10 text-red-400 text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            
             <button
-              onClick={() => handleWidgetUpdate(editingWidget)}
-              className="px-6 py-2 rounded-xl bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-medium"
+              onClick={() => {
+                const newFilters = [...editingWidget.filters, { field: 'session_type', operator: 'equals', value: '' }]
+                setEditingWidget({ ...editingWidget, filters: newFilters })
+              }}
+              className="w-full py-1.5 rounded border border-dashed border-white/20 text-[10px] text-slate-400 hover:border-white/40 hover:text-white transition-colors"
             >
-              Save Changes
+              + Add Filter
             </button>
           </div>
+        </div>
+        
+        {/* Footer */}
+        <div className="border-t border-white/10 p-3 flex gap-2">
+          <button
+            onClick={() => setEditingWidget(null)}
+            className="flex-1 px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 transition-colors text-xs"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => handleWidgetUpdate(editingWidget)}
+            className="flex-1 px-3 py-2 rounded-lg bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-medium text-xs"
+          >
+            Save
+          </button>
         </div>
       </div>
     )
@@ -1235,8 +1336,8 @@ export function Stats() {
         </div>
       </div>
 
-      {/* Edit Modal */}
-      {renderEditModal()}
+      {/* Edit Sidebar Panel */}
+      {renderEditPanel()}
     </div>
   )
 }
