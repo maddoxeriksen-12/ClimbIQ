@@ -55,7 +55,7 @@ export function Layout({ children }: LayoutProps) {
   // Different nav items based on role
   const baseAthleteNavItems = [
     { path: '/', label: 'Dashboard', icon: '📊' },
-    { path: '/session/new', label: 'New Session', icon: '🧗' },
+    { path: '/session/new', label: 'Session', icon: '🧗' },
     { path: '/sessions', label: 'History', icon: '📅' },
   ]
   
