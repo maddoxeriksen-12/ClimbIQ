@@ -774,12 +774,12 @@ function ScenarioReviewPanel({
               {Array.isArray(baseline.injury_history) && (baseline.injury_history as string[]).length > 0 && (
                 <ProfileItem label="Injury History" value={(baseline.injury_history as string[]).join(', ')} />
               )}
+              
+              {/* Current Goal - right after injury history */}
+              {baseline.current_goal != null && typeof baseline.current_goal === 'object' && (
+                <CurrentGoalDisplay goal={baseline.current_goal as Record<string, unknown>} />
+              )}
             </div>
-            
-            {/* Current Goal */}
-            {baseline.current_goal != null && typeof baseline.current_goal === 'object' && (
-              <CurrentGoalDisplay goal={baseline.current_goal as Record<string, unknown>} />
-            )}
             
             {/* Psychological Profile */}
             <div className="mt-4 pt-4 border-t border-white/10">
@@ -1096,27 +1096,33 @@ function CurrentGoalDisplay({ goal }: { goal: Record<string, unknown> }) {
   const colors = colorClasses[goalInfo.color] || colorClasses.violet
   
   return (
-    <div className="mt-4 pt-4 border-t border-white/10">
-      <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-medium">🎯 Current Goal</h4>
+    <div className="mt-3">
       <div className={`p-3 rounded-xl bg-gradient-to-br ${colors} border`}>
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2">
           <span className="text-lg">{goalInfo.icon}</span>
-          <span className="text-sm font-semibold">{goalInfo.label}</span>
+          <div>
+            <span className="text-xs text-slate-400 uppercase tracking-wider">Current Goal</span>
+            <p className="text-sm font-semibold -mt-0.5">{goalInfo.label}</p>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs mt-2">
-          {targetGrade && (
-            <span className="text-slate-300">
-              Target: <span className="text-white font-medium">{targetGrade}</span>
-            </span>
-          )}
-          {targetDate && (
-            <span className="text-slate-300">
-              Date: <span className="text-white">{new Date(targetDate).toLocaleDateString()}</span>
-            </span>
-          )}
-        </div>
-        {description && (
-          <p className="text-xs text-slate-300 mt-2 italic">&quot;{description}&quot;</p>
+        {(targetGrade || targetDate || description) && (
+          <div className="mt-2 pt-2 border-t border-white/10">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+              {targetGrade && (
+                <span className="text-slate-300">
+                  Target: <span className="text-white font-medium">{targetGrade}</span>
+                </span>
+              )}
+              {targetDate && (
+                <span className="text-slate-300">
+                  Date: <span className="text-white">{new Date(targetDate).toLocaleDateString()}</span>
+                </span>
+              )}
+            </div>
+            {description && (
+              <p className="text-xs text-slate-300 mt-1 italic">&quot;{description}&quot;</p>
+            )}
+          </div>
         )}
       </div>
     </div>
