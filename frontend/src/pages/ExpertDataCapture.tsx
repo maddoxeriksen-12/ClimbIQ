@@ -587,10 +587,8 @@ function ScenarioReviewPanel({
   
   // Section 2: Treatment Recommendations
   const [treatments, setTreatments] = useState<Record<string, TreatmentRec>>({
-    caffeine: { value: 'none', importance: 'neutral' },
     warmup_duration: { value: '15', importance: 'helpful' },
     session_intensity: { value: 'moderate', importance: 'helpful' },
-    timing: { value: 'afternoon', importance: 'neutral' },
   })
   
   // Section 3: Counterfactuals (Optional)
@@ -775,10 +773,8 @@ function ScenarioReviewPanel({
                 <ProfileItem label="Injury History" value={(baseline.injury_history as string[]).join(', ')} />
               )}
               
-              {/* Current Goal - right after injury history */}
-              {baseline.current_goal != null && typeof baseline.current_goal === 'object' && (
-                <CurrentGoalDisplay goal={baseline.current_goal as Record<string, unknown>} />
-              )}
+              {/* Current Goal - always show, right after injury history */}
+              <CurrentGoalDisplay goal={baseline.current_goal as Record<string, unknown> | null} />
             </div>
             
             {/* Psychological Profile */}
@@ -1073,7 +1069,24 @@ const GOAL_TYPE_LABELS: Record<string, { label: string; icon: string; color: str
   custom: { label: 'Custom Goal', icon: '✨', color: 'fuchsia' },
 }
 
-function CurrentGoalDisplay({ goal }: { goal: Record<string, unknown> }) {
+function CurrentGoalDisplay({ goal }: { goal: Record<string, unknown> | null }) {
+  // Handle missing goal
+  if (!goal || typeof goal !== 'object') {
+    return (
+      <div className="mt-3">
+        <div className="p-3 rounded-xl bg-gradient-to-br from-slate-500/20 to-slate-600/10 border border-slate-500/30">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🎯</span>
+            <div>
+              <span className="text-xs text-slate-400 uppercase tracking-wider">Current Goal</span>
+              <p className="text-sm font-medium text-slate-400 -mt-0.5">No goal set</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  
   const goalTypeKey = String(goal?.type || 'general_fitness')
   const goalInfo = GOAL_TYPE_LABELS[goalTypeKey] || { label: goalTypeKey.replace(/_/g, ' '), icon: '🎯', color: 'violet' }
   const targetGrade = goal?.target_grade ? String(goal.target_grade) : null
@@ -1167,29 +1180,6 @@ function TreatmentForm({ treatments, setTreatments }: {
 
   return (
     <div className="space-y-4">
-      {/* Caffeine */}
-      <div className="p-4 rounded-xl bg-white/5">
-        <div className="flex items-center justify-between mb-3">
-          <span className="font-medium">☕ Caffeine</span>
-          <ImportanceSelector value={treatments.caffeine.importance} onChange={(v) => updateTreatment('caffeine', 'importance', v)} />
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {['none', '50-100mg', '100-200mg', '200-300mg', '300+mg'].map((opt) => (
-            <button
-              key={opt}
-              onClick={() => updateTreatment('caffeine', 'value', opt)}
-              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                treatments.caffeine.value === opt
-                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                  : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
-              }`}
-            >
-              {opt === 'none' ? 'None' : opt}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Warmup Duration */}
       <div className="p-4 rounded-xl bg-white/5">
         <div className="flex items-center justify-between mb-3">
@@ -1231,29 +1221,6 @@ function TreatmentForm({ treatments, setTreatments }: {
               }`}
             >
               {opt.replace(/_/g, ' ')}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Timing */}
-      <div className="p-4 rounded-xl bg-white/5">
-        <div className="flex items-center justify-between mb-3">
-          <span className="font-medium">🕐 Session Timing</span>
-          <ImportanceSelector value={treatments.timing.importance} onChange={(v) => updateTreatment('timing', 'importance', v)} />
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {['morning', 'midday', 'afternoon', 'evening', 'any'].map((opt) => (
-            <button
-              key={opt}
-              onClick={() => updateTreatment('timing', 'value', opt)}
-              className={`px-4 py-2 rounded-lg text-xs font-medium transition-all capitalize ${
-                treatments.timing.value === opt
-                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                  : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
-              }`}
-            >
-              {opt}
             </button>
           ))}
         </div>
