@@ -22,8 +22,17 @@ ENV DAGSTER_HOME=/app/dagster_home
 ENV PYTHONPATH=/app
 RUN mkdir -p $DAGSTER_HOME
 
-# Create dagster.yaml config
-RUN printf 'run_coordinator:\n  module: dagster.core.run_coordinator\n  class: QueuedRunCoordinator\n\nrun_launcher:\n  module: dagster.core.launcher\n  class: DefaultRunLauncher\n' > $DAGSTER_HOME/dagster.yaml
+# Create dagster.yaml config with workspace reference
+RUN echo 'run_coordinator:' > $DAGSTER_HOME/dagster.yaml && \
+    echo '  module: dagster.core.run_coordinator' >> $DAGSTER_HOME/dagster.yaml && \
+    echo '  class: QueuedRunCoordinator' >> $DAGSTER_HOME/dagster.yaml && \
+    echo '' >> $DAGSTER_HOME/dagster.yaml && \
+    echo 'run_launcher:' >> $DAGSTER_HOME/dagster.yaml && \
+    echo '  module: dagster.core.launcher' >> $DAGSTER_HOME/dagster.yaml && \
+    echo '  class: DefaultRunLauncher' >> $DAGSTER_HOME/dagster.yaml
+
+# Copy workspace.yaml to DAGSTER_HOME
+COPY workspace.yaml $DAGSTER_HOME/workspace.yaml
 
 # Copy and setup startup script
 COPY start.sh /app/start.sh
@@ -32,8 +41,8 @@ RUN chmod +x /app/start.sh
 # Expose the Dagster webserver port
 EXPOSE 3000
 
-# Default mode is webserver, can be changed via DAGSTER_MODE env var
-ENV DAGSTER_MODE=webserver
+# Default mode is "all" to run both webserver and daemon
+ENV DAGSTER_MODE=all
 
 CMD ["/app/start.sh"]
 
