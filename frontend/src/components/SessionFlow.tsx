@@ -244,6 +244,9 @@ export function SessionFlow() {
   const handlePostSessionComplete = async (postData: unknown) => {
     const post = postData as Record<string, unknown>
     
+    // Extract time correction data if provided (for historical entries or manual corrections)
+    const timeCorrection = post.timeCorrection as { actualStartTime?: string; actualEndTime?: string } | undefined
+    
     // Get live climb data from tracker
     const liveClimbs = getStoredClimbs()
     const totalClimbs = liveClimbs.length || (post.total_climbs as number)
@@ -264,6 +267,10 @@ export function SessionFlow() {
       const sessionId = dbSessionId || sessionInfo?.sessionId
       const { error } = await completeSession({
         session_id: sessionId!,
+        
+        // Time correction - critical for historical entries
+        actual_start_time: timeCorrection?.actualStartTime,
+        actual_end_time: timeCorrection?.actualEndTime,
         
         // Store complete post_session_data as JSONB for backup
         post_session_data: { ...post, live_climbs: liveClimbs },
@@ -339,10 +346,6 @@ export function SessionFlow() {
         
         // Live Climb Tracking
         climbs_log: liveClimbs,
-        
-        // Timing
-        actual_start_time: post.actual_start_time as string,
-        actual_end_time: post.actual_end_time as string,
         
         // Notes
         notes: post.notes as string,
@@ -577,8 +580,11 @@ export function CompleteSessionFlow() {
     return null
   }
 
-  const handlePostSessionComplete = async (postData: unknown) => {
+  const handlePostSessionCompleteActive = async (postData: unknown) => {
     const post = postData as Record<string, unknown>
+    
+    // Extract time correction data if provided (for manual corrections)
+    const timeCorrection = post.timeCorrection as { actualStartTime?: string; actualEndTime?: string } | undefined
     
     // Get live climb data from tracker
     const liveClimbs = getStoredClimbs()
@@ -599,6 +605,10 @@ export function CompleteSessionFlow() {
     if (activeSession.sessionId) {
       const { error } = await completeSession({
         session_id: activeSession.sessionId,
+        
+        // Time correction - for manual time adjustments
+        actual_start_time: timeCorrection?.actualStartTime,
+        actual_end_time: timeCorrection?.actualEndTime,
         
         // Store complete post_session_data as JSONB for backup
         post_session_data: { ...post, live_climbs: liveClimbs },
@@ -675,10 +685,6 @@ export function CompleteSessionFlow() {
         // Live Climb Tracking
         climbs_log: liveClimbs,
         
-        // Timing
-        actual_start_time: post.actual_start_time as string,
-        actual_end_time: post.actual_end_time as string,
-        
         // Notes
         notes: post.notes as string,
       })
@@ -722,7 +728,7 @@ export function CompleteSessionFlow() {
       isOutdoor={activeSession.isOutdoor}
       plannedDuration={activeSession.plannedDuration}
       startTime={activeSession.startTime}
-      onSubmit={handlePostSessionComplete}
+      onSubmit={handlePostSessionCompleteActive}
       onCancel={handleCancel}
     />
   )
