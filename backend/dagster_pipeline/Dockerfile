@@ -1,5 +1,6 @@
 # Dagster Pipeline Dockerfile - Standalone
 # Build context: backend/dagster_pipeline (Railway root directory)
+# Version: 2025-12-05-v2 - Force rebuild with daemon support
 FROM python:3.11-slim
 
 WORKDIR /app
