@@ -66,12 +66,15 @@ CREATE INDEX IF NOT EXISTS idx_baseline_user_id ON baseline_assessments(user_id)
 -- RLS
 ALTER TABLE baseline_assessments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own baseline" ON baseline_assessments;
 CREATE POLICY "Users can view own baseline" ON baseline_assessments
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own baseline" ON baseline_assessments;
 CREATE POLICY "Users can insert own baseline" ON baseline_assessments
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own baseline" ON baseline_assessments;
 CREATE POLICY "Users can update own baseline" ON baseline_assessments
     FOR UPDATE USING (auth.uid() = user_id);
 
@@ -147,9 +150,11 @@ CREATE INDEX IF NOT EXISTS idx_model_outputs_last_trained ON model_outputs(last_
 -- RLS
 ALTER TABLE model_outputs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own model" ON model_outputs;
 CREATE POLICY "Users can view own model" ON model_outputs
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Service role can manage models" ON model_outputs;
 CREATE POLICY "Service role can manage models" ON model_outputs
     FOR ALL USING (auth.role() = 'service_role');
 
