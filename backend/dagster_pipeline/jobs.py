@@ -23,7 +23,7 @@ prior_extraction_job = define_asset_job(
 signal_extraction_job = define_asset_job(
     name="signal_extraction_job",
     description="Extract and aggregate coefficient signals without updating the database",
-    selection=AssetSelection.assets(
+    selection=AssetSelection.keys(
         "extracted_coefficient_signals",
         "expert_derived_priors",
         "blended_population_priors",
@@ -52,7 +52,7 @@ nightly_training_job = define_asset_job(
 user_model_training_job = define_asset_job(
     name="user_model_training_job",
     description="Train model for users - can be triggered when user completes a session",
-    selection=AssetSelection.assets(
+    selection=AssetSelection.keys(
         "training_data",
         "trained_model",
     ),
@@ -67,7 +67,7 @@ user_model_training_job = define_asset_job(
 population_stats_job = define_asset_job(
     name="population_stats_job",
     description="Compute population-level statistics for z-score comparisons",
-    selection=AssetSelection.assets(
+    selection=AssetSelection.keys(
         "training_data",
         "population_statistics",
     ),
