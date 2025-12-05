@@ -22,7 +22,7 @@ except Exception as e:
 
 # Try to import streaming recommendations router
 try:
-    from app.api.routes.recommendations.streaming import router as streaming_router
+    from app.api.routes.recommendation_core.streaming import router as streaming_router
     logger.info("✅ Successfully imported streaming recommendations router")
     STREAMING_AVAILABLE = True
 except Exception as e:

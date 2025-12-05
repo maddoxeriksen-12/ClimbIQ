@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from app.core.security import get_current_user
 from app.core.supabase import get_supabase_client
 from app.services.recommendation_service import RecommendationService
-from app.api.routes.recommendations.recommendation_engine import RecommendationEngine
+from app.api.routes.recommendation_core.recommendation_engine import RecommendationEngine
 
 
 router = APIRouter()
