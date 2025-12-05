@@ -11,7 +11,14 @@ Endpoints:
 """
 
 from .recommendation_engine import RecommendationEngine
-from .streaming import router as streaming_router
+
+# Lazy import streaming router to avoid crashing if dependencies are missing
+streaming_router = None
+try:
+    from .streaming import router as streaming_router
+except ImportError as e:
+    import logging
+    logging.getLogger(__name__).warning(f"Streaming router not available: {e}")
 
 __all__ = ["RecommendationEngine", "streaming_router"]
 
