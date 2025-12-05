@@ -1060,27 +1060,61 @@ function ScenarioReviewPanel({
 
 // ================== HELPER COMPONENTS ==================
 
+const GOAL_TYPE_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+  outdoor_season_prep: { label: 'Outdoor Season Prep', icon: '🏔️', color: 'emerald' },
+  competition_training: { label: 'Competition Training', icon: '🏆', color: 'amber' },
+  send_a_project: { label: 'Send a Project', icon: '🎯', color: 'red' },
+  grade_breakthrough: { label: 'Grade Breakthrough', icon: '📈', color: 'violet' },
+  injury_recovery: { label: 'Injury Recovery', icon: '🩹', color: 'sky' },
+  general_fitness: { label: 'General Fitness', icon: '💪', color: 'orange' },
+  technique_mastery: { label: 'Technique Mastery', icon: '🎨', color: 'pink' },
+  endurance_building: { label: 'Endurance Building', icon: '🔄', color: 'cyan' },
+  power_development: { label: 'Power Development', icon: '⚡', color: 'yellow' },
+  custom: { label: 'Custom Goal', icon: '✨', color: 'fuchsia' },
+}
+
 function CurrentGoalDisplay({ goal }: { goal: Record<string, unknown> }) {
-  const goalType = String(goal?.type || 'General').replace(/_/g, ' ')
+  const goalTypeKey = String(goal?.type || 'general_fitness')
+  const goalInfo = GOAL_TYPE_LABELS[goalTypeKey] || { label: goalTypeKey.replace(/_/g, ' '), icon: '🎯', color: 'violet' }
   const targetGrade = goal?.target_grade ? String(goal.target_grade) : null
-  const deadline = goal?.deadline ? String(goal.deadline) : null
+  const targetDate = goal?.target_date ? String(goal.target_date) : null
   const description = goal?.description ? String(goal.description) : null
+  
+  const colorClasses: Record<string, string> = {
+    emerald: 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 text-emerald-300',
+    amber: 'from-amber-500/20 to-amber-600/10 border-amber-500/30 text-amber-300',
+    red: 'from-red-500/20 to-red-600/10 border-red-500/30 text-red-300',
+    violet: 'from-violet-500/20 to-violet-600/10 border-violet-500/30 text-violet-300',
+    sky: 'from-sky-500/20 to-sky-600/10 border-sky-500/30 text-sky-300',
+    orange: 'from-orange-500/20 to-orange-600/10 border-orange-500/30 text-orange-300',
+    pink: 'from-pink-500/20 to-pink-600/10 border-pink-500/30 text-pink-300',
+    cyan: 'from-cyan-500/20 to-cyan-600/10 border-cyan-500/30 text-cyan-300',
+    yellow: 'from-yellow-500/20 to-yellow-600/10 border-yellow-500/30 text-yellow-300',
+    fuchsia: 'from-fuchsia-500/20 to-fuchsia-600/10 border-fuchsia-500/30 text-fuchsia-300',
+  }
+  
+  const colors = colorClasses[goalInfo.color] || colorClasses.violet
   
   return (
     <div className="mt-4 pt-4 border-t border-white/10">
       <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-medium">🎯 Current Goal</h4>
-      <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20">
-        <p className="text-sm font-medium text-violet-300 capitalize">{goalType}</p>
-        {targetGrade && (
-          <p className="text-xs text-slate-400 mt-1">
-            Target: <span className="text-white font-medium">{targetGrade}</span>
-          </p>
-        )}
-        {deadline && (
-          <p className="text-xs text-slate-400">
-            Timeline: <span className="text-white">{deadline}</span>
-          </p>
-        )}
+      <div className={`p-3 rounded-xl bg-gradient-to-br ${colors} border`}>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-lg">{goalInfo.icon}</span>
+          <span className="text-sm font-semibold">{goalInfo.label}</span>
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs mt-2">
+          {targetGrade && (
+            <span className="text-slate-300">
+              Target: <span className="text-white font-medium">{targetGrade}</span>
+            </span>
+          )}
+          {targetDate && (
+            <span className="text-slate-300">
+              Date: <span className="text-white">{new Date(targetDate).toLocaleDateString()}</span>
+            </span>
+          )}
+        </div>
         {description && (
           <p className="text-xs text-slate-300 mt-2 italic">&quot;{description}&quot;</p>
         )}

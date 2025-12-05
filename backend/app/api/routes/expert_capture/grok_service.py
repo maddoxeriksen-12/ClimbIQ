@@ -37,10 +37,10 @@ For each scenario, provide:
    - performance_anxiety_baseline (1-10)
    - injury_history (list of past injuries or empty)
    - current_goal: object with:
-     - type (send_outdoor_project/competition_prep/improve_grade/build_endurance/finger_strength/technique_refinement/general_fitness/return_from_injury/mental_game/volume_building)
+     - type: One of: outdoor_season_prep, competition_training, send_a_project, grade_breakthrough, injury_recovery, general_fitness, technique_mastery, endurance_building, power_development, custom
      - target_grade (optional, e.g., "V8" or "5.13a")
-     - deadline (optional, e.g., "3 months", "competition in 6 weeks")
-     - description (short description of what they're working toward)
+     - target_date (optional, e.g., "2024-04-15" for a trip or competition date)
+     - description (short description of what they're working toward, e.g., "Prep for Bishop trip in March" or "Send The Nose")
 
 2. **pre_session_snapshot** (current state before session):
    - energy_level (1-10)
@@ -235,8 +235,8 @@ def normalize_scenario(scenario: Dict[str, Any]) -> Dict[str, Any]:
     baseline.setdefault("current_goal", {
         "type": "general_fitness",
         "target_grade": None,
-        "deadline": None,
-        "description": "General climbing improvement"
+        "target_date": None,
+        "description": "Improve overall climbing fitness and consistency"
     })
     
     # Ensure pre_session snapshot has all fields with defaults
