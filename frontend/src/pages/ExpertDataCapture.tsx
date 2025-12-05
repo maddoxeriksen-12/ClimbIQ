@@ -510,12 +510,22 @@ interface TreatmentRec {
   importance: 'critical' | 'helpful' | 'neutral' | 'avoid'
 }
 
+interface WarmupBreakdownData {
+  cardio?: { exercises: string[]; notes?: string }
+  dynamic_stretching?: { exercises: string[]; notes?: string }
+  activation?: { exercises: string[]; notes?: string }
+  fingerboard?: { exercises: string[]; notes?: string }
+  easy_climbing?: { exercises: string[]; notes?: string }
+  custom_notes?: string
+}
+
 interface SessionActivity {
   id: string
   type: 'warmup' | 'projecting' | 'limit_bouldering' | 'volume' | 'technique' | 'hangboard' | 'campus' | 'stretching' | 'cooldown' | 'antagonist' | 'cardio' | 'core' | 'custom'
   durationMin: number
   intensity?: 'very_light' | 'light' | 'moderate' | 'high' | 'max'
   notes?: string
+  warmupBreakdown?: WarmupBreakdownData
 }
 
 interface SessionStructure {
@@ -569,6 +579,7 @@ function ScenarioReviewPanel({
 }) {
   const [saving, setSaving] = useState(false)
   const [showAiSuggestion, setShowAiSuggestion] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [expandedSection, setExpandedSection] = useState<number>(1)
   const [showSessionStructure, setShowSessionStructure] = useState(false)
   
@@ -615,18 +626,28 @@ function ScenarioReviewPanel({
   const [predictionConfidence, setPredictionConfidence] = useState<'high' | 'medium' | 'low'>(existingResponse?.prediction_confidence || 'medium')
   
   // Calculate progress
-  const sectionCompletion = {
-    1: sessionType !== '',                                           // Session Recommendation
-    2: Object.values(treatments).some(t => t.importance !== 'neutral'), // Treatment
-    3: true,                                                          // Counterfactuals (optional)
-    4: keyDrivers.filter(kd => kd.variable !== '').length >= 1,      // Key Drivers
-    5: true,                                                          // Interaction Effects (optional)
-    6: true,                                                          // Session Structure (optional)
-    7: reasoning.trim().length > 10,                                 // Reasoning
-    8: qualityOptimal !== 5,                                         // Outcome Predictions
+  // 3-part form completion tracking
+  const partCompletion = {
+    recommendation: sessionType !== '',  // Part 1: Session type selected
+    analysis: keyDrivers.filter(kd => kd.variable !== '').length >= 1,  // Part 2: At least one key driver
+    summary: reasoning.trim().length > 10 && qualityOptimal > 1,  // Part 3: Reasoning + prediction
   }
-  const completedSections = Object.values(sectionCompletion).filter(Boolean).length
-  const requiredComplete = sectionCompletion[1] && sectionCompletion[4] && sectionCompletion[7] && sectionCompletion[8]
+  const completedParts = Object.values(partCompletion).filter(Boolean).length
+  
+  // Keep sectionCompletion for any remaining references
+  const sectionCompletion = {
+    1: sessionType !== '',
+    2: Object.values(treatments).some(t => t.importance !== 'neutral'),
+    3: true,
+    4: keyDrivers.filter(kd => kd.variable !== '').length >= 1,
+    5: true,
+    6: true,
+    7: reasoning.trim().length > 10,
+    8: qualityOptimal !== 5,
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _completedSections = Object.values(sectionCompletion).filter(Boolean).length
+  const requiredComplete = partCompletion.recommendation && partCompletion.analysis && partCompletion.summary
 
   const handleSave = async (isComplete: boolean) => {
     setSaving(true)
@@ -711,29 +732,44 @@ function ScenarioReviewPanel({
             </span>
           </div>
           
-          {/* Progress Indicator */}
-          <div className="flex items-center gap-6">
-          <div className="flex gap-2">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
-              <div
-                key={num}
-                className={`w-10 h-10 rounded-xl text-base flex items-center justify-center font-bold transition-all cursor-pointer hover:scale-105 ${
-                  sectionCompletion[num as keyof typeof sectionCompletion]
-                    ? 'bg-emerald-500/30 text-emerald-300 border-2 border-emerald-500/50'
-                    : expandedSection === num
-                    ? 'bg-violet-500/30 text-violet-300 border-2 border-violet-500/50'
-                    : 'bg-white/5 text-slate-500 border border-white/10'
-                }`}
-                onClick={() => setExpandedSection(num)}
-              >
-                {num}
-              </div>
-            ))}
-          </div>
-          <div className="text-right">
-            <span className="text-2xl font-bold text-white">{completedSections}/8</span>
-            <p className="text-sm text-slate-500">complete</p>
-          </div>
+          {/* Progress Indicator - 3 Part Structure */}
+          <div className="flex items-center gap-4">
+            {/* Part 1: Recommendation */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all ${
+              partCompletion.recommendation
+                ? 'bg-violet-500/30 border border-violet-500/50'
+                : 'bg-white/5 border border-white/10'
+            }`}>
+              <span className={`text-sm ${partCompletion.recommendation ? 'text-violet-300' : 'text-slate-500'}`}>📋</span>
+              <span className={`text-xs font-medium ${partCompletion.recommendation ? 'text-violet-300' : 'text-slate-500'}`}>Recommendation</span>
+              {partCompletion.recommendation && <span className="text-emerald-400 text-xs">✓</span>}
+            </div>
+            
+            {/* Part 2: Analysis */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all ${
+              partCompletion.analysis
+                ? 'bg-cyan-500/30 border border-cyan-500/50'
+                : 'bg-white/5 border border-white/10'
+            }`}>
+              <span className={`text-sm ${partCompletion.analysis ? 'text-cyan-300' : 'text-slate-500'}`}>🔬</span>
+              <span className={`text-xs font-medium ${partCompletion.analysis ? 'text-cyan-300' : 'text-slate-500'}`}>Analysis</span>
+              {partCompletion.analysis && <span className="text-emerald-400 text-xs">✓</span>}
+            </div>
+            
+            {/* Part 3: Summary */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all ${
+              partCompletion.summary
+                ? 'bg-emerald-500/30 border border-emerald-500/50'
+                : 'bg-white/5 border border-white/10'
+            }`}>
+              <span className={`text-sm ${partCompletion.summary ? 'text-emerald-300' : 'text-slate-500'}`}>✅</span>
+              <span className={`text-xs font-medium ${partCompletion.summary ? 'text-emerald-300' : 'text-slate-500'}`}>Summary</span>
+              {partCompletion.summary && <span className="text-emerald-400 text-xs">✓</span>}
+            </div>
+            
+            <div className="text-right ml-2">
+              <span className="text-xl font-bold text-white">{completedParts}/3</span>
+            </div>
           </div>
         </div>
 
@@ -756,6 +792,11 @@ function ScenarioReviewPanel({
                 <ProfileItem label="Injury History" value={(baseline.injury_history as string[]).join(', ')} />
               )}
             </div>
+            
+            {/* Current Goal */}
+            {baseline.current_goal != null && typeof baseline.current_goal === 'object' && (
+              <CurrentGoalDisplay goal={baseline.current_goal as Record<string, unknown>} />
+            )}
             
             {/* Psychological Profile */}
             <div className="mt-4 pt-4 border-t border-white/10">
@@ -830,131 +871,177 @@ function ScenarioReviewPanel({
 
         {/* RIGHT PANEL - Expert Input Form */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto p-8 space-y-5">
-            {/* Section 1: Session Recommendation */}
-            <FormSection
-              number={1}
-              title="Session Recommendation"
-              icon="🎯"
-              isExpanded={expandedSection === 1}
-              isComplete={sectionCompletion[1]}
-              onToggle={() => setExpandedSection(expandedSection === 1 ? 0 : 1)}
-            >
-              <SessionRecommendationForm
-                sessionType={sessionType}
-                setSessionType={setSessionType}
-                confidence={sessionTypeConfidence}
-                setConfidence={setSessionTypeConfidence}
-              />
-            </FormSection>
-
-            {/* Section 2: Treatment Recommendations */}
-            <FormSection
-              number={2}
-              title="Treatment Recommendations"
-              icon="💊"
-              isExpanded={expandedSection === 2}
-              isComplete={sectionCompletion[2]}
-              onToggle={() => setExpandedSection(expandedSection === 2 ? 0 : 2)}
-            >
-              <TreatmentForm treatments={treatments} setTreatments={setTreatments} />
-            </FormSection>
-
-            {/* Section 3: Counterfactuals (Optional) */}
-            <FormSection
-              number={3}
-              title="Counterfactuals (Optional)"
-              icon="🔄"
-              isExpanded={expandedSection === 3}
-              isComplete={sectionCompletion[3]}
-              onToggle={() => setExpandedSection(expandedSection === 3 ? 0 : 3)}
-            >
-              <CounterfactualInput
-                counterfactuals={counterfactuals}
-                setCounterfactuals={setCounterfactuals}
-                preSession={preSession}
-              />
-            </FormSection>
-
-            {/* Section 4: Key Drivers */}
-            <FormSection
-              number={4}
-              title="Key Drivers (Top 3)"
-              icon="🔑"
-              isExpanded={expandedSection === 4}
-              isComplete={sectionCompletion[4]}
-              onToggle={() => setExpandedSection(expandedSection === 4 ? 0 : 4)}
-            >
-              <KeyDriversInput keyDrivers={keyDrivers} setKeyDrivers={setKeyDrivers} />
-            </FormSection>
-
-            {/* Section 5: Interaction Effects (Optional) */}
-            <FormSection
-              number={5}
-              title="Interaction Effects"
-              icon="🔗"
-              isExpanded={expandedSection === 5}
-              isComplete={sectionCompletion[5]}
-              onToggle={() => setExpandedSection(expandedSection === 5 ? 0 : 5)}
-              optional
-            >
-              <InteractionEffectsInput
-                effects={interactionEffects}
-                setEffects={setInteractionEffects}
-              />
-            </FormSection>
-
-            {/* Section 6: Session Structure (Optional) */}
-            <FormSection
-              number={6}
-              title="Session Structure"
-              icon="📋"
-              isExpanded={expandedSection === 6}
-              isComplete={sectionCompletion[6]}
-              onToggle={() => setExpandedSection(expandedSection === 6 ? 0 : 6)}
-              optional
-            >
-              <SessionStructureForm
-                enabled={showSessionStructure}
-                setEnabled={setShowSessionStructure}
-                structure={sessionStructure}
-                setStructure={setSessionStructure}
-              />
-            </FormSection>
-
-            {/* Section 7: Reasoning */}
-            <FormSection
-              number={7}
-              title="Reasoning"
-              icon="💭"
-              isExpanded={expandedSection === 7}
-              isComplete={sectionCompletion[7]}
-              onToggle={() => setExpandedSection(expandedSection === 7 ? 0 : 7)}
-            >
-              <textarea
-                value={reasoning}
-                onChange={(e) => setReasoning(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 min-h-[150px]"
-                placeholder="Explain your reasoning for this recommendation. What factors were most important? Why did you choose this session type? What would change your recommendation?"
-              />
-            </FormSection>
-
-            {/* Section 8: Outcome Predictions (last - after expert has formed their recommendation) */}
-            <FormSection
-              number={8}
-              title="Outcome Predictions"
-              icon="📈"
-              isExpanded={expandedSection === 8}
-              isComplete={sectionCompletion[8]}
-              onToggle={() => setExpandedSection(expandedSection === 8 ? 0 : 8)}
-            >
-              <OutcomePredictionsForm
-                qualityOptimal={qualityOptimal}
-                setQualityOptimal={setQualityOptimal}
-                confidence={predictionConfidence}
-                setConfidence={setPredictionConfidence}
-              />
-            </FormSection>
+          <div className="max-w-4xl mx-auto p-8 space-y-6">
+            
+            {/* PART 1: RECOMMENDATION */}
+            <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 overflow-hidden">
+              <div className="px-5 py-3 bg-violet-500/10 border-b border-violet-500/20">
+                <h2 className="font-semibold text-violet-300 flex items-center gap-2">
+                  <span>📋</span> Part 1: Session Recommendation
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">What should this climber do today?</p>
+              </div>
+              <div className="p-5 space-y-5">
+                {/* Session Type & Confidence */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2">Session Type</label>
+                    <select
+                      value={sessionType}
+                      onChange={(e) => setSessionType(e.target.value as SessionType)}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                    >
+                      <option value="">Select session type...</option>
+                      <option value="project">🎯 Project Session</option>
+                      <option value="limit_bouldering">💪 Limit Bouldering</option>
+                      <option value="volume">📊 Volume / Mileage</option>
+                      <option value="technique">🎭 Technique Focus</option>
+                      <option value="training">🏋️ Training (Hangboard/Strength)</option>
+                      <option value="light_session">🌱 Light Session</option>
+                      <option value="rest_day">😴 Rest Day</option>
+                      <option value="active_recovery">🧘 Active Recovery</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2">Confidence</label>
+                    <div className="flex gap-2 h-[46px]">
+                      {(['high', 'medium', 'low'] as const).map(level => (
+                        <button
+                          key={level}
+                          onClick={() => setSessionTypeConfidence(level)}
+                          className={`flex-1 rounded-xl text-sm font-medium transition-all ${
+                            sessionTypeConfidence === level
+                              ? level === 'high' ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50'
+                              : level === 'medium' ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
+                              : 'bg-red-500/30 text-red-300 border border-red-500/50'
+                              : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+                          }`}
+                        >
+                          {level.charAt(0).toUpperCase() + level.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Treatments */}
+                <div>
+                  <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2">Treatment Adjustments</label>
+                  <TreatmentForm treatments={treatments} setTreatments={setTreatments} />
+                </div>
+                
+                {/* Session Structure */}
+                <div className="border-t border-white/10 pt-4">
+                  <SessionStructureForm
+                    enabled={showSessionStructure}
+                    setEnabled={setShowSessionStructure}
+                    structure={sessionStructure}
+                    setStructure={setSessionStructure}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* PART 2: ANALYSIS */}
+            <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 overflow-hidden">
+              <div className="px-5 py-3 bg-cyan-500/10 border-b border-cyan-500/20">
+                <h2 className="font-semibold text-cyan-300 flex items-center gap-2">
+                  <span>🔬</span> Part 2: Analysis & Key Drivers
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">What factors drove your recommendation?</p>
+              </div>
+              <div className="p-5 space-y-5">
+                {/* Key Drivers */}
+                <div>
+                  <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2">Key Drivers (Top 3)</label>
+                  <KeyDriversInput keyDrivers={keyDrivers} setKeyDrivers={setKeyDrivers} />
+                </div>
+                
+                {/* Interaction Effects */}
+                <div className="border-t border-white/10 pt-4">
+                  <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2">Interaction Effects <span className="text-slate-600">(Optional)</span></label>
+                  <InteractionEffectsInput
+                    effects={interactionEffects}
+                    setEffects={setInteractionEffects}
+                  />
+                </div>
+                
+                {/* Counterfactuals */}
+                <div className="border-t border-white/10 pt-4">
+                  <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2">Counterfactuals <span className="text-slate-600">(Optional)</span></label>
+                  <CounterfactualInput
+                    counterfactuals={counterfactuals}
+                    setCounterfactuals={setCounterfactuals}
+                    preSession={preSession}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* PART 3: SUMMARY */}
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 overflow-hidden">
+              <div className="px-5 py-3 bg-emerald-500/10 border-b border-emerald-500/20">
+                <h2 className="font-semibold text-emerald-300 flex items-center gap-2">
+                  <span>✅</span> Part 3: Summary & Prediction
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">Explain your reasoning and predict outcomes</p>
+              </div>
+              <div className="p-5 space-y-5">
+                {/* Reasoning */}
+                <div>
+                  <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2">Your Reasoning</label>
+                  <textarea
+                    value={reasoning}
+                    onChange={(e) => setReasoning(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 min-h-[120px]"
+                    placeholder="Explain your reasoning for this recommendation. What factors were most important? Why did you choose this session type? What would change your recommendation?"
+                  />
+                </div>
+                
+                {/* Outcome Prediction */}
+                <div className="border-t border-white/10 pt-4">
+                  <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2">Predicted Session Quality</label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      step="0.5"
+                      value={qualityOptimal}
+                      onChange={(e) => setQualityOptimal(parseFloat(e.target.value))}
+                      className="flex-1 h-3 bg-white/10 rounded-full appearance-none cursor-pointer accent-emerald-500"
+                    />
+                    <div className="text-center min-w-[60px]">
+                      <span className="text-2xl font-bold text-emerald-400">{qualityOptimal}</span>
+                      <span className="text-slate-500 text-sm">/10</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between mt-1 text-xs text-slate-500">
+                    <span>Poor session</span>
+                    <span>Optimal session</span>
+                  </div>
+                  
+                  <div className="mt-4 flex gap-2">
+                    <span className="text-xs text-slate-400">Prediction confidence:</span>
+                    {(['high', 'medium', 'low'] as const).map(level => (
+                      <button
+                        key={level}
+                        onClick={() => setPredictionConfidence(level)}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+                          predictionConfidence === level
+                            ? level === 'high' ? 'bg-emerald-500/30 text-emerald-300'
+                            : level === 'medium' ? 'bg-amber-500/30 text-amber-300'
+                            : 'bg-red-500/30 text-red-300'
+                            : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                        }`}
+                      >
+                        {level.charAt(0).toUpperCase() + level.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
 
           </div>
         </div>
@@ -990,6 +1077,35 @@ function ScenarioReviewPanel({
 
 // ================== HELPER COMPONENTS ==================
 
+function CurrentGoalDisplay({ goal }: { goal: Record<string, unknown> }) {
+  const goalType = String(goal?.type || 'General').replace(/_/g, ' ')
+  const targetGrade = goal?.target_grade ? String(goal.target_grade) : null
+  const deadline = goal?.deadline ? String(goal.deadline) : null
+  const description = goal?.description ? String(goal.description) : null
+  
+  return (
+    <div className="mt-4 pt-4 border-t border-white/10">
+      <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-medium">🎯 Current Goal</h4>
+      <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20">
+        <p className="text-sm font-medium text-violet-300 capitalize">{goalType}</p>
+        {targetGrade && (
+          <p className="text-xs text-slate-400 mt-1">
+            Target: <span className="text-white font-medium">{targetGrade}</span>
+          </p>
+        )}
+        {deadline && (
+          <p className="text-xs text-slate-400">
+            Timeline: <span className="text-white">{deadline}</span>
+          </p>
+        )}
+        {description && (
+          <p className="text-xs text-slate-300 mt-2 italic">&quot;{description}&quot;</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function ProfileItem({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex justify-between items-center py-1">
@@ -1018,7 +1134,8 @@ function ProfileSlider({ label, value, max, color, inverted }: { label: string; 
   )
 }
 
-function FormSection({ 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _FormSection({ 
   number, title, icon, isExpanded, isComplete, onToggle, optional, children 
 }: { 
   number: number; title: string; icon: string; isExpanded: boolean; isComplete: boolean; onToggle: () => void; optional?: boolean; children: React.ReactNode 
@@ -1055,7 +1172,8 @@ function FormSection({
   )
 }
 
-function OutcomePredictionsForm({
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _OutcomePredictionsForm({
   qualityOptimal, setQualityOptimal,
   confidence, setConfidence,
 }: {
@@ -1100,7 +1218,8 @@ function OutcomePredictionsForm({
   )
 }
 
-function SessionRecommendationForm({
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _SessionRecommendationForm({
   sessionType, setSessionType,
   confidence, setConfidence,
 }: {
@@ -1548,6 +1667,138 @@ function InteractionEffectsInput({ effects, setEffects }: {
   )
 }
 
+// Warmup exercise options
+const WARMUP_EXERCISES = {
+  cardio: [
+    { id: 'jumping_jacks', name: 'Jumping Jacks', defaultDuration: '2 min' },
+    { id: 'jogging', name: 'Light Jogging', defaultDuration: '3-5 min' },
+    { id: 'jump_rope', name: 'Jump Rope', defaultDuration: '2-3 min' },
+    { id: 'rowing', name: 'Rowing Machine', defaultDuration: '5 min' },
+  ],
+  dynamic_stretching: [
+    { id: 'arm_circles', name: 'Arm Circles', defaultReps: '10 each direction' },
+    { id: 'leg_swings', name: 'Leg Swings', defaultReps: '10 each leg' },
+    { id: 'hip_circles', name: 'Hip Circles', defaultReps: '10 each direction' },
+    { id: 'torso_twists', name: 'Torso Twists', defaultReps: '10 each side' },
+    { id: 'wrist_circles', name: 'Wrist Circles', defaultReps: '20 each direction' },
+    { id: 'finger_rolls', name: 'Finger Rolls', defaultReps: '10 each hand' },
+    { id: 'shoulder_dislocates', name: 'Shoulder Dislocates (band)', defaultReps: '10' },
+    { id: 'cat_cow', name: 'Cat-Cow Stretch', defaultReps: '10' },
+    { id: 'worlds_greatest', name: "World's Greatest Stretch", defaultReps: '5 each side' },
+  ],
+  activation: [
+    { id: 'pullups', name: 'Pull-ups', defaultReps: '2 sets of 3-5 easy' },
+    { id: 'pushups', name: 'Push-ups', defaultReps: '2 sets of 5-10' },
+    { id: 'scapular_pulls', name: 'Scapular Pull-ups', defaultReps: '2 sets of 8' },
+    { id: 'dead_hangs', name: 'Dead Hangs', defaultDuration: '2 x 15 sec' },
+    { id: 'shoulder_taps', name: 'Shoulder Taps', defaultReps: '10 each side' },
+    { id: 'band_pull_aparts', name: 'Band Pull-aparts', defaultReps: '15-20' },
+  ],
+  fingerboard: [
+    { id: 'fb_jugs', name: 'Jugs (easy)', defaultDuration: '2 x 10 sec' },
+    { id: 'fb_large_edge', name: 'Large Edge (20mm+)', defaultDuration: '2 x 7 sec' },
+    { id: 'fb_medium_edge', name: 'Medium Edge (15-20mm)', defaultDuration: '2 x 5 sec' },
+    { id: 'fb_light_hangs', name: 'Light Repeaters', defaultDuration: '7on/3off x 6' },
+  ],
+  easy_climbing: [
+    { id: 'traversing', name: 'Traversing', defaultDuration: '5-10 min' },
+    { id: 'easy_routes', name: 'Easy Routes/Problems', defaultReps: '3-5 problems 3+ grades below max' },
+    { id: 'technique_drills', name: 'Technique Drills', defaultDuration: '5 min' },
+  ],
+}
+
+function WarmupBreakdown({ breakdown, onChange }: {
+  breakdown: WarmupBreakdownData
+  onChange: (b: WarmupBreakdownData) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  
+  const toggleExercise = (category: keyof typeof WARMUP_EXERCISES, exerciseId: string) => {
+    const current = breakdown[category]?.exercises || []
+    const newExercises = current.includes(exerciseId)
+      ? current.filter(e => e !== exerciseId)
+      : [...current, exerciseId]
+    onChange({
+      ...breakdown,
+      [category]: { ...breakdown[category], exercises: newExercises }
+    })
+  }
+  
+  const categoryLabels: Record<string, { label: string; icon: string }> = {
+    cardio: { label: 'Cardio', icon: '❤️' },
+    dynamic_stretching: { label: 'Dynamic Stretching', icon: '🤸' },
+    activation: { label: 'Activation / Pull-ups', icon: '💪' },
+    fingerboard: { label: 'Fingerboard', icon: '🤏' },
+    easy_climbing: { label: 'Easy Climbing', icon: '🧗' },
+  }
+  
+  return (
+    <div className="mt-3 border-t border-white/10 pt-3">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between text-xs text-amber-400 hover:text-amber-300 transition-colors"
+      >
+        <span className="flex items-center gap-1">
+          <span>🔧</span> Configure Warmup Breakdown
+        </span>
+        <span>{expanded ? '▲' : '▼'}</span>
+      </button>
+      
+      {expanded && (
+        <div className="mt-3 space-y-4">
+          {(Object.keys(WARMUP_EXERCISES) as Array<keyof typeof WARMUP_EXERCISES>).map(category => (
+            <div key={category} className="p-3 rounded-lg bg-black/30 border border-white/5">
+              <h5 className="text-xs font-medium text-slate-300 mb-2 flex items-center gap-1">
+                <span>{categoryLabels[category].icon}</span>
+                {categoryLabels[category].label}
+              </h5>
+              <div className="flex flex-wrap gap-1">
+                {WARMUP_EXERCISES[category].map(ex => (
+                  <button
+                    key={ex.id}
+                    onClick={() => toggleExercise(category, ex.id)}
+                    className={`px-2 py-1 rounded text-xs transition-colors ${
+                      breakdown[category]?.exercises?.includes(ex.id)
+                        ? 'bg-amber-500/30 text-amber-200 border border-amber-500/50'
+                        : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+                    }`}
+                    title={'defaultDuration' in ex ? ex.defaultDuration : 'defaultReps' in ex ? ex.defaultReps : ''}
+                  >
+                    {ex.name}
+                  </button>
+                ))}
+              </div>
+              {breakdown[category]?.exercises && breakdown[category]!.exercises.length > 0 && (
+                <input
+                  type="text"
+                  value={breakdown[category]?.notes || ''}
+                  onChange={(e) => onChange({
+                    ...breakdown,
+                    [category]: { ...breakdown[category], notes: e.target.value }
+                  })}
+                  placeholder="Additional notes (sets, reps, duration)..."
+                  className="mt-2 w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-white placeholder:text-slate-500"
+                />
+              )}
+            </div>
+          ))}
+          
+          <div>
+            <label className="text-xs text-slate-400 block mb-1">Additional warmup notes:</label>
+            <textarea
+              value={breakdown.custom_notes || ''}
+              onChange={(e) => onChange({ ...breakdown, custom_notes: e.target.value })}
+              placeholder="Any special instructions or modifications..."
+              className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-white placeholder:text-slate-500"
+              rows={2}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const ACTIVITY_TYPES = [
   { value: 'warmup', label: '🔥 Warmup', color: 'amber' },
   { value: 'projecting', label: '🎯 Projecting', color: 'violet' },
@@ -1686,6 +1937,14 @@ function SessionStructureForm({ enabled, setEnabled, structure, setStructure }: 
                       onChange={(e) => updateActivity(activity.id, { notes: e.target.value })}
                       placeholder="Describe the activity..."
                       className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500"
+                    />
+                  )}
+                  
+                  {/* Warmup Breakdown - when warmup is selected */}
+                  {activity.type === 'warmup' && (
+                    <WarmupBreakdown
+                      breakdown={activity.warmupBreakdown || {}}
+                      onChange={(breakdown) => updateActivity(activity.id, { warmupBreakdown: breakdown })}
                     />
                   )}
                 </div>

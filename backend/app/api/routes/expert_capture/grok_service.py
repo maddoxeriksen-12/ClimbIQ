@@ -36,6 +36,11 @@ For each scenario, provide:
    - fear_of_falling (1-10)
    - performance_anxiety_baseline (1-10)
    - injury_history (list of past injuries or empty)
+   - current_goal: object with:
+     - type (send_outdoor_project/competition_prep/improve_grade/build_endurance/finger_strength/technique_refinement/general_fitness/return_from_injury/mental_game/volume_building)
+     - target_grade (optional, e.g., "V8" or "5.13a")
+     - deadline (optional, e.g., "3 months", "competition in 6 weeks")
+     - description (short description of what they're working toward)
 
 2. **pre_session_snapshot** (current state before session):
    - energy_level (1-10)
@@ -227,6 +232,12 @@ def normalize_scenario(scenario: Dict[str, Any]) -> Dict[str, Any]:
     baseline.setdefault("fear_of_falling", 5)
     baseline.setdefault("performance_anxiety_baseline", 5)
     baseline.setdefault("injury_history", [])
+    baseline.setdefault("current_goal", {
+        "type": "general_fitness",
+        "target_grade": None,
+        "deadline": None,
+        "description": "General climbing improvement"
+    })
     
     # Ensure pre_session snapshot has all fields with defaults
     presession = scenario.get("pre_session_snapshot", {})
