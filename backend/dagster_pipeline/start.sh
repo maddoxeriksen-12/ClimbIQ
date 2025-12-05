@@ -4,8 +4,8 @@
 
 set -e
 
-# Default mode is webserver
-MODE=${DAGSTER_MODE:-webserver}
+# Default mode is "all" to run both webserver and daemon
+MODE=${DAGSTER_MODE:-all}
 PORT=${PORT:-3000}
 
 echo "Starting Dagster in $MODE mode..."
