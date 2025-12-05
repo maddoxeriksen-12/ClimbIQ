@@ -1,4 +1,5 @@
 # Dagster Pipeline Dockerfile - Standalone
+# Build context: backend/dagster_pipeline (Railway root directory)
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -9,12 +10,12 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy ONLY Dagster requirements (not the full backend requirements)
-COPY dagster_pipeline/requirements.txt .
+# Copy requirements and install (paths relative to dagster_pipeline/)
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy ONLY the dagster_pipeline module
-COPY dagster_pipeline/ /app/dagster_pipeline/
+# Copy all dagster_pipeline code to /app/dagster_pipeline/
+COPY . /app/dagster_pipeline/
 
 # Set environment variables
 ENV DAGSTER_HOME=/app/dagster_home
@@ -25,7 +26,7 @@ RUN mkdir -p $DAGSTER_HOME
 RUN printf 'run_coordinator:\n  module: dagster.core.run_coordinator\n  class: QueuedRunCoordinator\n\nrun_launcher:\n  module: dagster.core.launcher\n  class: DefaultRunLauncher\n' > $DAGSTER_HOME/dagster.yaml
 
 # Copy and setup startup script
-COPY dagster_pipeline/start.sh /app/start.sh
+COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Expose the Dagster webserver port
