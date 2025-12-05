@@ -579,8 +579,6 @@ function ScenarioReviewPanel({
 }) {
   const [saving, setSaving] = useState(false)
   const [showAiSuggestion, setShowAiSuggestion] = useState(false)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [expandedSection, setExpandedSection] = useState<number>(1)
   const [showSessionStructure, setShowSessionStructure] = useState(false)
   
   // Form state - Section 1: Session Recommendation
@@ -625,28 +623,13 @@ function ScenarioReviewPanel({
   const [qualityOptimal, setQualityOptimal] = useState(existingResponse?.predicted_quality_optimal || 5)
   const [predictionConfidence, setPredictionConfidence] = useState<'high' | 'medium' | 'low'>(existingResponse?.prediction_confidence || 'medium')
   
-  // Calculate progress
-  // 3-part form completion tracking
+  // Calculate progress - 3-part form completion tracking
   const partCompletion = {
     recommendation: sessionType !== '',  // Part 1: Session type selected
     analysis: keyDrivers.filter(kd => kd.variable !== '').length >= 1,  // Part 2: At least one key driver
     summary: reasoning.trim().length > 10 && qualityOptimal > 1,  // Part 3: Reasoning + prediction
   }
   const completedParts = Object.values(partCompletion).filter(Boolean).length
-  
-  // Keep sectionCompletion for any remaining references
-  const sectionCompletion = {
-    1: sessionType !== '',
-    2: Object.values(treatments).some(t => t.importance !== 'neutral'),
-    3: true,
-    4: keyDrivers.filter(kd => kd.variable !== '').length >= 1,
-    5: true,
-    6: true,
-    7: reasoning.trim().length > 10,
-    8: qualityOptimal !== 5,
-  }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _completedSections = Object.values(sectionCompletion).filter(Boolean).length
   const requiredComplete = partCompletion.recommendation && partCompletion.analysis && partCompletion.summary
 
   const handleSave = async (isComplete: boolean) => {
@@ -1129,153 +1112,6 @@ function ProfileSlider({ label, value, max, color, inverted }: { label: string; 
       </div>
       <div className="h-2 bg-white/10 rounded-full overflow-hidden">
         <div className={`h-full ${colorClass} rounded-full transition-all`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  )
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _FormSection({ 
-  number, title, icon, isExpanded, isComplete, onToggle, optional, children 
-}: { 
-  number: number; title: string; icon: string; isExpanded: boolean; isComplete: boolean; onToggle: () => void; optional?: boolean; children: React.ReactNode 
-}) {
-  return (
-    <div className={`rounded-2xl border-2 transition-all ${
-      isComplete ? 'border-emerald-500/40 bg-emerald-500/5' : 
-      isExpanded ? 'border-violet-500/40 bg-violet-500/5' : 'border-white/10 bg-white/[0.02]'
-    }`}>
-      <button
-        onClick={onToggle}
-        className="w-full p-6 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
-      >
-        <div className="flex items-center gap-5">
-          <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl ${
-            isComplete ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10'
-          }`}>
-            {isComplete ? '✓' : icon}
-          </div>
-          <div className="text-left">
-            <span className="font-bold text-xl">{number}. {title}</span>
-            {optional && <span className="text-base text-slate-500 ml-3">(Optional)</span>}
-          </div>
-        </div>
-        <span className="text-slate-400 text-xl">{isExpanded ? '▲' : '▼'}</span>
-      </button>
-      
-      {isExpanded && (
-        <div className="px-6 pb-6">
-          {children}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _OutcomePredictionsForm({
-  qualityOptimal, setQualityOptimal,
-  confidence, setConfidence,
-}: {
-  qualityOptimal: number; setQualityOptimal: (v: number) => void
-  confidence: 'high' | 'medium' | 'low'; setConfidence: (v: 'high' | 'medium' | 'low') => void
-}) {
-  return (
-    <div className="space-y-6">
-      <div className="p-4 rounded-xl bg-white/5">
-        <div className="flex justify-between items-center mb-2">
-          <label className="text-sm text-slate-300">Predicted session quality</label>
-          <span className="text-2xl font-bold text-emerald-400">{qualityOptimal}/10</span>
-        </div>
-        <input
-          type="range" min="1" max="10" step="0.5"
-          value={qualityOptimal}
-          onChange={(e) => setQualityOptimal(parseFloat(e.target.value))}
-          className="w-full h-3 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-        />
-        <p className="text-xs text-slate-500 mt-2">Expected session quality if they follow your recommendations</p>
-      </div>
-
-      <div>
-        <label className="text-sm text-slate-300 block mb-2">Prediction Confidence</label>
-        <div className="flex gap-2">
-          {(['high', 'medium', 'low'] as const).map((level) => (
-            <button
-              key={level}
-              onClick={() => setConfidence(level)}
-              className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium capitalize transition-all ${
-                confidence === level
-                  ? 'bg-violet-500/20 text-violet-300 border-2 border-violet-500/50'
-                  : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
-              }`}
-            >
-              {level}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _SessionRecommendationForm({
-  sessionType, setSessionType,
-  confidence, setConfidence,
-}: {
-  sessionType: SessionType | ''; setSessionType: (v: SessionType) => void
-  confidence: 'high' | 'medium' | 'low'; setConfidence: (v: 'high' | 'medium' | 'low') => void
-}) {
-  const sessionTypes: { value: SessionType; label: string; icon: string; desc: string }[] = [
-    { value: 'project', label: 'Project Session', icon: '🎯', desc: 'Work on specific project' },
-    { value: 'limit_bouldering', label: 'Limit Bouldering', icon: '💪', desc: 'Max effort attempts' },
-    { value: 'volume', label: 'Volume', icon: '📊', desc: 'High rep count, moderate intensity' },
-    { value: 'technique', label: 'Technique', icon: '🎨', desc: 'Focus on movement quality' },
-    { value: 'training', label: 'Training', icon: '🏋️', desc: 'Structured training exercises' },
-    { value: 'light_session', label: 'Light Session', icon: '🌤️', desc: 'Easy climbing, low intensity' },
-    { value: 'rest_day', label: 'Rest Day', icon: '😴', desc: 'Complete rest recommended' },
-    { value: 'active_recovery', label: 'Active Recovery', icon: '🧘', desc: 'Light movement, mobility' },
-  ]
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        {sessionTypes.map((type) => (
-          <button
-            key={type.value}
-            onClick={() => setSessionType(type.value)}
-            className={`p-4 rounded-xl text-left transition-all ${
-              sessionType === type.value
-                ? 'bg-violet-500/20 border-2 border-violet-500/50'
-                : 'bg-white/5 border border-white/10 hover:bg-white/10'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xl">{type.icon}</span>
-              <span className="font-medium text-sm">{type.label}</span>
-            </div>
-            <p className="text-xs text-slate-400">{type.desc}</p>
-          </button>
-        ))}
-      </div>
-
-      <div>
-        <label className="text-sm text-slate-300 block mb-2">Confidence in this recommendation</label>
-        <div className="flex gap-2">
-          {(['high', 'medium', 'low'] as const).map((level) => (
-            <button
-              key={level}
-              onClick={() => setConfidence(level)}
-              className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium capitalize transition-all ${
-                confidence === level
-                  ? 'bg-violet-500/20 text-violet-300 border-2 border-violet-500/50'
-                  : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
-              }`}
-            >
-              {level}
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   )
