@@ -1,9 +1,9 @@
 [build]
 builder = "dockerfile"
-dockerfilePath = "dagster_pipeline/Dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "dagster-webserver -h 0.0.0.0 -p $PORT -m dagster_pipeline"
+startCommand = "/app/start.sh"
 healthcheckPath = "/server_info"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
