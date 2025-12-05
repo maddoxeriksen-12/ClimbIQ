@@ -1,4 +1,5 @@
 from functools import lru_cache
+import os
 
 from pydantic_settings import BaseSettings
 
@@ -9,18 +10,18 @@ class Settings(BaseSettings):
   DEBUG: bool = False
   API_V1_PREFIX: str = "/api/v1"
 
-  # Supabase
-  SUPABASE_URL: str
-  SUPABASE_ANON_KEY: str
-  SUPABASE_SERVICE_ROLE_KEY: str
+  # Supabase - defaults for startup, will fail gracefully if not configured
+  SUPABASE_URL: str = ""
+  SUPABASE_ANON_KEY: str = ""
+  SUPABASE_SERVICE_ROLE_KEY: str = ""
 
-  # Redis
-  REDIS_URL: str
+  # Redis - optional, will be None if not set
+  REDIS_URL: str = ""
 
-  # Stripe
-  STRIPE_SECRET_KEY: str
-  STRIPE_WEBHOOK_SECRET: str
-  STRIPE_PRICE_ID_PREMIUM: str
+  # Stripe - defaults for startup
+  STRIPE_SECRET_KEY: str = ""
+  STRIPE_WEBHOOK_SECRET: str = ""
+  STRIPE_PRICE_ID_PREMIUM: str = ""
 
   # ML
   MLFLOW_TRACKING_URI: str = "mlruns"

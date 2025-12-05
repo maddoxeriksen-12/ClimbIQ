@@ -1,7 +1,6 @@
 from contextlib import asynccontextmanager
 import logging
 
-import redis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -34,11 +33,27 @@ except Exception as e:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-  # Startup
-  app.state.redis = redis.from_url(settings.REDIS_URL)
+  # Startup - Redis is optional
+  if settings.REDIS_URL:
+      try:
+          import redis
+          app.state.redis = redis.from_url(settings.REDIS_URL)
+          logger.info("✅ Redis connected")
+      except Exception as e:
+          logger.warning(f"⚠️ Redis connection failed: {e}")
+          app.state.redis = None
+  else:
+      logger.warning("⚠️ REDIS_URL not set, running without Redis")
+      app.state.redis = None
+  
   yield
+  
   # Shutdown
-  app.state.redis.close()
+  if hasattr(app.state, 'redis') and app.state.redis:
+      try:
+          app.state.redis.close()
+      except Exception:
+          pass
 
 
 app = FastAPI(
