@@ -118,23 +118,78 @@ export function SessionFlow() {
   }) => {
     // Get active goal to associate session with it
     const { data: activeGoal } = await getActiveGoal()
+    const pre = info.preSessionData || {}
 
-    // Create session in database
+    // Create session in database with ALL pre-session fields
     const { data: dbSession, error } = await createSession({
       session_type: info.sessionType,
       location: info.location,
       is_outdoor: info.isOutdoor,
       planned_duration_minutes: info.plannedDuration,
       goal_id: activeGoal?.id,
-      pre_session_data: info.preSessionData,
-      energy_level: info.preSessionData?.energy_level as number,
-      motivation: info.preSessionData?.motivation as number,
-      sleep_quality: info.preSessionData?.sleep_quality as number,
-      stress_level: info.preSessionData?.stress_level as number,
-      had_pain_before: info.preSessionData?.has_pain as boolean,
-      pain_location: info.preSessionData?.pain_location as string,
-      pain_severity: info.preSessionData?.pain_severity as number,
-      notes: info.preSessionData?.notes as string,
+      
+      // Store complete pre_session_data as JSONB for backup
+      pre_session_data: pre,
+      
+      // Mental/Energy State
+      energy_level: pre.energy_level as number,
+      motivation: pre.motivation as number,
+      sleep_quality: pre.sleep_quality as number,
+      stress_level: pre.stress_level as number,
+      
+      // Physical Readiness
+      sleep_hours: pre.sleep_hours as number,
+      hours_since_meal: pre.hours_since_meal as string,
+      hydration: pre.hydration as string,
+      days_since_last_session: pre.days_since_last_session as number,
+      days_since_rest_day: pre.days_since_rest_day as number,
+      muscle_soreness: pre.muscle_soreness as string,
+      soreness_locations: pre.soreness_locations as string[],
+      
+      // Substances
+      had_caffeine: pre.had_caffeine as boolean,
+      caffeine_amount: pre.caffeine_amount as string,
+      had_alcohol: pre.had_alcohol as boolean,
+      alcohol_amount: pre.alcohol_amount as string,
+      
+      // Session Intent
+      primary_goal: pre.primary_goal as string,
+      session_focus: pre.session_focus as string,
+      
+      // Indoor-specific
+      gym_name: pre.gym_name as string,
+      
+      // Outdoor-specific
+      crag_name: pre.crag_name as string,
+      rock_type: pre.rock_type as string,
+      conditions_rating: pre.conditions_rating as number,
+      temperature: pre.temperature as string,
+      humidity: pre.humidity as string,
+      recent_precipitation: pre.recent_precipitation as boolean,
+      
+      // Project-specific
+      is_project_session: pre.is_project_session as boolean,
+      project_name: pre.project_name as string,
+      project_session_number: pre.project_session_number as number,
+      current_high_point: pre.current_high_point as string,
+      project_goal: pre.project_goal as string,
+      section_focus: pre.section_focus as string,
+      
+      // Training-specific
+      training_focus: pre.training_focus as string[],
+      planned_exercises: pre.planned_exercises as string,
+      target_training_time: pre.target_training_time as number,
+      
+      // Bouldering/Lead specific
+      belay_type: pre.belay_type as string,
+      
+      // Pain/Injury
+      had_pain_before: pre.has_pain as boolean,
+      pain_location: pre.pain_location as string,
+      pain_severity: pre.pain_severity as number,
+      
+      // Notes
+      notes: pre.notes as string,
     })
 
     if (error) {
@@ -173,42 +228,110 @@ export function SessionFlow() {
   }
 
   const handlePostSessionComplete = async (postData: unknown) => {
-    const data = postData as Record<string, unknown>
+    const post = postData as Record<string, unknown>
     
     // Get live climb data from tracker
     const liveClimbs = getStoredClimbs()
-    const totalClimbs = liveClimbs.length || (data.total_climbs as number)
-    const totalSends = liveClimbs.filter(c => c.sent).length || (data.total_sends as number)
-    const flashCount = liveClimbs.filter(c => c.flashed).length || (data.flash_count as number)
+    const totalClimbs = liveClimbs.length || (post.total_climbs as number)
+    const totalSends = liveClimbs.filter(c => c.sent).length || (post.total_sends as number)
+    const flashCount = liveClimbs.filter(c => c.flashed).length || (post.flash_count as number)
     
     // Calculate highest grade from live climbs
     const sentClimbs = liveClimbs.filter(c => c.sent)
     const highestGradeSent = sentClimbs.length > 0 
       ? sentClimbs.sort((a, b) => getGradeValue(b.grade) - getGradeValue(a.grade))[0].grade
-      : (data.highest_grade_sent as string)
+      : (post.highest_grade_sent as string)
     const highestGradeAttempted = liveClimbs.length > 0
       ? liveClimbs.sort((a, b) => getGradeValue(b.grade) - getGradeValue(a.grade))[0].grade
-      : (data.highest_grade_attempted as string)
+      : (post.highest_grade_attempted as string)
     
-    // Complete session in database
+    // Complete session in database with ALL post-session fields
     if (dbSessionId || sessionInfo?.sessionId) {
       const sessionId = dbSessionId || sessionInfo?.sessionId
       const { error } = await completeSession({
         session_id: sessionId!,
-        post_session_data: { ...data, live_climbs: liveClimbs },
-        session_rpe: data.session_rpe as number,
-        satisfaction: data.satisfaction as number,
+        
+        // Store complete post_session_data as JSONB for backup
+        post_session_data: { ...post, live_climbs: liveClimbs },
+        
+        // Core Outcomes
+        session_rpe: post.session_rpe as number,
+        satisfaction: post.satisfaction as number,
+        actual_vs_planned: post.actual_vs_planned as string,
+        end_energy: post.end_energy as number,
+        skin_condition: post.skin_condition as string,
+        felt_pumped_out: post.felt_pumped_out as boolean,
+        could_have_done_more: post.could_have_done_more as string,
+        
+        // Behavioral Proxies
+        skipped_planned_climbs: post.skipped_planned_climbs as boolean,
+        attempted_harder: post.attempted_harder as boolean,
+        one_more_try_count: post.one_more_try_count as number,
+        
+        // Goal Progress
+        moved_toward_goal: post.moved_toward_goal as string,
+        
+        // Climbing Metrics
         highest_grade_sent: highestGradeSent,
         highest_grade_attempted: highestGradeAttempted,
         total_climbs: totalClimbs,
         total_sends: totalSends,
         flash_count: flashCount,
-        had_pain_after: data.has_new_pain as boolean,
-        pain_location: data.pain_location as string,
-        pain_severity: data.pain_severity as number,
-        notes: data.notes as string,
-        actual_start_time: data.actual_start_time as string,
-        actual_end_time: data.actual_end_time as string,
+        
+        // Project Session Outcomes
+        total_attempts: post.total_attempts as number,
+        highest_point_reached: post.highest_point_reached as string,
+        matched_high_point: post.matched_high_point as boolean,
+        linked_more_moves: post.linked_more_moves as boolean,
+        sent_project: post.sent_project as boolean,
+        send_attempts: post.send_attempts as number,
+        fall_location: post.fall_location as string,
+        same_crux: post.same_crux as boolean,
+        crux_type: post.crux_type as string,
+        limiting_factors: post.limiting_factors as string[],
+        beta_changes: post.beta_changes as string,
+        
+        // Lead Session Outcomes
+        routes_attempted: post.routes_attempted as number,
+        total_pitches: post.total_pitches as number,
+        onsight_rate: post.onsight_rate as number,
+        falls_count: post.falls_count as number,
+        fall_types: post.fall_types as string[],
+        longest_route: post.longest_route as string,
+        rest_time_between_routes: post.rest_time_between_routes as number,
+        head_game_falls: post.head_game_falls as number,
+        backed_off_due_to_fear: post.backed_off_due_to_fear as boolean,
+        
+        // Outdoor Session Outcomes
+        conditions_vs_expected: post.conditions_vs_expected as string,
+        skin_lasted: post.skin_lasted as boolean,
+        conditions_affected_performance: post.conditions_affected_performance as string,
+        rock_quality: post.rock_quality as string,
+        
+        // Recreational
+        had_fun: post.had_fun as boolean,
+        standout_moments: post.standout_moments as string,
+        
+        // Training Session Outcomes
+        exercises_completed: post.exercises_completed as Record<string, unknown>[],
+        training_quality: post.training_quality as number,
+        progressed_or_regressed: post.progressed_or_regressed as string,
+        prs_achieved: post.prs_achieved as string[],
+        
+        // Pain/Injury
+        had_pain_after: post.has_new_pain as boolean,
+        pain_location: post.pain_location as string,
+        pain_severity: post.pain_severity as number,
+        
+        // Live Climb Tracking
+        climbs_log: liveClimbs,
+        
+        // Timing
+        actual_start_time: post.actual_start_time as string,
+        actual_end_time: post.actual_end_time as string,
+        
+        // Notes
+        notes: post.notes as string,
       })
 
       if (error) {
@@ -440,41 +563,109 @@ export function CompleteSessionFlow() {
   }
 
   const handlePostSessionComplete = async (postData: unknown) => {
-    const data = postData as Record<string, unknown>
+    const post = postData as Record<string, unknown>
     
     // Get live climb data from tracker
     const liveClimbs = getStoredClimbs()
-    const totalClimbs = liveClimbs.length || (data.total_climbs as number)
-    const totalSends = liveClimbs.filter(c => c.sent).length || (data.total_sends as number)
-    const flashCount = liveClimbs.filter(c => c.flashed).length || (data.flash_count as number)
+    const totalClimbs = liveClimbs.length || (post.total_climbs as number)
+    const totalSends = liveClimbs.filter(c => c.sent).length || (post.total_sends as number)
+    const flashCount = liveClimbs.filter(c => c.flashed).length || (post.flash_count as number)
     
     // Calculate highest grade from live climbs
     const sentClimbs = liveClimbs.filter(c => c.sent)
     const highestGradeSent = sentClimbs.length > 0 
       ? sentClimbs.sort((a, b) => getGradeValue(b.grade) - getGradeValue(a.grade))[0].grade
-      : (data.highest_grade_sent as string)
+      : (post.highest_grade_sent as string)
     const highestGradeAttempted = liveClimbs.length > 0
       ? liveClimbs.sort((a, b) => getGradeValue(b.grade) - getGradeValue(a.grade))[0].grade
-      : (data.highest_grade_attempted as string)
+      : (post.highest_grade_attempted as string)
     
-    // Complete session in database
+    // Complete session in database with ALL post-session fields
     if (activeSession.sessionId) {
       const { error } = await completeSession({
         session_id: activeSession.sessionId,
-        post_session_data: { ...data, live_climbs: liveClimbs },
-        session_rpe: data.session_rpe as number,
-        satisfaction: data.satisfaction as number,
+        
+        // Store complete post_session_data as JSONB for backup
+        post_session_data: { ...post, live_climbs: liveClimbs },
+        
+        // Core Outcomes
+        session_rpe: post.session_rpe as number,
+        satisfaction: post.satisfaction as number,
+        actual_vs_planned: post.actual_vs_planned as string,
+        end_energy: post.end_energy as number,
+        skin_condition: post.skin_condition as string,
+        felt_pumped_out: post.felt_pumped_out as boolean,
+        could_have_done_more: post.could_have_done_more as string,
+        
+        // Behavioral Proxies
+        skipped_planned_climbs: post.skipped_planned_climbs as boolean,
+        attempted_harder: post.attempted_harder as boolean,
+        one_more_try_count: post.one_more_try_count as number,
+        
+        // Goal Progress
+        moved_toward_goal: post.moved_toward_goal as string,
+        
+        // Climbing Metrics
         highest_grade_sent: highestGradeSent,
         highest_grade_attempted: highestGradeAttempted,
         total_climbs: totalClimbs,
         total_sends: totalSends,
         flash_count: flashCount,
-        had_pain_after: data.has_new_pain as boolean,
-        pain_location: data.pain_location as string,
-        pain_severity: data.pain_severity as number,
-        notes: data.notes as string,
-        actual_start_time: data.actual_start_time as string,
-        actual_end_time: data.actual_end_time as string,
+        
+        // Project Session Outcomes
+        total_attempts: post.total_attempts as number,
+        highest_point_reached: post.highest_point_reached as string,
+        matched_high_point: post.matched_high_point as boolean,
+        linked_more_moves: post.linked_more_moves as boolean,
+        sent_project: post.sent_project as boolean,
+        send_attempts: post.send_attempts as number,
+        fall_location: post.fall_location as string,
+        same_crux: post.same_crux as boolean,
+        crux_type: post.crux_type as string,
+        limiting_factors: post.limiting_factors as string[],
+        beta_changes: post.beta_changes as string,
+        
+        // Lead Session Outcomes
+        routes_attempted: post.routes_attempted as number,
+        total_pitches: post.total_pitches as number,
+        onsight_rate: post.onsight_rate as number,
+        falls_count: post.falls_count as number,
+        fall_types: post.fall_types as string[],
+        longest_route: post.longest_route as string,
+        rest_time_between_routes: post.rest_time_between_routes as number,
+        head_game_falls: post.head_game_falls as number,
+        backed_off_due_to_fear: post.backed_off_due_to_fear as boolean,
+        
+        // Outdoor Session Outcomes
+        conditions_vs_expected: post.conditions_vs_expected as string,
+        skin_lasted: post.skin_lasted as boolean,
+        conditions_affected_performance: post.conditions_affected_performance as string,
+        rock_quality: post.rock_quality as string,
+        
+        // Recreational
+        had_fun: post.had_fun as boolean,
+        standout_moments: post.standout_moments as string,
+        
+        // Training Session Outcomes
+        exercises_completed: post.exercises_completed as Record<string, unknown>[],
+        training_quality: post.training_quality as number,
+        progressed_or_regressed: post.progressed_or_regressed as string,
+        prs_achieved: post.prs_achieved as string[],
+        
+        // Pain/Injury
+        had_pain_after: post.has_new_pain as boolean,
+        pain_location: post.pain_location as string,
+        pain_severity: post.pain_severity as number,
+        
+        // Live Climb Tracking
+        climbs_log: liveClimbs,
+        
+        // Timing
+        actual_start_time: post.actual_start_time as string,
+        actual_end_time: post.actual_end_time as string,
+        
+        // Notes
+        notes: post.notes as string,
       })
 
       if (error) {

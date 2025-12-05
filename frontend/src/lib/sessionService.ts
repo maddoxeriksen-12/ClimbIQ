@@ -16,24 +16,140 @@ export interface ClimbingSession {
   planned_duration_minutes?: number
   actual_duration_minutes?: number
   status: 'active' | 'completed' | 'cancelled'
+  
+  // JSONB storage for complete data
   pre_session_data: Record<string, unknown>
   post_session_data: Record<string, unknown>
+  
+  // Mental/Energy State
   energy_level?: number
   motivation?: number
   sleep_quality?: number
   stress_level?: number
+  
+  // Physical Readiness
+  sleep_hours?: number
+  hours_since_meal?: string
+  hydration?: string
+  days_since_last_session?: number
+  days_since_rest_day?: number
+  muscle_soreness?: string
+  soreness_locations?: string[]
+  
+  // Substances
+  had_caffeine?: boolean
+  caffeine_amount?: string
+  had_alcohol?: boolean
+  alcohol_amount?: string
+  
+  // Session Intent
+  primary_goal?: string
+  session_focus?: string
+  
+  // Indoor-specific
+  gym_name?: string
+  
+  // Outdoor-specific
+  crag_name?: string
+  rock_type?: string
+  conditions_rating?: number
+  temperature?: string
+  humidity?: string
+  recent_precipitation?: boolean
+  
+  // Project-specific
+  is_project_session?: boolean
+  project_name?: string
+  project_session_number?: number
+  current_high_point?: string
+  project_goal?: string
+  section_focus?: string
+  
+  // Training-specific
+  training_focus?: string[]
+  planned_exercises?: string
+  target_training_time?: number
+  
+  // Bouldering/Lead specific
+  belay_type?: string
+  
+  // Post-session: Core Outcomes
   session_rpe?: number
   satisfaction?: number
+  actual_vs_planned?: string
+  end_energy?: number
+  skin_condition?: string
+  felt_pumped_out?: boolean
+  could_have_done_more?: string
+  
+  // Behavioral Proxies
+  skipped_planned_climbs?: boolean
+  attempted_harder?: boolean
+  one_more_try_count?: number
+  
+  // Goal Progress
+  moved_toward_goal?: string
+  
+  // Climbing Metrics
   highest_grade_sent?: string
   highest_grade_attempted?: string
   total_climbs?: number
   total_sends?: number
   flash_count?: number
+  
+  // Project Session Outcomes
+  total_attempts?: number
+  highest_point_reached?: string
+  matched_high_point?: boolean
+  linked_more_moves?: boolean
+  sent_project?: boolean
+  send_attempts?: number
+  fall_location?: string
+  same_crux?: boolean
+  crux_type?: string
+  limiting_factors?: string[]
+  beta_changes?: string
+  
+  // Lead Session Outcomes
+  routes_attempted?: number
+  total_pitches?: number
+  onsight_rate?: number
+  falls_count?: number
+  fall_types?: string[]
+  longest_route?: string
+  rest_time_between_routes?: number
+  head_game_falls?: number
+  backed_off_due_to_fear?: boolean
+  
+  // Outdoor Session Outcomes
+  conditions_vs_expected?: string
+  skin_lasted?: boolean
+  conditions_affected_performance?: string
+  rock_quality?: string
+  
+  // Recreational
+  had_fun?: boolean
+  standout_moments?: string
+  
+  // Training Session Outcomes
+  exercises_completed?: Record<string, unknown>[]
+  training_quality?: number
+  progressed_or_regressed?: string
+  prs_achieved?: string[]
+  
+  // Pain/Injury
   had_pain_before?: boolean
   had_pain_after?: boolean
   pain_location?: string
   pain_severity?: number
+  
+  // Live Climb Tracking (type can be 'boulder', 'sport', 'trad', 'lead', etc.)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  climbs_log?: any[]
+  
+  // Notes
   notes?: string
+  
   created_at: string
   updated_at: string
 }
@@ -45,32 +161,151 @@ export interface CreateSessionInput {
   planned_duration_minutes?: number
   goal_id?: string
   pre_session_data?: Record<string, unknown>
+  
+  // Mental/Energy State
   energy_level?: number
   motivation?: number
   sleep_quality?: number
   stress_level?: number
+  
+  // Physical Readiness
+  sleep_hours?: number
+  hours_since_meal?: string
+  hydration?: string
+  days_since_last_session?: number
+  days_since_rest_day?: number
+  muscle_soreness?: string
+  soreness_locations?: string[]
+  
+  // Substances
+  had_caffeine?: boolean
+  caffeine_amount?: string
+  had_alcohol?: boolean
+  alcohol_amount?: string
+  
+  // Session Intent
+  primary_goal?: string
+  session_focus?: string
+  
+  // Indoor-specific
+  gym_name?: string
+  
+  // Outdoor-specific
+  crag_name?: string
+  rock_type?: string
+  conditions_rating?: number
+  temperature?: string
+  humidity?: string
+  recent_precipitation?: boolean
+  
+  // Project-specific
+  is_project_session?: boolean
+  project_name?: string
+  project_session_number?: number
+  current_high_point?: string
+  project_goal?: string
+  section_focus?: string
+  
+  // Training-specific
+  training_focus?: string[]
+  planned_exercises?: string
+  target_training_time?: number
+  
+  // Bouldering/Lead specific
+  belay_type?: string
+  
+  // Pain/Injury
   had_pain_before?: boolean
   pain_location?: string
   pain_severity?: number
+  
+  // Notes
   notes?: string
 }
 
 export interface CompleteSessionInput {
   session_id: string
   post_session_data?: Record<string, unknown>
+  
+  // Core Outcomes
   session_rpe?: number
   satisfaction?: number
+  actual_vs_planned?: string
+  end_energy?: number
+  skin_condition?: string
+  felt_pumped_out?: boolean
+  could_have_done_more?: string
+  
+  // Behavioral Proxies
+  skipped_planned_climbs?: boolean
+  attempted_harder?: boolean
+  one_more_try_count?: number
+  
+  // Goal Progress
+  moved_toward_goal?: string
+  
+  // Climbing Metrics
   highest_grade_sent?: string
   highest_grade_attempted?: string
   total_climbs?: number
   total_sends?: number
   flash_count?: number
+  
+  // Project Session Outcomes
+  total_attempts?: number
+  highest_point_reached?: string
+  matched_high_point?: boolean
+  linked_more_moves?: boolean
+  sent_project?: boolean
+  send_attempts?: number
+  fall_location?: string
+  same_crux?: boolean
+  crux_type?: string
+  limiting_factors?: string[]
+  beta_changes?: string
+  
+  // Lead Session Outcomes
+  routes_attempted?: number
+  total_pitches?: number
+  onsight_rate?: number
+  falls_count?: number
+  fall_types?: string[]
+  longest_route?: string
+  rest_time_between_routes?: number
+  head_game_falls?: number
+  backed_off_due_to_fear?: boolean
+  
+  // Outdoor Session Outcomes
+  conditions_vs_expected?: string
+  skin_lasted?: boolean
+  conditions_affected_performance?: string
+  rock_quality?: string
+  
+  // Recreational
+  had_fun?: boolean
+  standout_moments?: string
+  
+  // Training Session Outcomes
+  exercises_completed?: Record<string, unknown>[]
+  training_quality?: number
+  progressed_or_regressed?: string
+  prs_achieved?: string[]
+  
+  // Pain/Injury
   had_pain_after?: boolean
   pain_location?: string
   pain_severity?: number
-  notes?: string
+  
+  // Live Climb Tracking (type can be 'boulder', 'sport', 'trad', 'lead', etc.)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  climbs_log?: any[]
+  
+  // Timing
   actual_start_time?: string
   actual_end_time?: string
+  
+  // Notes
+  notes?: string
 }
 
 export interface SessionStats {
@@ -105,14 +340,68 @@ export async function createSession(input: CreateSessionInput): Promise<{ data: 
         planned_duration_minutes: input.planned_duration_minutes,
         goal_id: input.goal_id,
         status: 'active',
+        
+        // Store complete pre_session_data as JSONB
         pre_session_data: input.pre_session_data ?? {},
+        
+        // Mental/Energy State
         energy_level: input.energy_level,
         motivation: input.motivation,
         sleep_quality: input.sleep_quality,
         stress_level: input.stress_level,
+        
+        // Physical Readiness
+        sleep_hours: input.sleep_hours,
+        hours_since_meal: input.hours_since_meal,
+        hydration: input.hydration,
+        days_since_last_session: input.days_since_last_session,
+        days_since_rest_day: input.days_since_rest_day,
+        muscle_soreness: input.muscle_soreness,
+        soreness_locations: input.soreness_locations,
+        
+        // Substances
+        had_caffeine: input.had_caffeine,
+        caffeine_amount: input.caffeine_amount,
+        had_alcohol: input.had_alcohol,
+        alcohol_amount: input.alcohol_amount,
+        
+        // Session Intent
+        primary_goal: input.primary_goal,
+        session_focus: input.session_focus,
+        
+        // Indoor-specific
+        gym_name: input.gym_name,
+        
+        // Outdoor-specific
+        crag_name: input.crag_name,
+        rock_type: input.rock_type,
+        conditions_rating: input.conditions_rating,
+        temperature: input.temperature,
+        humidity: input.humidity,
+        recent_precipitation: input.recent_precipitation,
+        
+        // Project-specific
+        is_project_session: input.is_project_session,
+        project_name: input.project_name,
+        project_session_number: input.project_session_number,
+        current_high_point: input.current_high_point,
+        project_goal: input.project_goal,
+        section_focus: input.section_focus,
+        
+        // Training-specific
+        training_focus: input.training_focus,
+        planned_exercises: input.planned_exercises,
+        target_training_time: input.target_training_time,
+        
+        // Bouldering/Lead specific
+        belay_type: input.belay_type,
+        
+        // Pain/Injury
         had_pain_before: input.had_pain_before,
         pain_location: input.pain_location,
         pain_severity: input.pain_severity,
+        
+        // Notes
         notes: input.notes,
       } as SupabaseData)
       .select()
@@ -155,18 +444,85 @@ export async function completeSession(input: CompleteSessionInput): Promise<{ da
         ended_at: endTime,
         started_at: input.actual_start_time ?? undefined,
         actual_duration_minutes: actualDuration,
+        
+        // Store complete post_session_data as JSONB
         post_session_data: input.post_session_data ?? {},
+        
+        // Core Outcomes
         session_rpe: input.session_rpe,
         satisfaction: input.satisfaction,
+        actual_vs_planned: input.actual_vs_planned,
+        end_energy: input.end_energy,
+        skin_condition: input.skin_condition,
+        felt_pumped_out: input.felt_pumped_out,
+        could_have_done_more: input.could_have_done_more,
+        
+        // Behavioral Proxies
+        skipped_planned_climbs: input.skipped_planned_climbs,
+        attempted_harder: input.attempted_harder,
+        one_more_try_count: input.one_more_try_count,
+        
+        // Goal Progress
+        moved_toward_goal: input.moved_toward_goal,
+        
+        // Climbing Metrics
         highest_grade_sent: input.highest_grade_sent,
         highest_grade_attempted: input.highest_grade_attempted,
         total_climbs: input.total_climbs,
         total_sends: input.total_sends,
         flash_count: input.flash_count,
+        
+        // Project Session Outcomes
+        total_attempts: input.total_attempts,
+        highest_point_reached: input.highest_point_reached,
+        matched_high_point: input.matched_high_point,
+        linked_more_moves: input.linked_more_moves,
+        sent_project: input.sent_project,
+        send_attempts: input.send_attempts,
+        fall_location: input.fall_location,
+        same_crux: input.same_crux,
+        crux_type: input.crux_type,
+        limiting_factors: input.limiting_factors,
+        beta_changes: input.beta_changes,
+        
+        // Lead Session Outcomes
+        routes_attempted: input.routes_attempted,
+        total_pitches: input.total_pitches,
+        onsight_rate: input.onsight_rate,
+        falls_count: input.falls_count,
+        fall_types: input.fall_types,
+        longest_route: input.longest_route,
+        rest_time_between_routes: input.rest_time_between_routes,
+        head_game_falls: input.head_game_falls,
+        backed_off_due_to_fear: input.backed_off_due_to_fear,
+        
+        // Outdoor Session Outcomes
+        conditions_vs_expected: input.conditions_vs_expected,
+        skin_lasted: input.skin_lasted,
+        conditions_affected_performance: input.conditions_affected_performance,
+        rock_quality: input.rock_quality,
+        
+        // Recreational
+        had_fun: input.had_fun,
+        standout_moments: input.standout_moments,
+        
+        // Training Session Outcomes
+        exercises_completed: input.exercises_completed,
+        training_quality: input.training_quality,
+        progressed_or_regressed: input.progressed_or_regressed,
+        prs_achieved: input.prs_achieved,
+        
+        // Pain/Injury
         had_pain_after: input.had_pain_after,
         pain_location: input.pain_location,
         pain_severity: input.pain_severity,
+        
+        // Live Climb Tracking
+        climbs_log: input.climbs_log,
+        
+        // Notes
         notes: input.notes,
+        
         updated_at: new Date().toISOString(),
       })
       .eq('id', input.session_id)
@@ -478,7 +834,7 @@ export async function deleteSession(sessionId: string): Promise<{ success: boole
   }
 }
 
-// Update session input type
+// Update session input type - includes all fields from ClimbingSession
 export interface UpdateSessionInput {
   session_id: string
   session_type?: string
@@ -490,21 +846,134 @@ export interface UpdateSessionInput {
   actual_duration_minutes?: number
   pre_session_data?: Record<string, unknown>
   post_session_data?: Record<string, unknown>
+  
+  // Mental/Energy State
   energy_level?: number
   motivation?: number
   sleep_quality?: number
   stress_level?: number
+  
+  // Physical Readiness
+  sleep_hours?: number
+  hours_since_meal?: string
+  hydration?: string
+  days_since_last_session?: number
+  days_since_rest_day?: number
+  muscle_soreness?: string
+  soreness_locations?: string[]
+  
+  // Substances
+  had_caffeine?: boolean
+  caffeine_amount?: string
+  had_alcohol?: boolean
+  alcohol_amount?: string
+  
+  // Session Intent
+  primary_goal?: string
+  session_focus?: string
+  
+  // Indoor-specific
+  gym_name?: string
+  
+  // Outdoor-specific
+  crag_name?: string
+  rock_type?: string
+  conditions_rating?: number
+  temperature?: string
+  humidity?: string
+  recent_precipitation?: boolean
+  
+  // Project-specific
+  is_project_session?: boolean
+  project_name?: string
+  project_session_number?: number
+  current_high_point?: string
+  project_goal?: string
+  section_focus?: string
+  
+  // Training-specific
+  training_focus?: string[]
+  planned_exercises?: string
+  target_training_time?: number
+  
+  // Bouldering/Lead specific
+  belay_type?: string
+  
+  // Post-session: Core Outcomes
   session_rpe?: number
   satisfaction?: number
+  actual_vs_planned?: string
+  end_energy?: number
+  skin_condition?: string
+  felt_pumped_out?: boolean
+  could_have_done_more?: string
+  
+  // Behavioral Proxies
+  skipped_planned_climbs?: boolean
+  attempted_harder?: boolean
+  one_more_try_count?: number
+  
+  // Goal Progress
+  moved_toward_goal?: string
+  
+  // Climbing Metrics
   highest_grade_sent?: string
   highest_grade_attempted?: string
   total_climbs?: number
   total_sends?: number
   flash_count?: number
+  
+  // Project Session Outcomes
+  total_attempts?: number
+  highest_point_reached?: string
+  matched_high_point?: boolean
+  linked_more_moves?: boolean
+  sent_project?: boolean
+  send_attempts?: number
+  fall_location?: string
+  same_crux?: boolean
+  crux_type?: string
+  limiting_factors?: string[]
+  beta_changes?: string
+  
+  // Lead Session Outcomes
+  routes_attempted?: number
+  total_pitches?: number
+  onsight_rate?: number
+  falls_count?: number
+  fall_types?: string[]
+  longest_route?: string
+  rest_time_between_routes?: number
+  head_game_falls?: number
+  backed_off_due_to_fear?: boolean
+  
+  // Outdoor Session Outcomes
+  conditions_vs_expected?: string
+  skin_lasted?: boolean
+  conditions_affected_performance?: string
+  rock_quality?: string
+  
+  // Recreational
+  had_fun?: boolean
+  standout_moments?: string
+  
+  // Training Session Outcomes
+  exercises_completed?: Record<string, unknown>[]
+  training_quality?: number
+  progressed_or_regressed?: string
+  prs_achieved?: string[]
+  
+  // Pain/Injury
   had_pain_before?: boolean
   had_pain_after?: boolean
   pain_location?: string
   pain_severity?: number
+  
+  // Live Climb Tracking (type can be 'boulder', 'sport', 'trad', 'lead', etc.)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  climbs_log?: any[]
+  
+  // Notes
   notes?: string
 }
 
@@ -521,6 +990,7 @@ export async function updateSession(input: UpdateSessionInput): Promise<{ data: 
       updated_at: new Date().toISOString(),
     }
 
+    // Basic session fields
     if (input.session_type !== undefined) updateData.session_type = input.session_type
     if (input.location !== undefined) updateData.location = input.location
     if (input.is_outdoor !== undefined) updateData.is_outdoor = input.is_outdoor
@@ -530,21 +1000,133 @@ export async function updateSession(input: UpdateSessionInput): Promise<{ data: 
     if (input.actual_duration_minutes !== undefined) updateData.actual_duration_minutes = input.actual_duration_minutes
     if (input.pre_session_data !== undefined) updateData.pre_session_data = input.pre_session_data
     if (input.post_session_data !== undefined) updateData.post_session_data = input.post_session_data
+    
+    // Mental/Energy State
     if (input.energy_level !== undefined) updateData.energy_level = input.energy_level
     if (input.motivation !== undefined) updateData.motivation = input.motivation
     if (input.sleep_quality !== undefined) updateData.sleep_quality = input.sleep_quality
     if (input.stress_level !== undefined) updateData.stress_level = input.stress_level
+    
+    // Physical Readiness
+    if (input.sleep_hours !== undefined) updateData.sleep_hours = input.sleep_hours
+    if (input.hours_since_meal !== undefined) updateData.hours_since_meal = input.hours_since_meal
+    if (input.hydration !== undefined) updateData.hydration = input.hydration
+    if (input.days_since_last_session !== undefined) updateData.days_since_last_session = input.days_since_last_session
+    if (input.days_since_rest_day !== undefined) updateData.days_since_rest_day = input.days_since_rest_day
+    if (input.muscle_soreness !== undefined) updateData.muscle_soreness = input.muscle_soreness
+    if (input.soreness_locations !== undefined) updateData.soreness_locations = input.soreness_locations
+    
+    // Substances
+    if (input.had_caffeine !== undefined) updateData.had_caffeine = input.had_caffeine
+    if (input.caffeine_amount !== undefined) updateData.caffeine_amount = input.caffeine_amount
+    if (input.had_alcohol !== undefined) updateData.had_alcohol = input.had_alcohol
+    if (input.alcohol_amount !== undefined) updateData.alcohol_amount = input.alcohol_amount
+    
+    // Session Intent
+    if (input.primary_goal !== undefined) updateData.primary_goal = input.primary_goal
+    if (input.session_focus !== undefined) updateData.session_focus = input.session_focus
+    
+    // Indoor-specific
+    if (input.gym_name !== undefined) updateData.gym_name = input.gym_name
+    
+    // Outdoor-specific
+    if (input.crag_name !== undefined) updateData.crag_name = input.crag_name
+    if (input.rock_type !== undefined) updateData.rock_type = input.rock_type
+    if (input.conditions_rating !== undefined) updateData.conditions_rating = input.conditions_rating
+    if (input.temperature !== undefined) updateData.temperature = input.temperature
+    if (input.humidity !== undefined) updateData.humidity = input.humidity
+    if (input.recent_precipitation !== undefined) updateData.recent_precipitation = input.recent_precipitation
+    
+    // Project-specific
+    if (input.is_project_session !== undefined) updateData.is_project_session = input.is_project_session
+    if (input.project_name !== undefined) updateData.project_name = input.project_name
+    if (input.project_session_number !== undefined) updateData.project_session_number = input.project_session_number
+    if (input.current_high_point !== undefined) updateData.current_high_point = input.current_high_point
+    if (input.project_goal !== undefined) updateData.project_goal = input.project_goal
+    if (input.section_focus !== undefined) updateData.section_focus = input.section_focus
+    
+    // Training-specific
+    if (input.training_focus !== undefined) updateData.training_focus = input.training_focus
+    if (input.planned_exercises !== undefined) updateData.planned_exercises = input.planned_exercises
+    if (input.target_training_time !== undefined) updateData.target_training_time = input.target_training_time
+    
+    // Bouldering/Lead specific
+    if (input.belay_type !== undefined) updateData.belay_type = input.belay_type
+    
+    // Post-session: Core Outcomes
     if (input.session_rpe !== undefined) updateData.session_rpe = input.session_rpe
     if (input.satisfaction !== undefined) updateData.satisfaction = input.satisfaction
+    if (input.actual_vs_planned !== undefined) updateData.actual_vs_planned = input.actual_vs_planned
+    if (input.end_energy !== undefined) updateData.end_energy = input.end_energy
+    if (input.skin_condition !== undefined) updateData.skin_condition = input.skin_condition
+    if (input.felt_pumped_out !== undefined) updateData.felt_pumped_out = input.felt_pumped_out
+    if (input.could_have_done_more !== undefined) updateData.could_have_done_more = input.could_have_done_more
+    
+    // Behavioral Proxies
+    if (input.skipped_planned_climbs !== undefined) updateData.skipped_planned_climbs = input.skipped_planned_climbs
+    if (input.attempted_harder !== undefined) updateData.attempted_harder = input.attempted_harder
+    if (input.one_more_try_count !== undefined) updateData.one_more_try_count = input.one_more_try_count
+    
+    // Goal Progress
+    if (input.moved_toward_goal !== undefined) updateData.moved_toward_goal = input.moved_toward_goal
+    
+    // Climbing Metrics
     if (input.highest_grade_sent !== undefined) updateData.highest_grade_sent = input.highest_grade_sent
     if (input.highest_grade_attempted !== undefined) updateData.highest_grade_attempted = input.highest_grade_attempted
     if (input.total_climbs !== undefined) updateData.total_climbs = input.total_climbs
     if (input.total_sends !== undefined) updateData.total_sends = input.total_sends
     if (input.flash_count !== undefined) updateData.flash_count = input.flash_count
+    
+    // Project Session Outcomes
+    if (input.total_attempts !== undefined) updateData.total_attempts = input.total_attempts
+    if (input.highest_point_reached !== undefined) updateData.highest_point_reached = input.highest_point_reached
+    if (input.matched_high_point !== undefined) updateData.matched_high_point = input.matched_high_point
+    if (input.linked_more_moves !== undefined) updateData.linked_more_moves = input.linked_more_moves
+    if (input.sent_project !== undefined) updateData.sent_project = input.sent_project
+    if (input.send_attempts !== undefined) updateData.send_attempts = input.send_attempts
+    if (input.fall_location !== undefined) updateData.fall_location = input.fall_location
+    if (input.same_crux !== undefined) updateData.same_crux = input.same_crux
+    if (input.crux_type !== undefined) updateData.crux_type = input.crux_type
+    if (input.limiting_factors !== undefined) updateData.limiting_factors = input.limiting_factors
+    if (input.beta_changes !== undefined) updateData.beta_changes = input.beta_changes
+    
+    // Lead Session Outcomes
+    if (input.routes_attempted !== undefined) updateData.routes_attempted = input.routes_attempted
+    if (input.total_pitches !== undefined) updateData.total_pitches = input.total_pitches
+    if (input.onsight_rate !== undefined) updateData.onsight_rate = input.onsight_rate
+    if (input.falls_count !== undefined) updateData.falls_count = input.falls_count
+    if (input.fall_types !== undefined) updateData.fall_types = input.fall_types
+    if (input.longest_route !== undefined) updateData.longest_route = input.longest_route
+    if (input.rest_time_between_routes !== undefined) updateData.rest_time_between_routes = input.rest_time_between_routes
+    if (input.head_game_falls !== undefined) updateData.head_game_falls = input.head_game_falls
+    if (input.backed_off_due_to_fear !== undefined) updateData.backed_off_due_to_fear = input.backed_off_due_to_fear
+    
+    // Outdoor Session Outcomes
+    if (input.conditions_vs_expected !== undefined) updateData.conditions_vs_expected = input.conditions_vs_expected
+    if (input.skin_lasted !== undefined) updateData.skin_lasted = input.skin_lasted
+    if (input.conditions_affected_performance !== undefined) updateData.conditions_affected_performance = input.conditions_affected_performance
+    if (input.rock_quality !== undefined) updateData.rock_quality = input.rock_quality
+    
+    // Recreational
+    if (input.had_fun !== undefined) updateData.had_fun = input.had_fun
+    if (input.standout_moments !== undefined) updateData.standout_moments = input.standout_moments
+    
+    // Training Session Outcomes
+    if (input.exercises_completed !== undefined) updateData.exercises_completed = input.exercises_completed
+    if (input.training_quality !== undefined) updateData.training_quality = input.training_quality
+    if (input.progressed_or_regressed !== undefined) updateData.progressed_or_regressed = input.progressed_or_regressed
+    if (input.prs_achieved !== undefined) updateData.prs_achieved = input.prs_achieved
+    
+    // Pain/Injury
     if (input.had_pain_before !== undefined) updateData.had_pain_before = input.had_pain_before
     if (input.had_pain_after !== undefined) updateData.had_pain_after = input.had_pain_after
     if (input.pain_location !== undefined) updateData.pain_location = input.pain_location
     if (input.pain_severity !== undefined) updateData.pain_severity = input.pain_severity
+    
+    // Live Climb Tracking
+    if (input.climbs_log !== undefined) updateData.climbs_log = input.climbs_log
+    
+    // Notes
     if (input.notes !== undefined) updateData.notes = input.notes
 
     // Recalculate duration if times changed
