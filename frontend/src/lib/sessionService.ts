@@ -162,6 +162,9 @@ export interface CreateSessionInput {
   goal_id?: string
   pre_session_data?: Record<string, unknown>
   
+  // Custom start time for historical entries (model testing)
+  custom_started_at?: string
+  
   // Mental/Energy State
   energy_level?: number
   motivation?: number
@@ -329,6 +332,9 @@ export async function createSession(input: CreateSessionInput): Promise<{ data: 
       return { data: null, error: new Error('User not authenticated') }
     }
 
+    // Use custom start time for historical entries, otherwise use current time
+    const startedAt = input.custom_started_at || new Date().toISOString()
+    
     const { data, error } = await supabase
       .from('climbing_sessions')
       .insert({
@@ -336,10 +342,10 @@ export async function createSession(input: CreateSessionInput): Promise<{ data: 
         session_type: input.session_type,
         location: input.location,
         is_outdoor: input.is_outdoor ?? false,
-        started_at: new Date().toISOString(),
+        started_at: startedAt,
         planned_duration_minutes: input.planned_duration_minutes,
         goal_id: input.goal_id,
-        status: 'active',
+        status: input.custom_started_at ? 'completed' : 'active',  // Historical entries are pre-completed
         
         // Store complete pre_session_data as JSONB
         pre_session_data: input.pre_session_data ?? {},

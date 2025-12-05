@@ -108,6 +108,7 @@ export function SessionFlow() {
   }
   const [sessionInfo, setSessionInfo] = useState<ActiveSessionData | null>(null)
   const [dbSessionId, setDbSessionId] = useState<string | null>(null)
+  const [isHistoricalSession, setIsHistoricalSession] = useState(false)
 
   const handlePreSessionComplete = async (info: { 
     sessionType: string
@@ -115,10 +116,12 @@ export function SessionFlow() {
     isOutdoor?: boolean
     plannedDuration?: number
     preSessionData?: Record<string, unknown>
+    customDateTime?: Date
   }) => {
     // Get active goal to associate session with it
     const { data: activeGoal } = await getActiveGoal()
     const pre = info.preSessionData || {}
+    const isHistorical = !!info.customDateTime
 
     // Create session in database with ALL pre-session fields
     const { data: dbSession, error } = await createSession({
@@ -127,6 +130,9 @@ export function SessionFlow() {
       is_outdoor: info.isOutdoor,
       planned_duration_minutes: info.plannedDuration,
       goal_id: activeGoal?.id,
+      
+      // Custom start time for historical entries (model testing)
+      custom_started_at: info.customDateTime?.toISOString(),
       
       // Store complete pre_session_data as JSONB for backup
       pre_session_data: pre,
@@ -205,13 +211,21 @@ export function SessionFlow() {
       sessionId: dbSession?.id,
       sessionType: info.sessionType,
       location: info.location,
-      startTime: new Date(),
+      startTime: info.customDateTime || new Date(),
       isOutdoor: info.isOutdoor ?? false,
       plannedDuration: info.plannedDuration ?? 90,
       preSessionData: info.preSessionData || {},
     }
     setSessionInfo(newSession)
-    setPhase('analyzing')
+    
+    // For historical entries, skip analysis and go directly to post-session form
+    if (isHistorical) {
+      setIsHistoricalSession(true)
+      setPhase('post')
+    } else {
+      setIsHistoricalSession(false)
+      setPhase('analyzing')
+    }
   }
 
   const handleAnalysisComplete = () => {
@@ -542,6 +556,7 @@ export function SessionFlow() {
         isOutdoor={sessionInfo.isOutdoor}
         plannedDuration={sessionInfo.plannedDuration}
         startTime={sessionInfo.startTime}
+        isHistorical={isHistoricalSession}
         onSubmit={handlePostSessionComplete}
         onCancel={handleCancel}
       />

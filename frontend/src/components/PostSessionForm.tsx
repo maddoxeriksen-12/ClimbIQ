@@ -128,6 +128,7 @@ interface PostSessionFormProps {
   plannedDuration?: number
   isOutdoor?: boolean
   startTime?: Date
+  isHistorical?: boolean  // For testing/model building - pre-expand time correction
   onSubmit: (data: PostSessionData & { customVariables?: Record<string, number | string | boolean>; timeCorrection?: TimeCorrection }) => Promise<void>
   onCancel: () => void
 }
@@ -138,7 +139,7 @@ interface TimeCorrection {
   correctionReason: string
 }
 
-export function PostSessionForm({ sessionType, location, sessionId, plannedDuration = 90, isOutdoor = false, startTime, onSubmit, onCancel }: PostSessionFormProps) {
+export function PostSessionForm({ sessionType, location, sessionId, plannedDuration = 90, isOutdoor = false, startTime, isHistorical = false, onSubmit, onCancel }: PostSessionFormProps) {
   const { user } = useAuth()
   const { getActiveVariables, recordEntry } = useCustomVariablesStore()
 
@@ -151,8 +152,8 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
   const customVariables = user ? getActiveVariables('post_session', user.id, user.user_metadata?.coach_id) : []
   const [customValues, setCustomValues] = useState<Record<string, number | string | boolean>>({})
   
-  // Time correction state
-  const [showTimeCorrection, setShowTimeCorrection] = useState(false)
+  // Time correction state - auto-expand for historical entries
+  const [showTimeCorrection, setShowTimeCorrection] = useState(isHistorical)
   const defaultStartTime = startTime || new Date()
   const [actualStartTime, setActualStartTime] = useState(
     defaultStartTime.toISOString().slice(0, 16) // Format: YYYY-MM-DDTHH:MM

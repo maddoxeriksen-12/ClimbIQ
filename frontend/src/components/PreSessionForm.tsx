@@ -92,6 +92,7 @@ interface PreSessionFormProps {
     isOutdoor?: boolean
     plannedDuration?: number
     preSessionData?: Record<string, unknown>
+    customDateTime?: Date  // For historical/testing entries
   }) => void
 }
 
@@ -145,6 +146,11 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
   // Get custom variables for this user
   const customVariables = user ? getActiveVariables('pre_session', user.id, user.user_metadata?.coach_id) : []
   const [customValues, setCustomValues] = useState<Record<string, number | string | boolean>>({})
+  
+  // Historical entry mode for testing/model building
+  const [isHistoricalEntry, setIsHistoricalEntry] = useState(false)
+  const [customDate, setCustomDate] = useState(new Date().toISOString().split('T')[0])
+  const [customTime, setCustomTime] = useState(new Date().toTimeString().slice(0, 5))
 
   const [formData, setFormData] = useState<PreSessionData>({
     // Mental/Energy State
@@ -297,12 +303,19 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
     
     // Always transition to analysis/recommendations
     if (onComplete) {
+      // Build custom date/time if in historical mode
+      let customDateTime: Date | undefined
+      if (isHistoricalEntry) {
+        customDateTime = new Date(`${customDate}T${customTime}:00`)
+      }
+      
       onComplete({ 
         sessionType, 
         location, 
         isOutdoor: !formData.is_indoor,
         plannedDuration: formData.planned_duration,
         preSessionData: { ...formData, customVariables: customValues },
+        customDateTime,
       })
     }
     
@@ -348,6 +361,47 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Historical Entry Toggle - for testing/model building */}
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isHistoricalEntry}
+              onChange={(e) => setIsHistoricalEntry(e.target.checked)}
+              className="w-5 h-5 rounded border-amber-500/30 bg-white/5 text-amber-500 focus:ring-amber-500/50"
+            />
+            <div>
+              <span className="font-medium text-amber-300">📅 Historical Entry Mode</span>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Log a past session with custom date/time (for testing & model training)
+              </p>
+            </div>
+          </label>
+          
+          {isHistoricalEntry && (
+            <div className="mt-4 pt-4 border-t border-amber-500/20 grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-slate-400 uppercase tracking-wider block mb-1.5">Session Date</label>
+                <input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 uppercase tracking-wider block mb-1.5">Session Time</label>
+                <input
+                  type="time"
+                  value={customTime}
+                  onChange={(e) => setCustomTime(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        
         {/* Session Details */}
         <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
           <h2 className="font-semibold mb-4">Session Details</h2>
