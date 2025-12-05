@@ -12,10 +12,11 @@ from dagster import (
     DefaultSensorStatus,
     AssetSelection,
 )
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Iterator, Union
 
 from .resources import SupabaseResource
+from .jobs import nightly_training_job
 
 
 @sensor(
@@ -224,5 +225,101 @@ def urgent_consensus_sensor(
             
     except Exception as e:
         context.log.error(f"Error checking urgent scenarios: {e}")
+        yield SkipReason(f"Error: {e}")
+
+
+@sensor(
+    job=nightly_training_job,
+    minimum_interval_seconds=3600,  # Check hourly
+    default_status=DefaultSensorStatus.RUNNING,
+    description="Triggers nightly model training at 2 AM UTC",
+)
+def nightly_training_sensor(
+    context: SensorEvaluationContext,
+) -> Iterator[Union[RunRequest, SkipReason]]:
+    """
+    Trigger model training job at 2 AM UTC daily.
+    
+    This trains the hierarchical Bayesian model for all users
+    with sufficient session data.
+    """
+    now = datetime.utcnow()
+    
+    # Check if it's between 2:00 and 2:59 AM UTC
+    if now.hour == 2:
+        # Use date as run key to ensure only one run per day
+        run_key = f"nightly_training_{now.strftime('%Y%m%d')}"
+        
+        yield RunRequest(
+            run_key=run_key,
+            tags={
+                "triggered_by": "nightly_training_sensor",
+                "trigger_time": now.isoformat(),
+                "schedule": "nightly",
+            },
+        )
+    else:
+        yield SkipReason(f"Not training time (current hour: {now.hour} UTC, training at 2 AM)")
+
+
+@sensor(
+    minimum_interval_seconds=1800,  # Check every 30 minutes
+    default_status=DefaultSensorStatus.RUNNING,
+    description="Triggers model update when users complete sessions",
+)
+def session_completion_sensor(
+    context: SensorEvaluationContext,
+) -> Iterator[Union[RunRequest, SkipReason]]:
+    """
+    Check for recently completed sessions and trigger model updates.
+    
+    This provides faster feedback by updating user models
+    soon after they complete sessions, rather than waiting
+    for the nightly batch.
+    """
+    import os
+    from supabase import create_client
+    
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_SERVICE_KEY")
+    
+    if not url or not key:
+        yield SkipReason("Supabase credentials not configured")
+        return
+    
+    try:
+        client = create_client(url, key)
+        
+        # Check for sessions completed in the last hour that have quality ratings
+        one_hour_ago = (datetime.utcnow() - timedelta(hours=1)).isoformat()
+        
+        result = client.table('climbing_sessions') \
+            .select('user_id', count='exact') \
+            .eq('status', 'completed') \
+            .not_.is_('session_quality', 'null') \
+            .gte('updated_at', one_hour_ago) \
+            .execute()
+        
+        recent_completions = result.count or 0
+        
+        if recent_completions > 0:
+            # Get unique users who completed sessions
+            unique_users = len(set(r.get('user_id') for r in (result.data or [])))
+            
+            run_key = f"session_model_update_{datetime.utcnow().strftime('%Y%m%d_%H%M')}"
+            
+            yield RunRequest(
+                run_key=run_key,
+                tags={
+                    "triggered_by": "session_completion_sensor",
+                    "recent_completions": str(recent_completions),
+                    "unique_users": str(unique_users),
+                },
+            )
+        else:
+            yield SkipReason("No recently completed sessions")
+            
+    except Exception as e:
+        context.log.error(f"Error checking session completions: {e}")
         yield SkipReason(f"Error: {e}")
 

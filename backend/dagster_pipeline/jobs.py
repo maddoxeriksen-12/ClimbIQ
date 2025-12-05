@@ -34,3 +34,45 @@ signal_extraction_job = define_asset_job(
     },
 )
 
+
+# Job to run nightly model training
+nightly_training_job = define_asset_job(
+    name="nightly_training_job",
+    description="Train hierarchical Bayesian model for all users with sufficient session data",
+    selection=AssetSelection.groups("model_training"),
+    tags={
+        "dagster/max_retries": "1",
+        "pipeline": "model_training",
+        "schedule": "nightly",
+    },
+)
+
+
+# Job to run model training for specific users (can be triggered manually)
+user_model_training_job = define_asset_job(
+    name="user_model_training_job",
+    description="Train model for users - can be triggered when user completes a session",
+    selection=AssetSelection.assets(
+        "training_data",
+        "trained_model",
+    ),
+    tags={
+        "pipeline": "model_training",
+        "trigger": "on_demand",
+    },
+)
+
+
+# Job to compute population statistics
+population_stats_job = define_asset_job(
+    name="population_stats_job",
+    description="Compute population-level statistics for z-score comparisons",
+    selection=AssetSelection.assets(
+        "training_data",
+        "population_statistics",
+    ),
+    tags={
+        "pipeline": "model_training",
+    },
+)
+

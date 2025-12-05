@@ -29,6 +29,16 @@ class Settings(BaseSettings):
   # AI/LLM
   GROK_API_KEY: str = ""
 
+  # Performance & Caching
+  RULES_CACHE_TTL_SECONDS: int = 300      # 5 minutes - expert rules cache
+  PRIORS_CACHE_TTL_SECONDS: int = 600     # 10 minutes - population priors cache
+  MODEL_CACHE_TTL_SECONDS: int = 1800     # 30 minutes - user model outputs cache
+  MAX_HISTORY_SESSIONS: int = 50          # Max sessions to load for context
+  
+  # Recommendations
+  RECOMMENDATION_TIMEOUT_SECONDS: int = 10  # SSE streaming timeout
+  MIN_SESSIONS_FOR_PERSONALIZATION: int = 10
+
   class Config:
     env_file = ".env"
 

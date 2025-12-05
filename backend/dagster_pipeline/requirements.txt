@@ -12,6 +12,12 @@ httpx==0.27.0
 # Data processing
 pandas==2.1.4
 numpy==1.26.3
+scipy==1.12.0
+scikit-learn==1.4.0
+
+# Bayesian Modeling (optional - comment out if not using PyMC)
+# pymc==5.10.0
+# arviz==0.17.0
 
 # Configuration
 python-dotenv==1.0.0

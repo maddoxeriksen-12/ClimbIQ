@@ -21,6 +21,16 @@ except Exception as e:
     expert_capture_router = None
     EXPERT_CAPTURE_AVAILABLE = False
 
+# Try to import streaming recommendations router
+try:
+    from app.api.routes.recommendations.streaming import router as streaming_router
+    logger.info("✅ Successfully imported streaming recommendations router")
+    STREAMING_AVAILABLE = True
+except Exception as e:
+    logger.error(f"❌ Failed to import streaming router: {e}")
+    streaming_router = None
+    STREAMING_AVAILABLE = False
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -71,5 +81,15 @@ if EXPERT_CAPTURE_AVAILABLE and expert_capture_router:
     logger.info("✅ Expert Capture router registered")
 else:
     logger.warning("⚠️ Expert Capture router not available")
+
+if STREAMING_AVAILABLE and streaming_router:
+    app.include_router(
+      streaming_router,
+      prefix=f"{settings.API_V1_PREFIX}/recommendations",
+      tags=["Recommendations Streaming"],
+    )
+    logger.info("✅ Streaming recommendations router registered")
+else:
+    logger.warning("⚠️ Streaming recommendations router not available")
 
 
