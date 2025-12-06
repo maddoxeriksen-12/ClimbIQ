@@ -29,8 +29,6 @@ interface PostSessionData {
   // Core Outcomes
   session_rpe: number
   actual_duration: number
-  left_early: boolean
-  stayed_longer: boolean
 
   // Behavioral Proxies
   skipped_planned: boolean
@@ -167,8 +165,6 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
     // Core Outcomes
     session_rpe: 4,
     actual_duration: plannedDuration,
-    left_early: false,
-    stayed_longer: false,
 
     // Behavioral Proxies
     skipped_planned: false,
@@ -517,37 +513,6 @@ export function PostSessionForm({ sessionType, location, sessionId, plannedDurat
               </div>
             </div>
 
-            {/* Left early / Stayed longer */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                <span className="text-sm text-slate-300">Left earlier than planned?</span>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, left_early: !formData.left_early, stayed_longer: false })}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${
-                    formData.left_early ? 'bg-amber-500' : 'bg-white/10'
-                  }`}
-                >
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-200 ${
-                    formData.left_early ? 'translate-x-6' : 'translate-x-0'
-                  }`} />
-                </button>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                <span className="text-sm text-slate-300">Stayed longer than planned?</span>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, stayed_longer: !formData.stayed_longer, left_early: false })}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${
-                    formData.stayed_longer ? 'bg-emerald-500' : 'bg-white/10'
-                  }`}
-                >
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-200 ${
-                    formData.stayed_longer ? 'translate-x-6' : 'translate-x-0'
-                  }`} />
-                </button>
-              </div>
-            </div>
           </div>
         </div>
 
