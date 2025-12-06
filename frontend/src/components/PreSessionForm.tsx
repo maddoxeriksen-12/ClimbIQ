@@ -64,7 +64,7 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
         session_date: new Date().toISOString().split('T')[0],
         session_type: sessionType,
         location: '',
-        pre_session: formData,
+        pre_session: { ...formData },
       })
     } catch (error) {
       console.warn('Failed to save session to server:', error)
@@ -77,7 +77,7 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
         location: '', 
         isOutdoor,
         plannedDuration: formData.planned_duration,
-        preSessionData: formData,
+        preSessionData: { ...formData } as Record<string, unknown>,
       })
     }
     
