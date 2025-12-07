@@ -196,10 +196,14 @@ CREATE OR REPLACE VIEW complete_session_data AS
 SELECT 
     cs.id AS session_id,
     cs.user_id,
-    cs.session_date,
+    cs.started_at,
+    cs.ended_at,
     cs.session_type,
     cs.location,
-    cs.created_at AS session_created_at,
+    cs.is_outdoor,
+    cs.status,
+    cs.planned_duration_minutes,
+    cs.actual_duration_minutes,
     
     -- Pre-session data
     pre.session_environment,
