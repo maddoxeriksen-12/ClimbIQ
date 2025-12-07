@@ -814,12 +814,12 @@ function ScenarioReviewPanel({
               <div className="space-y-3">
                 <ProfileSlider label="Sleep Quality" value={Number(preSession.sleep_quality) || 5} max={10} color="violet" />
                 {typeof preSession.sleep_hours === 'number' && <ProfileItem label="Sleep Hours" value={String(preSession.sleep_hours)} />}
-                <ProfileSlider label="Stress Level" value={Number(preSession.stress_level) || 5} max={10} color="amber" inverted />
+                <ProfileSlider label="Mental Calmness" value={Number(preSession.stress_level) || 5} max={10} color="amber" />
                 <ProfileItem label="Fueling Status" value={String(preSession.fueling_status || 'N/A').replace(/_/g, ' ')} />
                 <ProfileItem label="Hydration" value={String(preSession.hydration_feel || 'N/A').replace(/_/g, ' ')} />
                 <ProfileItem label="Skin Condition" value={String(preSession.skin_condition || 'N/A').replace(/_/g, ' ')} />
                 <ProfileSlider label="Finger/Tendon Health" value={Number(preSession.finger_tendon_health) || 5} max={10} color="orange" />
-                <ProfileSlider label="DOMS Severity" value={Number(preSession.doms_severity || preSession.muscle_soreness) || 1} max={10} color="red" inverted />
+                <ProfileSlider label="Muscle Freshness" value={Number(preSession.doms_severity || preSession.muscle_soreness) || 1} max={10} color="red" />
                 <ProfileItem label="Days Since Last Session" value={String(preSession.days_since_last_session ?? 'N/A')} />
                 <ProfileItem label="Days Since Rest" value={String(preSession.days_since_rest_day ?? 'N/A')} />
               </div>
@@ -831,8 +831,8 @@ function ScenarioReviewPanel({
               <div className="space-y-3">
                 <ProfileSlider label="Motivation" value={Number(preSession.motivation) || 5} max={10} color="cyan" />
                 <ProfileItem label="Primary Goal" value={String(preSession.primary_goal || 'N/A').replace(/_/g, ' ')} />
-                <ProfileSlider label="Fear of Falling" value={Number(preSession.fear_of_falling) || 5} max={10} color="red" inverted />
-                <ProfileSlider label="Performance Anxiety" value={Number(preSession.performance_anxiety) || 5} max={10} color="amber" inverted />
+                <ProfileSlider label="Fall Confidence" value={Number(preSession.fear_of_falling) || 5} max={10} color="red" />
+                <ProfileSlider label="Performance Composure" value={Number(preSession.performance_anxiety) || 5} max={10} color="amber" />
               </div>
             </div>
 
@@ -2873,7 +2873,7 @@ function CreateScenarioModal({
     crowdedness: 5,
     // B. Systemic Recovery & Lifestyle
     sleep_quality: 7,
-    sleep_hours: 7,
+    sleep_hours: '' as string | number,  // Optional - empty by default
     stress_level: 4,
     fueling_status: 'well_fueled',
     hydration_feel: 'neutral',
@@ -3138,15 +3138,19 @@ function CreateScenarioModal({
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm text-slate-400 block mb-2">Sleep Hours</label>
+                    <label className="text-sm text-slate-400 block mb-2">Sleep Hours <span className="text-slate-600">(optional)</span></label>
                     <input
                       type="number"
                       min="0"
                       max="14"
                       step="0.5"
+                      placeholder="Leave blank if unsure"
                       value={preSessionSnapshot.sleep_hours}
-                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, sleep_hours: parseFloat(e.target.value) || 0 })}
-                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                      onChange={(e) => setPreSessionSnapshot({
+                        ...preSessionSnapshot,
+                        sleep_hours: e.target.value === '' ? '' : parseFloat(e.target.value)
+                      })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-slate-600"
                     />
                   </div>
                   <div>
