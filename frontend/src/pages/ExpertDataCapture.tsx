@@ -2826,23 +2826,38 @@ function CreateScenarioModal({
     training_focus: 'general',
   })
   
-  // Pre-session snapshot (current state)
+  // Pre-session snapshot (current state) - matches PreSessionForm structure
   const [preSessionSnapshot, setPreSessionSnapshot] = useState({
-    energy_level: 7,
-    motivation: 7,
-    sleep_quality: 7,
-    stress_level: 4,
-    days_since_last_session: 2,
-    days_since_rest_day: 1,
-    muscle_soreness: 3,
-    has_pain: false,
-    pain_location: '',
-    pain_severity: 0,
-    caffeine_today: false,
-    alcohol_last_24h: false,
-    primary_goal: 'volume',
+    // A. Context & Environment
+    session_environment: 'indoor_bouldering',
     planned_duration: 90,
-    is_outdoor: false,
+    partner_status: 'with_partner',
+    crowdedness: 5,
+    // B. Systemic Recovery & Lifestyle
+    sleep_quality: 7,
+    sleep_hours: 7,
+    stress_level: 4,
+    fueling_status: 'well_fueled',
+    hydration_feel: 'neutral',
+    skin_condition: 'fresh',
+    finger_tendon_health: 7,
+    doms_locations: [] as string[],
+    doms_severity: 1,
+    menstrual_phase: '',
+    // C. Intent & Psych
+    motivation: 7,
+    primary_goal: 'volume_mileage',
+    // D. Physical Readiness
+    upper_body_power: 7,
+    shoulder_integrity: 7,
+    leg_springiness: 7,
+    finger_strength: 7,
+    // Legacy fields for backward compatibility
+    days_since_last_session: 2,
+    days_since_rest_day: 4,
+    // Psychological (from profile display)
+    fear_of_falling: 5,
+    performance_anxiety: 5,
   })
 
   const handleAddTag = () => {
@@ -2999,39 +3014,179 @@ function CreateScenarioModal({
 
           {activeSection === 'presession' && (
             <div className="space-y-6">
+              {/* A. Context & Environment */}
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <h3 className="font-medium mb-4">Physical State</h3>
-                <div className="space-y-4">
-                  {[
-                    { key: 'energy_level', label: 'Energy Level', color: 'emerald' },
-                    { key: 'motivation', label: 'Motivation', color: 'cyan' },
-                    { key: 'sleep_quality', label: 'Sleep Quality', color: 'violet' },
-                    { key: 'stress_level', label: 'Stress Level', color: 'amber' },
-                    { key: 'muscle_soreness', label: 'Muscle Soreness', color: 'red' },
-                  ].map((item) => (
-                    <div key={item.key}>
-                      <div className="flex justify-between text-sm mb-2">
-                        <label className="text-slate-400">{item.label}</label>
-                        <span className={`text-${item.color}-400`}>
-                          {preSessionSnapshot[item.key as keyof typeof preSessionSnapshot] as number}/10
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={preSessionSnapshot[item.key as keyof typeof preSessionSnapshot] as number}
-                        onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, [item.key]: parseInt(e.target.value) })}
-                        className={`w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-${item.color}-500`}
-                      />
+                <h3 className="font-medium mb-4 text-cyan-400">A. Context & Environment</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Session Environment</label>
+                    <select
+                      value={preSessionSnapshot.session_environment}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, session_environment: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    >
+                      <option value="indoor_bouldering">Indoor Bouldering</option>
+                      <option value="indoor_rope">Indoor Rope Climbing</option>
+                      <option value="indoor_training">Indoor Training Facility</option>
+                      <option value="outdoor_bouldering">Outdoor Bouldering</option>
+                      <option value="outdoor_sport">Outdoor Sport Climbing</option>
+                      <option value="outdoor_trad">Outdoor Trad Climbing</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Planned Duration (min)</label>
+                    <input
+                      type="number"
+                      min="30"
+                      max="300"
+                      value={preSessionSnapshot.planned_duration}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, planned_duration: parseInt(e.target.value) || 90 })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Partner Status</label>
+                    <select
+                      value={preSessionSnapshot.partner_status}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, partner_status: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    >
+                      <option value="solo">Solo</option>
+                      <option value="with_partner">With Partner</option>
+                      <option value="group">Group Session</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-400">Gym Crowdedness</label>
+                      <span className="text-cyan-400">{preSessionSnapshot.crowdedness}/10</span>
                     </div>
-                  ))}
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={preSessionSnapshot.crowdedness}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, crowdedness: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                    />
+                  </div>
                 </div>
               </div>
 
+              {/* B. Systemic Recovery & Lifestyle */}
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <h3 className="font-medium mb-4">Session Context</h3>
+                <h3 className="font-medium mb-4 text-emerald-400">B. Systemic Recovery & Lifestyle</h3>
                 <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-400">Sleep Quality</label>
+                      <span className="text-violet-400">{preSessionSnapshot.sleep_quality}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={preSessionSnapshot.sleep_quality}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, sleep_quality: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Sleep Hours</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="14"
+                      step="0.5"
+                      value={preSessionSnapshot.sleep_hours}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, sleep_hours: parseFloat(e.target.value) || 0 })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-400">Stress Level</label>
+                      <span className="text-amber-400">{preSessionSnapshot.stress_level}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={preSessionSnapshot.stress_level}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, stress_level: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Fueling Status</label>
+                    <select
+                      value={preSessionSnapshot.fueling_status}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, fueling_status: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    >
+                      <option value="fasted">Fasted</option>
+                      <option value="light_meal">Light Meal</option>
+                      <option value="well_fueled">Well Fueled</option>
+                      <option value="heavy_meal">Heavy Meal Recently</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Hydration</label>
+                    <select
+                      value={preSessionSnapshot.hydration_feel}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, hydration_feel: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    >
+                      <option value="dehydrated">Dehydrated</option>
+                      <option value="neutral">Neutral</option>
+                      <option value="well_hydrated">Well Hydrated</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Skin Condition</label>
+                    <select
+                      value={preSessionSnapshot.skin_condition}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, skin_condition: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                    >
+                      <option value="fresh">Fresh/Thick</option>
+                      <option value="pink">Pink/Thin</option>
+                      <option value="split">Split/Cut</option>
+                      <option value="sweaty">Sweaty/Greasy</option>
+                      <option value="dry">Dry/Glassy</option>
+                      <option value="worn">Worn/Painful</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-400">Finger/Tendon Health</label>
+                      <span className="text-orange-400">{preSessionSnapshot.finger_tendon_health}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={preSessionSnapshot.finger_tendon_health}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, finger_tendon_health: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-400">DOMS Severity</label>
+                      <span className="text-red-400">{preSessionSnapshot.doms_severity}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={preSessionSnapshot.doms_severity}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, doms_severity: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-red-500"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm text-slate-400 block mb-2">Days Since Last Session</label>
                     <input
@@ -3052,15 +3207,25 @@ function CreateScenarioModal({
                       className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* C. Intent & Psych */}
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <h3 className="font-medium mb-4 text-violet-400">C. Intent & Psych</h3>
+                <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm text-slate-400 block mb-2">Planned Duration (min)</label>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-400">Motivation</label>
+                      <span className="text-cyan-400">{preSessionSnapshot.motivation}/10</span>
+                    </div>
                     <input
-                      type="number"
-                      min="30"
-                      max="300"
-                      value={preSessionSnapshot.planned_duration}
-                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, planned_duration: parseInt(e.target.value) || 90 })}
-                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={preSessionSnapshot.motivation}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, motivation: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                     />
                   </div>
                   <div>
@@ -3070,83 +3235,108 @@ function CreateScenarioModal({
                       onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, primary_goal: e.target.value })}
                       className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
                     >
-                      <option value="push_limits">Push Limits</option>
-                      <option value="volume">Volume / Mileage</option>
-                      <option value="technique">Technique Focus</option>
+                      <option value="limit_bouldering">Limit Bouldering</option>
+                      <option value="volume_mileage">Volume/Mileage</option>
+                      <option value="aerobic_capacity">Aerobic Capacity (ARC)</option>
+                      <option value="anaerobic_capacity">Anaerobic Capacity (4x4s)</option>
+                      <option value="strength_power">Strength/Power (Hangboard)</option>
+                      <option value="technique_drills">Technique Drills</option>
                       <option value="active_recovery">Active Recovery</option>
-                      <option value="social">Social / Fun</option>
-                      <option value="skill_work">Specific Skill Work</option>
+                      <option value="social_fun">Social/Fun</option>
                     </select>
                   </div>
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={preSessionSnapshot.is_outdoor}
-                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, is_outdoor: e.target.checked })}
-                      className="rounded border-white/20 bg-white/5 text-violet-500"
-                    />
-                    <span className="text-sm">Outdoor Session</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={preSessionSnapshot.caffeine_today}
-                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, caffeine_today: e.target.checked })}
-                      className="rounded border-white/20 bg-white/5 text-violet-500"
-                    />
-                    <span className="text-sm">Caffeine Today</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={preSessionSnapshot.alcohol_last_24h}
-                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, alcohol_last_24h: e.target.checked })}
-                      className="rounded border-white/20 bg-white/5 text-violet-500"
-                    />
-                    <span className="text-sm">Alcohol in Last 24h</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={preSessionSnapshot.has_pain}
-                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, has_pain: e.target.checked })}
-                      className="rounded border-white/20 bg-white/5 text-violet-500"
-                    />
-                    <span className="text-sm">Has Pain/Injury</span>
-                  </label>
-                </div>
-
-                {preSessionSnapshot.has_pain && (
-                  <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 space-y-3">
-                    <div>
-                      <label className="text-sm text-slate-400 block mb-2">Pain Location</label>
-                      <input
-                        type="text"
-                        value={preSessionSnapshot.pain_location}
-                        onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, pain_location: e.target.value })}
-                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
-                        placeholder="e.g., Left finger A2 pulley"
-                      />
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-400">Fear of Falling</label>
+                      <span className="text-red-400">{preSessionSnapshot.fear_of_falling}/10</span>
                     </div>
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <label className="text-slate-400">Pain Severity</label>
-                        <span className="text-red-400">{preSessionSnapshot.pain_severity}/10</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={preSessionSnapshot.pain_severity}
-                        onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, pain_severity: parseInt(e.target.value) })}
-                        className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-red-500"
-                      />
-                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={preSessionSnapshot.fear_of_falling}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, fear_of_falling: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-red-500"
+                    />
                   </div>
-                )}
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-400">Performance Anxiety</label>
+                      <span className="text-amber-400">{preSessionSnapshot.performance_anxiety}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={preSessionSnapshot.performance_anxiety}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, performance_anxiety: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* D. Physical Readiness */}
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <h3 className="font-medium mb-4 text-fuchsia-400">D. Physical Readiness (Biofeedback)</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-400">Upper Body Power</label>
+                      <span className="text-emerald-400">{preSessionSnapshot.upper_body_power}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={preSessionSnapshot.upper_body_power}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, upper_body_power: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-400">Shoulder Integrity</label>
+                      <span className="text-blue-400">{preSessionSnapshot.shoulder_integrity}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={preSessionSnapshot.shoulder_integrity}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, shoulder_integrity: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-400">Leg Springiness</label>
+                      <span className="text-teal-400">{preSessionSnapshot.leg_springiness}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={preSessionSnapshot.leg_springiness}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, leg_springiness: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-teal-500"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label className="text-slate-400">Finger Strength Feel</label>
+                      <span className="text-orange-400">{preSessionSnapshot.finger_strength}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={preSessionSnapshot.finger_strength}
+                      onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, finger_strength: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
