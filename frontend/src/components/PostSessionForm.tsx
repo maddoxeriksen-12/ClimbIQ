@@ -10,13 +10,23 @@ interface PostSessionData {
   volume_estimation: string
   objective_strength_metric: string
   dominant_style: string
-  // B. Subjective Experience (RPE)
+  // B. Subjective Experience
   rpe: number
   session_density: string
   intra_session_fueling: string
   // C. Failure Analysis
   limiting_factors: string[]
   flash_pump: boolean
+  // D. Health & Injury Update
+  new_pain_location: string
+  new_pain_severity: number
+  fingers_stiffer_than_usual: boolean
+  skin_status_post: string
+  doms_severity_post: number
+  finger_power_post: number
+  shoulder_mobility_post: number
+  // E. The Learning Loop
+  prediction_error: number
 }
 
 interface PostSessionFormProps {
@@ -49,13 +59,23 @@ export function PostSessionForm({ sessionType, location, sessionId, isHistorical
     volume_estimation: '',
     objective_strength_metric: '',
     dominant_style: '',
-    // B. Subjective Experience (RPE)
+    // B. Subjective Experience
     rpe: 5,
     session_density: '',
     intra_session_fueling: '',
     // C. Failure Analysis
     limiting_factors: [],
     flash_pump: false,
+    // D. Health & Injury Update
+    new_pain_location: '',
+    new_pain_severity: 0,
+    fingers_stiffer_than_usual: false,
+    skin_status_post: '',
+    doms_severity_post: 5,
+    finger_power_post: 5,
+    shoulder_mobility_post: 5,
+    // E. The Learning Loop
+    prediction_error: 0,
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -127,6 +147,23 @@ export function PostSessionForm({ sessionType, location, sessionId, isHistorical
       setFormData({ ...formData, limiting_factors: [...current, factor] })
     }
   }
+
+  const painLocationOptions = [
+    { value: 'none', label: 'No new pain' },
+    { value: 'fingers', label: 'Fingers' },
+    { value: 'hands_wrists', label: 'Hands/Wrists' },
+    { value: 'forearms', label: 'Forearms' },
+    { value: 'elbows', label: 'Elbows' },
+    { value: 'shoulders', label: 'Shoulders' },
+    { value: 'back', label: 'Back' },
+    { value: 'other', label: 'Other' },
+  ]
+
+  const skinStatusOptions = [
+    { value: 'intact', label: 'Intact' },
+    { value: 'worn_thin', label: 'Worn Thin' },
+    { value: 'split_bleeding', label: 'Split/Bleeding' },
+  ]
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -390,6 +427,199 @@ export function PostSessionForm({ sessionType, location, sessionId, isHistorical
           {formData.flash_pump && (
             <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
               <p className="text-xs text-amber-300">⚠️ Consider extending your warm-up next session</p>
+            </div>
+          )}
+        </div>
+
+        {/* ============================================ */}
+        {/* SECTION D: Health & Injury Update */}
+        {/* ============================================ */}
+        <div className="mt-6 mb-2">
+          <h3 className="text-xs font-bold text-rose-400 uppercase tracking-wider">D. Health & Injury Update</h3>
+        </div>
+
+        {/* 1. Post-Climb Joint Status */}
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+          <h2 className="text-sm font-semibold mb-3">1. Post-Climb Joint Status</h2>
+          <p className="text-xs text-slate-400 mb-3">Any new pain?</p>
+          <div className="grid grid-cols-2 gap-1.5 mb-3">
+            {painLocationOptions.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setFormData({ ...formData, new_pain_location: opt.value, new_pain_severity: opt.value === 'none' ? 0 : formData.new_pain_severity || 3 })}
+                className={`py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+                  formData.new_pain_location === opt.value
+                    ? 'bg-gradient-to-r from-rose-500/20 to-pink-500/20 text-white border border-rose-500/30'
+                    : 'bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {formData.new_pain_location && formData.new_pain_location !== 'none' && (
+            <div className="space-y-3 pt-3 border-t border-white/10">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Severity: 1 = Mild</span>
+                  <span className="text-lg font-bold text-rose-400">{formData.new_pain_severity}</span>
+                  <span className="text-xs text-slate-400">10 = Severe</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={formData.new_pain_severity}
+                  onChange={(e) => setFormData({ ...formData, new_pain_severity: parseInt(e.target.value) })}
+                  className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-rose-500 [&::-webkit-slider-thumb]:to-pink-500 [&::-webkit-slider-thumb]:shadow-lg"
+                />
+              </div>
+            </div>
+          )}
+          <div className="flex items-center justify-between mt-4 p-3 rounded-lg bg-white/5 border border-white/5">
+            <span className="text-xs text-slate-300">Are fingers stiffer or sorer than usual post-session?</span>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, fingers_stiffer_than_usual: !formData.fingers_stiffer_than_usual })}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                formData.fingers_stiffer_than_usual ? 'bg-rose-500' : 'bg-white/20'
+              }`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-200 ${
+                formData.fingers_stiffer_than_usual ? 'translate-x-6' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Skin Status Post-Session */}
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+          <h2 className="text-sm font-semibold mb-3">2. Skin Status Post-Session</h2>
+          <div className="grid grid-cols-3 gap-1.5">
+            {skinStatusOptions.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setFormData({ ...formData, skin_status_post: opt.value })}
+                className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
+                  formData.skin_status_post === opt.value
+                    ? 'bg-gradient-to-r from-rose-500/20 to-pink-500/20 text-white border border-rose-500/30'
+                    : 'bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 3. Deep Muscle Soreness (DOMS) */}
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+          <h2 className="text-sm font-semibold mb-2">3. Deep Muscle Soreness (DOMS)</h2>
+          <p className="text-xs text-slate-400 mb-3">Current muscle soreness severity</p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400">1 = None</span>
+              <span className="text-lg font-bold text-rose-400">{formData.doms_severity_post}</span>
+              <span className="text-xs text-slate-400">10 = Severe</span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="10"
+              value={formData.doms_severity_post}
+              onChange={(e) => setFormData({ ...formData, doms_severity_post: parseInt(e.target.value) })}
+              className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-rose-500 [&::-webkit-slider-thumb]:to-pink-500 [&::-webkit-slider-thumb]:shadow-lg"
+            />
+          </div>
+        </div>
+
+        {/* 4. Post-Session Finger Power Feel */}
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+          <h2 className="text-sm font-semibold mb-3">4. Post-Session Finger Power Feel</h2>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400">1 = Dead/Powerless</span>
+              <span className="text-lg font-bold text-rose-400">{formData.finger_power_post}</span>
+              <span className="text-xs text-slate-400">10 = Still snappy</span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="10"
+              value={formData.finger_power_post}
+              onChange={(e) => setFormData({ ...formData, finger_power_post: parseInt(e.target.value) })}
+              className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-rose-500 [&::-webkit-slider-thumb]:to-pink-500 [&::-webkit-slider-thumb]:shadow-lg"
+            />
+          </div>
+        </div>
+
+        {/* 5. Post-Session Shoulder/Mobility Feel */}
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+          <h2 className="text-sm font-semibold mb-3">5. Post-Session Shoulder/Mobility Feel</h2>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400">1 = Very Stiff/Tired</span>
+              <span className="text-lg font-bold text-rose-400">{formData.shoulder_mobility_post}</span>
+              <span className="text-xs text-slate-400">10 = Still mobile/fresh</span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="10"
+              value={formData.shoulder_mobility_post}
+              onChange={(e) => setFormData({ ...formData, shoulder_mobility_post: parseInt(e.target.value) })}
+              className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-rose-500 [&::-webkit-slider-thumb]:to-pink-500 [&::-webkit-slider-thumb]:shadow-lg"
+            />
+          </div>
+        </div>
+
+        {/* ============================================ */}
+        {/* SECTION E: The Learning Loop */}
+        {/* ============================================ */}
+        <div className="mt-6 mb-2">
+          <h3 className="text-xs font-bold text-violet-400 uppercase tracking-wider">E. The Learning Loop</h3>
+        </div>
+
+        {/* 1. Prediction Error Check */}
+        <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 backdrop-blur-sm p-4">
+          <h2 className="text-sm font-semibold mb-2">1. Prediction Error Check</h2>
+          <p className="text-xs text-slate-400 mb-3">Did you perform better or worse than you expected based on how you felt before starting?</p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400">-5 = Much Worse</span>
+              <span className={`text-lg font-bold ${
+                formData.prediction_error < 0 ? 'text-red-400' : formData.prediction_error > 0 ? 'text-emerald-400' : 'text-slate-400'
+              }`}>
+                {formData.prediction_error > 0 ? '+' : ''}{formData.prediction_error}
+              </span>
+              <span className="text-xs text-slate-400">+5 = Much Better</span>
+            </div>
+            <input
+              type="range"
+              min="-5"
+              max="5"
+              value={formData.prediction_error}
+              onChange={(e) => setFormData({ ...formData, prediction_error: parseInt(e.target.value) })}
+              className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-violet-500 [&::-webkit-slider-thumb]:to-fuchsia-500 [&::-webkit-slider-thumb]:shadow-lg"
+            />
+            <div className="flex justify-between text-[10px] text-slate-500">
+              <span>Much Worse</span>
+              <span>As Expected</span>
+              <span>Much Better</span>
+            </div>
+          </div>
+          {formData.prediction_error !== 0 && (
+            <div className={`mt-3 p-3 rounded-lg ${
+              formData.prediction_error < 0 ? 'bg-red-500/10 border border-red-500/20' : 'bg-emerald-500/10 border border-emerald-500/20'
+            }`}>
+              <p className={`text-xs ${formData.prediction_error < 0 ? 'text-red-300' : 'text-emerald-300'}`}>
+                {formData.prediction_error < 0 
+                  ? '📉 This helps calibrate recovery predictions for future sessions'
+                  : '📈 Great! This helps identify what worked well today'
+                }
+              </p>
             </div>
           )}
         </div>
