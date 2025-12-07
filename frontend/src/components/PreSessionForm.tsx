@@ -11,7 +11,7 @@ interface PreSessionData {
   crowdedness: number
   // B. Systemic Recovery & Lifestyle
   sleep_quality: number
-  sleep_hours: number
+  sleep_hours: number | null  // Optional - null means not provided
   stress_level: number
   fueling_status: string
   hydration_feel: string
@@ -54,7 +54,7 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
     crowdedness: 3,
     // B. Systemic Recovery & Lifestyle
     sleep_quality: 5,
-    sleep_hours: 0,
+    sleep_hours: null,  // Optional - null means not provided
     stress_level: 5,
     fueling_status: '',
     hydration_feel: '',
@@ -257,8 +257,8 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
       }
     }
 
-    // Adjust for stress
-    if (formData.stress_level >= 7) {
+    // Adjust for stress (low values = stressed, high values = calm)
+    if (formData.stress_level <= 3) {
       warmup.activation.push('Box breathing: 4-4-4-4 for 2 minutes')
       if (!warmup.warnings.some(w => w.includes('High stress'))) {
         warmup.warnings.push('⚠️ High stress - focus on breathing & stay present')
@@ -274,11 +274,11 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
       }
     }
 
-    // Adjust for DOMS
+    // Adjust for DOMS (low values = severe, high values = mild)
     if (formData.doms_locations.length > 0) {
       const soreAreas = formData.doms_locations.join(', ')
       warmup.activation.push(`Dynamic stretches targeting: ${soreAreas}`)
-      if (formData.doms_severity >= 6) {
+      if (formData.doms_severity <= 4) {
         if (!warmup.warnings.some(w => w.includes('DOMS'))) {
           warmup.warnings.push('⚠️ Significant DOMS - consider lower volume today')
         }
@@ -770,7 +770,7 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
                 max="16"
                 step="0.5"
                 value={formData.sleep_hours || ''}
-                onChange={(e) => setFormData({ ...formData, sleep_hours: parseFloat(e.target.value) || 0 })}
+                onChange={(e) => setFormData({ ...formData, sleep_hours: e.target.value ? parseFloat(e.target.value) : null })}
                 placeholder="—"
                 className="w-16 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
               />

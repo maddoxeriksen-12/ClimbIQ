@@ -134,9 +134,13 @@ async def generate_recommendation(
             user_state["hydration_status"] = hydration_map.get(feel, 7)
 
     # 2) Muscle soreness: map DOMS severity -> "muscle_soreness" scale
+    #    Frontend: 1 = debilitating (bad), 10 = barely noticeable (good)
+    #    Backend expects: high value = more sore (bad)
     if "muscle_soreness" not in user_state and "doms_severity" in user_state:
-        # doms_severity is already 1–10 in the UI; treat it directly
-        user_state["muscle_soreness"] = user_state["doms_severity"]
+        doms = user_state["doms_severity"]
+        if isinstance(doms, (int, float)):
+            # Invert: frontend high (good) -> backend low (good)
+            user_state["muscle_soreness"] = max(1, 11 - int(doms))
 
     # 3) Energy level: derive from upper_body_power & leg_springiness if present
     if "energy_level" not in user_state:
@@ -177,6 +181,15 @@ async def generate_recommendation(
             "worn": 2,       # poor - painful, risk of injury
         }
         user_state["skin_condition"] = skin_map.get(user_state["skin_condition"], 5)
+
+    # 8) Stress level: invert for backend rules
+    #    Frontend: 1 = anxious/stressed (bad), 10 = zen/relaxed (good)
+    #    Backend expects: high value = more stressed (bad)
+    if "stress_level" in user_state:
+        stress = user_state["stress_level"]
+        if isinstance(stress, (int, float)):
+            # Invert: frontend high (calm) -> backend low (calm)
+            user_state["stress_level"] = max(1, 11 - int(stress))
 
     # Generate recommendation
     recommendation = engine.generate_recommendation(user_state)
