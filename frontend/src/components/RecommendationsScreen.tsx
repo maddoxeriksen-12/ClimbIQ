@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { generateSessionRecommendation } from '../lib/recommendationService'
 
 interface Recommendation {
   id: string
@@ -29,210 +30,76 @@ interface RecommendationsScreenProps {
   onContinue: () => void
 }
 
-// Generate mock recommendations based on pre-session data
-function generateInsights(preSessionData: Record<string, unknown>, sessionType: string): SessionInsights {
-  const energyLevel = (preSessionData.energy_level as number) || 5
-  const motivation = (preSessionData.motivation as number) || 5
-  const sleepQuality = (preSessionData.sleep_quality as number) || 5
-  const hasPain = preSessionData.has_pain as boolean
-  const muscleSoreness = preSessionData.muscle_soreness as string || 'none'
-  const primaryGoal = preSessionData.primary_goal as string || 'volume'
-
-  // Calculate overall readiness
-  const readinessScore = Math.round((energyLevel + motivation + sleepQuality) / 3 * 10)
-  
-  let readinessLabel = 'Optimal'
-  if (readinessScore < 50) readinessLabel = 'Low'
-  else if (readinessScore < 70) readinessLabel = 'Moderate'
-  else if (readinessScore < 85) readinessLabel = 'Good'
-
-  const keyFactors: SessionInsights['keyFactors'] = [
-    { 
-      label: 'Energy Level', 
-      value: `${energyLevel}/10`, 
-      impact: energyLevel >= 7 ? 'positive' : energyLevel >= 5 ? 'neutral' : 'negative' 
-    },
-    { 
-      label: 'Motivation', 
-      value: `${motivation}/10`, 
-      impact: motivation >= 7 ? 'positive' : motivation >= 5 ? 'neutral' : 'negative' 
-    },
-    { 
-      label: 'Sleep Quality', 
-      value: `${sleepQuality}/10`, 
-      impact: sleepQuality >= 7 ? 'positive' : sleepQuality >= 5 ? 'neutral' : 'negative' 
-    },
-    { 
-      label: 'Pain/Injury', 
-      value: hasPain ? 'Present' : 'None', 
-      impact: hasPain ? 'negative' : 'positive' 
-    },
-  ]
-
-  const recommendations: Recommendation[] = []
-
-  // Warmup recommendation based on energy and soreness
-  if (energyLevel < 6 || muscleSoreness !== 'none') {
-    recommendations.push({
-      id: '1',
-      category: 'warmup',
-      title: 'Extended Warm-up Recommended',
-      description: 'Take 15-20 minutes for a thorough warm-up focusing on mobility and activation.',
-      reasoning: `Your ${energyLevel < 6 ? 'lower energy levels' : 'muscle soreness'} suggests your body needs more time to prepare. An extended warm-up will help prevent injury and improve performance.`,
-      priority: 'high',
-      icon: '🔥',
-    })
-  } else {
-    recommendations.push({
-      id: '1',
-      category: 'warmup',
-      title: 'Standard Warm-up',
-      description: 'A 10-minute warm-up should be sufficient to get you ready.',
-      reasoning: 'Your body appears well-rested and ready. A standard warm-up will prepare you without wasting energy.',
-      priority: 'medium',
-      icon: '🔥',
-    })
-  }
-
-  // Intensity recommendation
-  if (readinessScore >= 80 && primaryGoal === 'push_limits') {
-    recommendations.push({
-      id: '2',
-      category: 'intensity',
-      title: 'Go for It! High Intensity Day',
-      description: 'Your body is primed for a challenging session. Try your hardest projects or attempt new grades.',
-      reasoning: 'High energy, motivation, and good recovery indicate this is an optimal day for pushing your limits. Your nervous system is ready for maximum effort.',
-      priority: 'high',
-      icon: '🚀',
-    })
-  } else if (readinessScore < 60) {
-    recommendations.push({
-      id: '2',
-      category: 'intensity',
-      title: 'Keep It Light Today',
-      description: 'Focus on volume at moderate grades. Save the hard sends for another day.',
-      reasoning: 'Your current state suggests your body needs an easier session. Pushing too hard today could lead to injury or poor performance that affects motivation.',
-      priority: 'high',
-      icon: '🌊',
-    })
-  } else {
-    recommendations.push({
-      id: '2',
-      category: 'intensity',
-      title: 'Moderate Intensity',
-      description: 'A balanced session with some challenging attempts mixed with volume work.',
-      reasoning: 'Your readiness is solid but not peak. A mixed approach will give you good training stimulus without overreaching.',
-      priority: 'medium',
-      icon: '⚖️',
-    })
-  }
-
-  // Focus recommendation based on goal
-  const focusRec: Recommendation = {
-    id: '3',
-    category: 'focus',
-    title: '',
-    description: '',
-    reasoning: '',
-    priority: 'medium',
-    icon: '🎯',
-  }
-
-  switch (primaryGoal) {
-    case 'push_limits':
-      focusRec.title = 'Limit Bouldering Focus'
-      focusRec.description = 'Prioritize quality attempts on hard problems with full rest between burns.'
-      focusRec.reasoning = 'For limit climbing, you want maximum power output. Take 3-5 minutes between hard attempts to fully recover your phosphocreatine system.'
-      break
-    case 'volume':
-      focusRec.title = 'Volume & Mileage Focus'
-      focusRec.description = 'Aim for 20-30 problems at moderate grades with shorter rest periods.'
-      focusRec.reasoning = 'Volume sessions build work capacity and movement skills. Keep moving with 1-2 minute rests to maintain an elevated heart rate.'
-      break
-    case 'technique':
-      focusRec.title = 'Technique Refinement Focus'
-      focusRec.description = 'Choose problems below your limit and focus on movement quality and efficiency.'
-      focusRec.reasoning = 'Skill acquisition happens best when you\'re not fighting for survival. Easy terrain lets you focus on body positioning and footwork.'
-      break
-    case 'active_recovery':
-      focusRec.title = 'Active Recovery Focus'
-      focusRec.description = 'Very easy climbing, lots of stretching, and mobility work.'
-      focusRec.reasoning = 'Recovery sessions should promote blood flow without creating additional fatigue. Keep intensity very low.'
-      break
-    default:
-      focusRec.title = 'Balanced Session Focus'
-      focusRec.description = 'Mix of warm-up climbs, moderate challenges, and some harder attempts.'
-      focusRec.reasoning = 'A balanced approach ensures you get training stimulus across multiple energy systems.'
-  }
-  recommendations.push(focusRec)
-
-  // Pain/injury recommendation
-  if (hasPain) {
-    recommendations.push({
-      id: '4',
-      category: 'recovery',
-      title: '⚠️ Injury Awareness',
-      description: 'Avoid movements that aggravate your current pain. Consider modifying or skipping certain climb types.',
-      reasoning: 'Climbing through pain often leads to compensation patterns and more serious injury. Listen to your body and prioritize long-term health.',
-      priority: 'high',
-      icon: '🩹',
-    })
-  }
-
-  // Mental recommendation
-  if (motivation < 5) {
-    recommendations.push({
-      id: '5',
-      category: 'mental',
-      title: 'Low Motivation Strategy',
-      description: 'Start with fun, easy climbs. Set small, achievable goals. Consider climbing with friends.',
-      reasoning: 'When motivation is low, forcing hard climbing often backfires. Building momentum with small wins can shift your mental state.',
-      priority: 'medium',
-      icon: '🧠',
-    })
-  }
-
-  // Session plan
-  let suggestedDuration = 90
-  let suggestedIntensity = 'Moderate'
-  
-  if (readinessScore >= 80) {
-    suggestedDuration = 120
-    suggestedIntensity = 'High'
-  } else if (readinessScore < 60) {
-    suggestedDuration = 60
-    suggestedIntensity = 'Low'
-  }
-
-  const focusAreas: string[] = []
-  const avoidAreas: string[] = []
-
-  if (primaryGoal === 'technique') focusAreas.push('Footwork', 'Body positioning')
-  if (primaryGoal === 'push_limits') focusAreas.push('Power moves', 'Limit attempts')
-  if (sessionType === 'bouldering') focusAreas.push('Problem solving', 'Explosive movements')
-  if (sessionType === 'lead') focusAreas.push('Endurance', 'Route reading')
-
-  if (hasPain) avoidAreas.push('Movements aggravating injury')
-  if (muscleSoreness === 'significant') avoidAreas.push('High-volume sessions')
-  if (energyLevel < 5) avoidAreas.push('Maximum effort attempts')
-
-  return {
-    overallReadiness: readinessScore,
-    readinessLabel,
-    keyFactors,
-    recommendations,
-    sessionPlan: {
-      suggestedDuration,
-      suggestedIntensity,
-      focusAreas: focusAreas.length ? focusAreas : ['General climbing'],
-      avoidAreas: avoidAreas.length ? avoidAreas : ['None identified'],
-    },
-  }
-}
-
 export function RecommendationsScreen({ preSessionData, sessionType, onContinue }: RecommendationsScreenProps) {
   const [expandedRec, setExpandedRec] = useState<string | null>(null)
-  const insights = generateInsights(preSessionData, sessionType)
+  const [loading, setLoading] = useState(true)
+  const [insights, setInsights] = useState<SessionInsights | null>(null)
+
+  useEffect(() => {
+    async function fetchInsights() {
+      setLoading(true)
+      try {
+        // Call the real backend API
+        const data = await generateSessionRecommendation({
+          ...preSessionData,
+          session_type_preference: sessionType // Pass the user's intent
+        })
+
+        if (data) {
+          // Transform API response to UI format
+          const transformedInsights: SessionInsights = {
+            overallReadiness: Math.round(data.predicted_quality * 10), // Scale 1-10 to 1-100
+            readinessLabel: data.predicted_quality >= 8 ? 'Optimal' : data.predicted_quality >= 6 ? 'Good' : 'Low',
+            
+            keyFactors: data.key_factors.map(f => ({
+              label: f.variable.replace(/_/g, ' '), // e.g. "sleep_quality" -> "sleep quality"
+              value: f.direction === 'positive' ? 'Supporting' : 'Limiting',
+              impact: f.direction as 'positive' | 'negative'
+            })),
+
+            recommendations: [
+              // Map warnings to high-priority recommendations
+              ...data.warnings.map((w, i) => ({
+                id: `warn-${i}`,
+                category: 'recovery' as const,
+                title: '⚠️ Advisory',
+                description: w.message,
+                reasoning: `Triggered by rule: ${w.rule}`,
+                priority: 'high' as const,
+                icon: '🛡️'
+              })),
+              // Map suggestions to standard recommendations
+              ...data.suggestions.map((s, i) => ({
+                id: `sug-${i}`,
+                category: 'focus' as const,
+                title: s.type.charAt(0).toUpperCase() + s.type.slice(1),
+                description: s.message,
+                reasoning: 'Based on your current physiological state and goals.',
+                priority: 'medium' as const,
+                icon: '💡'
+              }))
+            ],
+
+            sessionPlan: {
+              // Logic to derive duration/intensity from prediction if not explicit
+              suggestedDuration: data.predicted_quality > 7 ? 120 : 90, 
+              suggestedIntensity: data.session_type.replace(/_/g, ' ').toUpperCase(),
+              focusAreas: data.include.length > 0 ? data.include : ['General Consistency'],
+              avoidAreas: data.avoid.length > 0 ? data.avoid : ['High Risk Moves']
+            }
+          }
+          setInsights(transformedInsights)
+        }
+      } catch (err) {
+        console.error('Error fetching recommendations', err)
+        // Fallback to local logic if API fails could be implemented here
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchInsights()
+  }, [preSessionData, sessionType])
 
   const priorityColors = {
     high: 'border-rose-500/30 bg-rose-500/5',
@@ -246,8 +113,20 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
     negative: 'text-rose-400',
   }
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-fuchsia-500 mb-4"></div>
+        <p className="text-slate-400">Consulting the oracle...</p>
+      </div>
+    )
+  }
+
+  if (!insights) return <div className="text-center py-20 text-slate-400">Failed to load recommendations.</div>
+
   return (
     <div className="max-w-2xl mx-auto pb-8">
+
       {/* Header */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-fuchsia-500/20 to-cyan-500/20 border border-white/10 mb-4">

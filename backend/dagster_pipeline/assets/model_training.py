@@ -31,7 +31,11 @@ TREATMENT_COLS = [
     "days_since_hard_session",
     "warmup_duration_min",
     "motivation_level",
-    "soreness_level"
+    "soreness_level",
+    # Structural variables
+    "warmup_intensity",
+    "main_session_rest_level",
+    "hangboard_load"
 ]
 
 
@@ -124,6 +128,20 @@ def training_data(
         else:
             warmup = session.get('planned_warmup_min') or pre.get('planned_warmup_min')
         
+        # Extract structural variables
+        warmup_intensity = _parse_intensity(
+            session.get('warmup_intensity') or 
+            post.get('warmup_intensity') or 
+            pre.get('warmup_intensity')
+        )
+        
+        rest_level = _parse_rest_level(
+            session.get('rest_between_attempts') or 
+            post.get('rest_between_attempts')
+        )
+        
+        hangboard_load = 1 if (session.get('session_type') == 'hangboard' or 'hangboard' in str(session_type)) else 0
+
         row = {
             'session_id': session['id'],
             'user_id': session['user_id'],
@@ -142,6 +160,9 @@ def training_data(
             'caffeine_mg': caffeine,
             'warmup_duration_min': warmup,
             'session_type': session_type,
+            'warmup_intensity': warmup_intensity,
+            'main_session_rest_level': rest_level,
+            'hangboard_load': hangboard_load,
             
             # Metadata
             'deviated': deviated,
@@ -181,6 +202,25 @@ def _parse_soreness(value) -> Optional[int]:
     # Handle text values like 'none', 'mild', 'moderate', 'severe'
     text_map = {'none': 1, 'mild': 2, 'moderate': 3, 'severe': 4, 'very_severe': 5}
     return text_map.get(str(value).lower(), None)
+
+
+def _parse_intensity(value) -> int:
+    """Parse intensity string to 1-5 scale"""
+    if value is None: return 3  # Default to moderate
+    if isinstance(value, (int, float)): return int(value)
+    text_map = {
+        'very_light': 1, 'light': 2, 'moderate': 3, 
+        'hard': 4, 'high': 4, 'max': 5, 'extreme': 5
+    }
+    return text_map.get(str(value).lower(), 3)
+
+
+def _parse_rest_level(value) -> int:
+    """Parse rest level string to 1-3 scale"""
+    if value is None: return 2  # Default to medium
+    if isinstance(value, (int, float)): return int(value)
+    text_map = {'short': 1, 'medium': 2, 'long': 3}
+    return text_map.get(str(value).lower(), 2)
 
 
 @asset(

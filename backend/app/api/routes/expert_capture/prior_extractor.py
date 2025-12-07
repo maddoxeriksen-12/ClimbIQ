@@ -68,6 +68,30 @@ LITERATURE_PRIORS = {
         "source": "Climbing-specific research",
         "confidence": "medium",
     },
+    "warmup_duration_min": {
+        "mean_effect": 0.02,  # Per minute
+        "std": 0.01,
+        "source": "Warmup meta-analysis",
+        "confidence": "high",
+    },
+    "warmup_intensity": {
+        "mean_effect": 0.1,  # Higher intensity (up to a point)
+        "std": 0.1,
+        "source": "PAP research",
+        "confidence": "medium",
+    },
+    "main_session_rest_level": {
+        "mean_effect": 0.15,  # Longer rest
+        "std": 0.1,
+        "source": "ATP-CP recovery research",
+        "confidence": "high",
+    },
+    "hangboard_load": {
+        "mean_effect": 0.05,  # Adjunct training
+        "std": 0.15,
+        "source": "Finger strength research",
+        "confidence": "medium",
+    },
 }
 
 

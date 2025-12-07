@@ -557,7 +557,9 @@ const AVAILABLE_VARIABLES = [
   'sleep_quality', 'sleep_hours', 'energy_level', 'motivation', 'stress_level',
   'muscle_soreness', 'days_since_last_session', 'days_since_rest_day', 'caffeine_today',
   'alcohol_last_24h', 'performance_anxiety', 'fear_of_falling', 'injury_severity',
-  'hydration_status', 'time_available', 'temperature', 'humidity'
+  'hydration_status', 'time_available', 'temperature', 'humidity',
+  'warmup_duration_min', 'warmup_intensity', 'main_session_focus', 'rest_between_attempts',
+  'hangboard_volume', 'cooldown_duration_min'
 ]
 
 // ================== SCENARIO REVIEW PANEL ==================

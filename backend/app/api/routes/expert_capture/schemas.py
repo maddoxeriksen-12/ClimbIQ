@@ -122,12 +122,22 @@ class HangboardStructure(BaseModel):
     rationale: Optional[str] = None
 
 
+class SessionActivity(BaseModel):
+    id: str
+    type: str
+    durationMin: int
+    intensity: Optional[str] = "moderate"
+    notes: Optional[str] = None
+    warmupBreakdown: Optional[Dict[str, Any]] = None
+
+
 class SessionStructure(BaseModel):
     warmup: Optional[WarmupStructure] = None
     main_session: Optional[MainSessionStructure] = None
     hangboard: Optional[HangboardStructure] = None
     cooldown_duration_min: Optional[int] = None
     antagonist_work: bool = False
+    activities: Optional[List[SessionActivity]] = []
 
 
 # ============ Expert Response Schemas ============
