@@ -3096,7 +3096,7 @@ function CreateScenarioModal({
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <label className="text-slate-400">Gym Crowdedness</label>
+                      <label className="text-slate-400">Gym Availability</label>
                       <span className="text-cyan-400">{preSessionSnapshot.crowdedness}/10</span>
                     </div>
                     <input
@@ -3107,6 +3107,10 @@ function CreateScenarioModal({
                       onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, crowdedness: parseInt(e.target.value) })}
                       className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                     />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Packed</span>
+                      <span>Empty</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -3128,6 +3132,10 @@ function CreateScenarioModal({
                       onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, sleep_quality: parseInt(e.target.value) })}
                       className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
                     />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Poor</span>
+                      <span>Excellent</span>
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm text-slate-400 block mb-2">Sleep Hours</label>
@@ -3143,7 +3151,7 @@ function CreateScenarioModal({
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <label className="text-slate-400">Stress Level</label>
+                      <label className="text-slate-400">Mental Calmness</label>
                       <span className="text-amber-400">{preSessionSnapshot.stress_level}/10</span>
                     </div>
                     <input
@@ -3154,6 +3162,10 @@ function CreateScenarioModal({
                       onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, stress_level: parseInt(e.target.value) })}
                       className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                     />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Stressed</span>
+                      <span>Calm</span>
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm text-slate-400 block mb-2">Fueling Status</label>
@@ -3208,10 +3220,14 @@ function CreateScenarioModal({
                       onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, finger_tendon_health: parseInt(e.target.value) })}
                       className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-orange-500"
                     />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Painful</span>
+                      <span>Healthy</span>
+                    </div>
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <label className="text-slate-400">DOMS Severity</label>
+                      <label className="text-slate-400">Muscle Freshness</label>
                       <span className="text-red-400">{preSessionSnapshot.doms_severity}/10</span>
                     </div>
                     <input
@@ -3222,6 +3238,10 @@ function CreateScenarioModal({
                       onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, doms_severity: parseInt(e.target.value) })}
                       className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-red-500"
                     />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Very Sore</span>
+                      <span>Fresh</span>
+                    </div>
                   </div>
                 </div>
                 <div className="mt-4 grid md:grid-cols-2 gap-4">
@@ -3265,6 +3285,10 @@ function CreateScenarioModal({
                       onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, motivation: parseInt(e.target.value) })}
                       className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                     />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Low</span>
+                      <span>Psyched</span>
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm text-slate-400 block mb-2">Primary Goal</label>
@@ -3285,7 +3309,7 @@ function CreateScenarioModal({
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <label className="text-slate-400">Fear of Falling</label>
+                      <label className="text-slate-400">Fall Confidence</label>
                       <span className="text-red-400">{preSessionSnapshot.fear_of_falling}/10</span>
                     </div>
                     <input
@@ -3296,10 +3320,14 @@ function CreateScenarioModal({
                       onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, fear_of_falling: parseInt(e.target.value) })}
                       className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-red-500"
                     />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Fearful</span>
+                      <span>Confident</span>
+                    </div>
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <label className="text-slate-400">Performance Anxiety</label>
+                      <label className="text-slate-400">Performance Composure</label>
                       <span className="text-amber-400">{preSessionSnapshot.performance_anxiety}/10</span>
                     </div>
                     <input
@@ -3310,6 +3338,10 @@ function CreateScenarioModal({
                       onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, performance_anxiety: parseInt(e.target.value) })}
                       className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                     />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Anxious</span>
+                      <span>Composed</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -3331,6 +3363,10 @@ function CreateScenarioModal({
                       onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, upper_body_power: parseInt(e.target.value) })}
                       className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                     />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Weak</span>
+                      <span>Powerful</span>
+                    </div>
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-2">
@@ -3345,6 +3381,10 @@ function CreateScenarioModal({
                       onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, shoulder_integrity: parseInt(e.target.value) })}
                       className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
                     />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Unstable</span>
+                      <span>Solid</span>
+                    </div>
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-2">
@@ -3359,6 +3399,10 @@ function CreateScenarioModal({
                       onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, leg_springiness: parseInt(e.target.value) })}
                       className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-teal-500"
                     />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Heavy</span>
+                      <span>Springy</span>
+                    </div>
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-2">
@@ -3373,6 +3417,10 @@ function CreateScenarioModal({
                       onChange={(e) => setPreSessionSnapshot({ ...preSessionSnapshot, finger_strength: parseInt(e.target.value) })}
                       className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-orange-500"
                     />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Weak</span>
+                      <span>Strong</span>
+                    </div>
                   </div>
                 </div>
               </div>
