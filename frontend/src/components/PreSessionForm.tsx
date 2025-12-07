@@ -717,12 +717,12 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
 
         {/* 4. Crowdedness/Business */}
         <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
-          <h2 className="text-sm font-semibold mb-3">4. Crowdedness/Business</h2>
+          <h2 className="text-sm font-semibold mb-3">4. Gym Availability</h2>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400">1 = Empty</span>
+              <span className="text-xs text-slate-400">1 = Packed</span>
               <span className="text-lg font-bold text-fuchsia-400">{formData.crowdedness}</span>
-              <span className="text-xs text-slate-400">5 = Can't move</span>
+              <span className="text-xs text-slate-400">5 = Empty</span>
                   </div>
             <input
               type="range"
@@ -732,8 +732,8 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
               onChange={(e) => setFormData({ ...formData, crowdedness: parseInt(e.target.value) })}
               className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-fuchsia-500 [&::-webkit-slider-thumb]:to-cyan-500 [&::-webkit-slider-thumb]:shadow-lg"
             />
-            {formData.crowdedness === 5 && (
-              <p className="text-xs text-amber-400">⚠️ Rest times ruined</p>
+            {formData.crowdedness === 1 && (
+              <p className="text-xs text-amber-400">⚠️ Rest times may suffer</p>
             )}
           </div>
         </div>
@@ -778,14 +778,14 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
               </div>
             </div>
 
-        {/* 2. Stress Level */}
+        {/* 2. Mental Calmness */}
         <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
-          <h2 className="text-sm font-semibold mb-3">2. Stress Level (Mental Load)</h2>
+          <h2 className="text-sm font-semibold mb-3">2. Mental Calmness</h2>
                 <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400">1 = Zen/Relaxed</span>
+              <span className="text-xs text-slate-400">1 = Anxious/Stressed</span>
               <span className="text-lg font-bold text-cyan-400">{formData.stress_level}</span>
-              <span className="text-xs text-slate-400">10 = High Anxiety</span>
+              <span className="text-xs text-slate-400">10 = Zen/Relaxed</span>
                   </div>
             <input
               type="range"
@@ -933,9 +933,9 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
             {formData.doms_locations.length > 0 && (
               <div className="pt-2 space-y-2">
                     <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400">Severity: 1 = Mild</span>
+                  <span className="text-xs text-slate-400">1 = Debilitating</span>
                   <span className="text-lg font-bold text-amber-400">{formData.doms_severity}</span>
-                  <span className="text-xs text-slate-400">10 = Debilitating</span>
+                  <span className="text-xs text-slate-400">10 = Barely noticeable</span>
               </div>
                 <input
                       type="range"
