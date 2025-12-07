@@ -185,15 +185,67 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
     // Adjust based on session environment
     const isBouldering = formData.session_environment.includes('bouldering')
     const isRope = formData.session_environment.includes('rope')
-    const isTraining = formData.session_environment.includes('training')
     const isOutdoor = formData.session_environment.includes('outdoor')
 
-    // Base activation exercises
-    warmup.activation = [
-      'Light cardio: 2-3 min jumping jacks or jogging',
-      'Arm circles: 20 each direction',
-      'Wrist circles & finger extensions: 30 sec each',
-    ]
+    // Goal-specific activation exercises based on what you're training today
+    const goal = formData.primary_goal
+    const userName = user?.user_metadata?.full_name?.split(' ')[0] || 'Climber'
+
+    if (goal === 'limit_bouldering') {
+      warmup.activation = [
+        'Explosive cardio: 3 min jumping jacks with high knees',
+        'Shoulder activation: band pull-aparts & dislocates (15 each)',
+        'Wrist circles & aggressive finger extensions: 45 sec',
+        'Scapular pull-ups: 2x8 to prime pulling muscles',
+      ]
+    } else if (goal === 'strength_power') {
+      warmup.activation = [
+        'CNS primer: 10 squat jumps + 10 clapping push-ups',
+        'Shoulder complex: I-Y-T raises with light band',
+        'Wrist/finger prep: rice bucket or finger curls 2x15',
+        'Dead hangs: 3x10s on large edge (activation, not fatigue)',
+      ]
+    } else if (goal === 'aerobic_capacity' || goal === 'volume_mileage') {
+      warmup.activation = [
+        'Steady cardio: 5 min light jog or bike (build base HR)',
+        'Dynamic stretches: leg swings, arm circles, torso twists',
+        'Forearm prep: wrist curls 2x15 (you\'ll need the endurance)',
+        'Light shoulder mobility: thread-the-needle stretches',
+      ]
+    } else if (goal === 'anaerobic_capacity') {
+      warmup.activation = [
+        'Interval primer: 4x (20s high knees + 10s rest)',
+        'Upper body activation: push-ups to plank hold (30s)',
+        'Forearm pump simulation: squeeze stress ball 2x20',
+        'Core engagement: hollow body hold 2x20s',
+      ]
+    } else if (goal === 'technique_drills') {
+      warmup.activation = [
+        'Mindful cardio: 2 min walking, focus on foot placement',
+        'Full body flow: cat-cow → downward dog → lunge twist',
+        'Balance work: single leg stands, eyes closed (30s each)',
+        'Proprioception: stand on one foot, reach in all directions',
+      ]
+    } else if (goal === 'active_recovery') {
+      warmup.activation = [
+        'Gentle movement: 2 min easy walking or light stretching',
+        'Foam rolling: target any tight spots (3-5 min)',
+        'Breathing exercise: 4-7-8 breathing (4 cycles)',
+        'Joint circles: ankles, knees, hips, shoulders, wrists',
+      ]
+    } else if (goal === 'social_fun') {
+      warmup.activation = [
+        'Light cardio: 2-3 min to get blood flowing',
+        'Arm circles & wrist mobility: 30 sec each',
+        'Quick stretch: whatever feels tight today',
+      ]
+    } else {
+      warmup.activation = [
+        'Light cardio: 2-3 min jumping jacks or jogging',
+        'Arm circles: 20 each direction',
+        'Wrist circles & finger extensions: 30 sec each',
+      ]
+    }
 
     // Adjust for sleep quality / recovery
     if (formData.sleep_quality <= 4) {
@@ -233,16 +285,93 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
       }
     }
 
-    // Climbing-specific based on session type (personalized to user's grade)
-    if (isBouldering) {
+    // Climbing-specific exercises tailored to your goal AND grade
+    if (goal === 'limit_bouldering') {
       warmup.climbing = [
-        'Easy traversing on jugs: 3-5 min',
-        `Progressive boulder pyramid: ${grades.boulderPyramid}`,
-        'Practice mantles & top-outs at low height',
+        `${userName}, start with easy traversing: 3-5 min on jugs`,
+        `Pyramid up: ${grades.boulderPyramid} (1-2 attempts each)`,
+        'Focus on EXPLOSIVE movement - rehearse hard moves slowly first',
+        `Practice 2-3 moves at ${grades.flashGrade} difficulty to prime power`,
       ]
       warmup.benchmark = [
-        `Attempt 1-2 problems at ${formData.motivation >= 7 ? grades.flashGrade : grades.comfortableGrade}`,
-        'Note: How explosive do moves feel?',
+        `Attempt one problem at ${grades.flashGrade} with full commitment`,
+        'Check: Are you generating power from your legs? Core engaged?',
+      ]
+    } else if (goal === 'volume_mileage') {
+      warmup.climbing = [
+        `Easy traversing: 5 min continuous at ${grades.comfortableGrade} or below`,
+        'Focus on breathing rhythm and smooth movement',
+        `Climb 3-4 easy problems (${grades.comfortableGrade}) without resting`,
+        'Practice down-climbing to build mileage safely',
+      ]
+      warmup.benchmark = [
+        `Climb 2 problems at ${grades.comfortableGrade} back-to-back`,
+        'Note: Is your breathing controlled? Can you sustain this pace?',
+      ]
+    } else if (goal === 'aerobic_capacity') {
+      warmup.climbing = [
+        'Start with 5 min continuous easy traversing (no rest)',
+        `Climb 4-5 easy problems (${grades.comfortableGrade}) with minimal chalk breaks`,
+        'Focus: Keep heart rate elevated but controlled',
+        'Practice shaking out on the wall',
+      ]
+      warmup.benchmark = [
+        'Traverse for 2 min without stopping',
+        'Check: Can you hold a conversation? That\'s the right intensity for ARCing',
+      ]
+    } else if (goal === 'anaerobic_capacity') {
+      warmup.climbing = [
+        `Quick pyramid: ${grades.boulderPyramid} (30s rest between)`,
+        'Focus on maintaining intensity despite building pump',
+        `Do 2 problems at ${grades.comfortableGrade} with only 1 min rest`,
+        'Simulate 4x4 pacing - controlled urgency',
+      ]
+      warmup.benchmark = [
+        `Climb a ${grades.comfortableGrade} problem, rest 30s, repeat`,
+        'Note: How quickly does the pump hit? That tells you your capacity',
+      ]
+    } else if (goal === 'strength_power') {
+      warmup.climbing = [
+        'Skip climbing warmup - go straight to equipment',
+        'Light hangboard: 3x5s on large edge at 50%',
+        'Pull-up progression: 5 scap pulls → 5 easy pulls → 3 explosive pulls',
+        'Campus touches on large rungs (no pulling yet)',
+      ]
+      warmup.benchmark = [
+        'One set at 70% of your max hang weight',
+        `${userName}, does it feel lighter or heavier than last session?`,
+      ]
+    } else if (goal === 'technique_drills') {
+      warmup.climbing = [
+        `${userName}, climb 2-3 easy problems (${grades.comfortableGrade}) with PERFECT feet`,
+        'Silent feet drill: no sound when placing feet',
+        'Hover hands: pause 2s before each hand move',
+        'Practice flagging and drop-knees on easy terrain',
+      ]
+      warmup.benchmark = [
+        `Climb one ${grades.comfortableGrade} focusing only on hip position`,
+        'Film yourself if possible - awareness is everything',
+      ]
+    } else if (goal === 'active_recovery') {
+      warmup.climbing = [
+        'Very easy traversing: 3-5 min at VB-V0 only',
+        'Focus on movement quality, not difficulty',
+        'Stretch on the wall: use holds for assisted stretches',
+        'Keep it FUN - no trying hard today',
+      ]
+      warmup.benchmark = [
+        'Climb something that makes you smile',
+        `${userName}, remember: recovery IS training. Do not push it.`,
+      ]
+    } else if (goal === 'social_fun') {
+      warmup.climbing = [
+        `Easy traversing: 3 min at ${grades.comfortableGrade}`,
+        `Pyramid: ${grades.boulderPyramid}`,
+        'Chat with your crew while warming up!',
+      ]
+      warmup.benchmark = [
+        `One comfortable problem at ${grades.comfortableGrade}`,
+        'Check in: Are you ready to have fun?',
       ]
     } else if (isRope) {
       warmup.climbing = [
@@ -253,16 +382,6 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
       warmup.benchmark = [
         `Climb one route at ${grades.sportBenchmark}`,
         'Note: How does sustained effort feel?',
-      ]
-    } else if (isTraining) {
-      warmup.climbing = [
-        'Light hangboard: 3x5s on large edge at 50% effort',
-        'Pull-up progression: 5 scap pulls → 5 easy pulls → 3 hard pulls',
-        'Campus touches on large rungs (no pulling)',
-      ]
-      warmup.benchmark = [
-        'One set at target hang weight/duration at ~80%',
-        'Note: Does it feel lighter or heavier than usual?',
       ]
     } else {
       warmup.climbing = [
