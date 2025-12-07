@@ -29,18 +29,13 @@ export interface RecommendationResponse {
   include: string[]
 }
 
-export async function generateSessionRecommendation(preSessionData: Record<string, unknown>): Promise<RecommendationResponse | null> {
-  try {
-    // Clean data to remove null/undefined values which Pydantic might reject
-    const cleanData = Object.fromEntries(
-      Object.entries(preSessionData).filter(([_, v]) => v != null)
-    )
+export async function generateSessionRecommendation(preSessionData: Record<string, unknown>): Promise<RecommendationResponse> {
+  // Clean data to remove null/undefined values which Pydantic might reject
+  const cleanData = Object.fromEntries(
+    Object.entries(preSessionData).filter(([_, v]) => v != null)
+  )
 
-    const response = await api.post('/api/v1/recommendations/generate', cleanData)
-    return response.data
-  } catch (error) {
-    console.error('Failed to generate recommendation:', error)
-    return null
-  }
+  const response = await api.post('/api/v1/recommendations/generate', cleanData)
+  return response.data
 }
 
