@@ -423,35 +423,36 @@ export async function createSession(input: CreateSessionInput): Promise<{ data: 
     if (input.pre_session_data && session) {
       const pre = input.pre_session_data
       try {
-        await supabase.from('pre_session_data').insert({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from('pre_session_data') as any).insert({
           session_id: session.id,
           user_id: userId,
           // A. Context & Environment
-          session_environment: (pre.session_environment as string | null) ?? null,
-          planned_duration: (pre.planned_duration as number | null) ?? null,
-          partner_status: (pre.partner_status as string | null) ?? null,
-          crowdedness: (pre.crowdedness as number | null) ?? null,
+          session_environment: pre.session_environment ?? null,
+          planned_duration: pre.planned_duration ?? null,
+          partner_status: pre.partner_status ?? null,
+          crowdedness: pre.crowdedness ?? null,
           // B. Systemic Recovery & Lifestyle
-          sleep_quality: (pre.sleep_quality as number | null) ?? null,
-          sleep_hours: (pre.sleep_hours as number | null) ?? null,
-          stress_level: (pre.stress_level as number | null) ?? null,
-          fueling_status: (pre.fueling_status as string | null) ?? null,
-          hydration_feel: (pre.hydration_feel as string | null) ?? null,
-          skin_condition: (pre.skin_condition as string | null) ?? null,
-          finger_tendon_health: (pre.finger_tendon_health as number | null) ?? null,
-          doms_locations: (pre.doms_locations as string[] | null) ?? null,
-          doms_severity: (pre.doms_severity as number | null) ?? null,
-          menstrual_phase: (pre.menstrual_phase as string | null) ?? null,
+          sleep_quality: pre.sleep_quality ?? null,
+          sleep_hours: pre.sleep_hours ?? null,
+          stress_level: pre.stress_level ?? null,
+          fueling_status: pre.fueling_status ?? null,
+          hydration_feel: pre.hydration_feel ?? null,
+          skin_condition: pre.skin_condition ?? null,
+          finger_tendon_health: pre.finger_tendon_health ?? null,
+          doms_locations: pre.doms_locations ?? null,
+          doms_severity: pre.doms_severity ?? null,
+          menstrual_phase: pre.menstrual_phase ?? null,
           // C. Intent & Psych
-          motivation: (pre.motivation as number | null) ?? null,
-          primary_goal: (pre.primary_goal as string | null) ?? null,
+          motivation: pre.motivation ?? null,
+          primary_goal: pre.primary_goal ?? null,
           // D. Physical Readiness
-          warmup_rpe: (pre.warmup_rpe as string | null) ?? null,
-          warmup_compliance: (pre.warmup_compliance as string | null) ?? null,
-          upper_body_power: (pre.upper_body_power as number | null) ?? null,
-          shoulder_integrity: (pre.shoulder_integrity as number | null) ?? null,
-          leg_springiness: (pre.leg_springiness as number | null) ?? null,
-          finger_strength: (pre.finger_strength as number | null) ?? null,
+          warmup_rpe: pre.warmup_rpe ?? null,
+          warmup_compliance: pre.warmup_compliance ?? null,
+          upper_body_power: pre.upper_body_power ?? null,
+          shoulder_integrity: pre.shoulder_integrity ?? null,
+          leg_springiness: pre.leg_springiness ?? null,
+          finger_strength: pre.finger_strength ?? null,
         })
       } catch (preErr) {
         console.warn('Warning: Failed to insert pre_session_data:', preErr)
@@ -594,32 +595,33 @@ export async function completeSession(input: CompleteSessionInput): Promise<{ da
     if (input.post_session_data) {
       const post = input.post_session_data
       try {
-        await supabase.from('post_session_data').insert({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from('post_session_data') as any).insert({
           session_id: input.session_id,
           user_id: userId,
           // A. Objective Performance
-          hardest_grade_sent: (post.hardest_grade_sent as string | null) ?? null,
-          hardest_grade_attempted: (post.hardest_grade_attempted as string | null) ?? null,
-          volume_estimation: (post.volume_estimation as string | null) ?? null,
-          strength_metrics: (post.strength_metrics ?? []) as any,
-          dominant_style: (post.dominant_style as string | null) ?? null,
+          hardest_grade_sent: post.hardest_grade_sent ?? null,
+          hardest_grade_attempted: post.hardest_grade_attempted ?? null,
+          volume_estimation: post.volume_estimation ?? null,
+          strength_metrics: post.strength_metrics ?? [],
+          dominant_style: post.dominant_style ?? null,
           // B. Subjective Experience
-          rpe: (post.rpe as number | null) ?? null,
-          session_density: (post.session_density as string | null) ?? null,
-          intra_session_fueling: (post.intra_session_fueling as string | null) ?? null,
+          rpe: post.rpe ?? null,
+          session_density: post.session_density ?? null,
+          intra_session_fueling: post.intra_session_fueling ?? null,
           // C. Failure Analysis
-          limiting_factors: (post.limiting_factors as string[] | null) ?? null,
-          flash_pump: (post.flash_pump as boolean | null) ?? null,
+          limiting_factors: post.limiting_factors ?? null,
+          flash_pump: post.flash_pump ?? null,
           // D. Health & Injury Update
-          new_pain_location: (post.new_pain_location as string | null) ?? null,
-          new_pain_severity: (post.new_pain_severity as number | null) ?? null,
-          fingers_stiffer_than_usual: (post.fingers_stiffer_than_usual as boolean | null) ?? null,
-          skin_status_post: (post.skin_status_post as string | null) ?? null,
-          doms_severity_post: (post.doms_severity_post as number | null) ?? null,
-          finger_power_post: (post.finger_power_post as number | null) ?? null,
-          shoulder_mobility_post: (post.shoulder_mobility_post as number | null) ?? null,
+          new_pain_location: post.new_pain_location ?? null,
+          new_pain_severity: post.new_pain_severity ?? null,
+          fingers_stiffer_than_usual: post.fingers_stiffer_than_usual ?? null,
+          skin_status_post: post.skin_status_post ?? null,
+          doms_severity_post: post.doms_severity_post ?? null,
+          finger_power_post: post.finger_power_post ?? null,
+          shoulder_mobility_post: post.shoulder_mobility_post ?? null,
           // E. Learning Loop
-          prediction_error: (post.prediction_error as number | null) ?? null,
+          prediction_error: post.prediction_error ?? null,
         })
       } catch (postErr) {
         console.warn('Warning: Failed to insert post_session_data:', postErr)
