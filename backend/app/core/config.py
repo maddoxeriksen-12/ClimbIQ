@@ -30,6 +30,13 @@ class Settings(BaseSettings):
   # AI/LLM
   GROK_API_KEY: str = ""
 
+  # Ollama (self-hosted LLM) - preferred for privacy
+  OLLAMA_URL: str = "http://localhost:11434"  # Or Railway internal URL
+  OLLAMA_MODEL: str = "phi3:mini"  # Small, efficient model
+
+  # LLM Backend selection: "ollama" (self-hosted, private) or "grok" (external API)
+  LLM_BACKEND: str = "ollama"  # Default to self-hosted for privacy
+
   # Performance & Caching
   RULES_CACHE_TTL_SECONDS: int = 300      # 5 minutes - expert rules cache
   PRIORS_CACHE_TTL_SECONDS: int = 600     # 10 minutes - population priors cache

@@ -3,8 +3,13 @@ Explanation Service - Hybrid Template + LLM explanations for "Why?" feature
 
 This service provides explanations for recommendations by:
 1. Matching user state against pre-built template conditions from the database
-2. Falling back to Grok LLM for complex/novel cases
+2. Falling back to self-hosted Ollama (preferred for privacy) or Grok for complex/novel cases
 3. Caching LLM-generated explanations for reuse
+
+Privacy Note:
+- Ollama (self-hosted) is the default backend - no data leaves your infrastructure
+- Grok can be used as fallback but sends user state to external API
+- User IDs and session IDs are always stripped before LLM calls
 """
 
 import hashlib
@@ -19,6 +24,9 @@ from app.core.supabase import get_supabase_client
 
 
 GROK_API_URL = "https://api.x.ai/v1/chat/completions"
+
+# Fields to always strip before sending to any LLM (even self-hosted)
+SENSITIVE_FIELDS = {"user_id", "session_id", "email", "name", "phone"}
 
 EXPLANATION_PROMPT = """You are an expert climbing coach and sports scientist. A climber is asking "Why?" about a specific recommendation they received.
 
@@ -117,8 +125,8 @@ class ExplanationService:
                 **cached["explanation"]
             }
 
-        # Fall back to LLM
-        llm_explanation = await self._generate_with_grok(
+        # Fall back to LLM (Ollama preferred for privacy, Grok as fallback)
+        llm_explanation = await self._generate_with_llm(
             recommendation_type, target_element, recommendation_message,
             user_state, key_factors
         )
@@ -132,6 +140,7 @@ class ExplanationService:
             return {
                 "source": "generated",
                 "cache_id": cache_id,
+                "backend": llm_explanation.get("backend", "unknown"),
                 **llm_explanation["explanation"]
             }
 
@@ -363,6 +372,149 @@ class ExplanationService:
             print(f"Error caching explanation: {e}")
 
         return None
+
+    def _sanitize_for_llm(self, user_state: Dict[str, Any]) -> Dict[str, Any]:
+        """Remove sensitive fields before sending to LLM."""
+        return {
+            k: v for k, v in user_state.items()
+            if k not in SENSITIVE_FIELDS and v is not None
+        }
+
+    async def _generate_with_llm(
+        self,
+        recommendation_type: str,
+        target_element: Optional[str],
+        recommendation_message: str,
+        user_state: Dict[str, Any],
+        key_factors: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Route LLM generation to configured backend.
+
+        Priority:
+        1. Ollama (self-hosted) - if configured and available
+        2. Grok (external API) - fallback if Ollama fails/unavailable
+        """
+        backend = settings.LLM_BACKEND.lower()
+
+        # Sanitize user state for privacy
+        safe_state = self._sanitize_for_llm(user_state)
+
+        if backend == "ollama":
+            # Try Ollama first
+            result = await self._generate_with_ollama(
+                recommendation_type, target_element, recommendation_message,
+                safe_state, key_factors
+            )
+            if result.get("success"):
+                result["backend"] = "ollama"
+                return result
+
+            # Fall back to Grok if Ollama fails and Grok is configured
+            if settings.GROK_API_KEY:
+                print("[ExplanationService] Ollama failed, falling back to Grok")
+                result = await self._generate_with_grok(
+                    recommendation_type, target_element, recommendation_message,
+                    safe_state, key_factors
+                )
+                if result.get("success"):
+                    result["backend"] = "grok"
+                return result
+
+            return result  # Return Ollama error
+
+        elif backend == "grok":
+            if not settings.GROK_API_KEY:
+                return {"success": False, "error": "GROK_API_KEY not configured"}
+
+            result = await self._generate_with_grok(
+                recommendation_type, target_element, recommendation_message,
+                safe_state, key_factors
+            )
+            if result.get("success"):
+                result["backend"] = "grok"
+            return result
+
+        else:
+            return {"success": False, "error": f"Unknown LLM backend: {backend}"}
+
+    async def _generate_with_ollama(
+        self,
+        recommendation_type: str,
+        target_element: Optional[str],
+        recommendation_message: str,
+        user_state: Dict[str, Any],
+        key_factors: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Generate an explanation using self-hosted Ollama."""
+        ollama_url = settings.OLLAMA_URL.rstrip("/")
+        model = settings.OLLAMA_MODEL
+
+        # Format user state for prompt
+        user_state_formatted = "\n".join([
+            f"- {k}: {v}" for k, v in user_state.items()
+        ])
+
+        # Format key factors for prompt
+        key_factors_formatted = "\n".join([
+            f"- {f.get('variable', 'unknown')}: {f.get('description', f.get('effect', 'affects recommendation'))}"
+            for f in key_factors
+        ]) or "No specific key factors identified."
+
+        prompt = EXPLANATION_PROMPT.format(
+            recommendation_type=recommendation_type,
+            target_element=target_element or "general",
+            recommendation_message=recommendation_message,
+            user_state_formatted=user_state_formatted,
+            key_factors_formatted=key_factors_formatted,
+        )
+
+        try:
+            async with httpx.AsyncClient(timeout=45.0) as client:
+                response = await client.post(
+                    f"{ollama_url}/api/generate",
+                    json={
+                        "model": model,
+                        "prompt": f"You are an expert climbing coach. Respond with valid JSON only, no markdown.\n\n{prompt}",
+                        "stream": False,
+                        "format": "json",
+                        "options": {
+                            "temperature": 0.4,
+                            "num_predict": 800,
+                        }
+                    }
+                )
+
+                if response.status_code != 200:
+                    return {
+                        "success": False,
+                        "error": f"Ollama API error: {response.status_code}"
+                    }
+
+                result = response.json()
+                content = result.get("response", "")
+
+                # Parse JSON response
+                if "```json" in content:
+                    content = content.split("```json")[1].split("```")[0]
+                elif "```" in content:
+                    content = content.split("```")[1].split("```")[0]
+
+                explanation = json.loads(content.strip())
+
+                return {
+                    "success": True,
+                    "explanation": explanation,
+                }
+
+        except json.JSONDecodeError as e:
+            return {"success": False, "error": f"Failed to parse Ollama response: {e}"}
+        except httpx.ConnectError:
+            return {"success": False, "error": "Could not connect to Ollama service"}
+        except httpx.TimeoutException:
+            return {"success": False, "error": "Ollama request timed out"}
+        except Exception as e:
+            return {"success": False, "error": f"Error with Ollama: {e}"}
 
     async def _generate_with_grok(
         self,
