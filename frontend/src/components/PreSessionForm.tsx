@@ -76,13 +76,162 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isIndoor, setIsIndoor] = useState(true)
+  const [warmupGenerated, setWarmupGenerated] = useState(false)
   const [warmupComplete, setWarmupComplete] = useState(false)
+  const [generatedWarmup, setGeneratedWarmup] = useState<{
+    duration: string
+    intensity: string
+    activation: string[]
+    climbing: string[]
+    benchmark: string[]
+    warnings: string[]
+  } | null>(null)
 
   // Check if user is female (for menstrual cycle question)
   const isFemale = user?.user_metadata?.sex === 'female'
 
   // Finger warning when < 5
   const showFingerWarning = formData.finger_tendon_health < 5
+
+  // Check if Sections A-C are complete enough to generate warm-up
+  const canGenerateWarmup = formData.session_environment && formData.partner_status
+
+  // Generate personalized warm-up based on Sections A-C
+  const generateWarmup = () => {
+    const warmup = {
+      duration: '10-15 min',
+      intensity: 'moderate',
+      activation: [] as string[],
+      climbing: [] as string[],
+      benchmark: [] as string[],
+      warnings: [] as string[],
+    }
+
+    // Adjust based on session environment
+    const isBouldering = formData.session_environment.includes('bouldering')
+    const isRope = formData.session_environment.includes('rope')
+    const isTraining = formData.session_environment.includes('training')
+    const isOutdoor = formData.session_environment.includes('outdoor')
+
+    // Base activation exercises
+    warmup.activation = [
+      'Light cardio: 2-3 min jumping jacks or jogging',
+      'Arm circles: 20 each direction',
+      'Wrist circles & finger extensions: 30 sec each',
+    ]
+
+    // Adjust for sleep quality / recovery
+    if (formData.sleep_quality <= 4) {
+      warmup.duration = '15-20 min'
+      warmup.intensity = 'gentle'
+      warmup.activation.push('Extra mobility work: cat-cow stretches, hip circles')
+      warmup.warnings.push('⚠️ Low sleep - extend warm-up & lower intensity expectations')
+    }
+
+    // Adjust for stress
+    if (formData.stress_level >= 7) {
+      warmup.activation.push('Box breathing: 4-4-4-4 for 2 minutes')
+      warmup.warnings.push('⚠️ High stress - focus on breathing & stay present')
+    }
+
+    // Adjust for finger health
+    if (formData.finger_tendon_health <= 5) {
+      warmup.activation.push('Extra finger warm-up: rice bucket or finger curls')
+      warmup.climbing.push('Start on large holds only - NO crimping until fully warm')
+      warmup.warnings.push('⚠️ Finger concerns - prioritize tendon warm-up')
+    }
+
+    // Adjust for DOMS
+    if (formData.doms_locations.length > 0) {
+      const soreAreas = formData.doms_locations.join(', ')
+      warmup.activation.push(`Dynamic stretches targeting: ${soreAreas}`)
+      if (formData.doms_severity >= 6) {
+        warmup.warnings.push('⚠️ Significant DOMS - consider lower volume today')
+      }
+    }
+
+    // Climbing-specific based on session type
+    if (isBouldering) {
+      warmup.climbing = [
+        'Easy traversing on jugs: 3-5 min',
+        'Progressive boulder pyramid: VB → V0 → V1 → V2',
+        'Practice mantles & top-outs at low height',
+      ]
+      warmup.benchmark = [
+        `Attempt 1-2 problems at ${formData.motivation >= 7 ? 'flash grade' : 'comfortable grade'}`,
+        'Note: How explosive do moves feel?',
+      ]
+    } else if (isRope) {
+      warmup.climbing = [
+        'Easy route: 1 full pitch at flash-2 grade',
+        'Focus on smooth movement & breathing',
+        isOutdoor ? 'Check gear: harness, belay device, rope ends' : 'Practice clipping at various heights',
+      ]
+      warmup.benchmark = [
+        'Climb one route at onsight-1 grade',
+        'Note: How does sustained effort feel?',
+      ]
+    } else if (isTraining) {
+      warmup.climbing = [
+        'Light hangboard: 3x5s on large edge at 50% effort',
+        'Pull-up progression: 5 scap pulls → 5 easy pulls → 3 hard pulls',
+        'Campus touches on large rungs (no pulling)',
+      ]
+      warmup.benchmark = [
+        'One set at target hang weight/duration at ~80%',
+        'Note: Does it feel lighter or heavier than usual?',
+      ]
+    } else {
+      warmup.climbing = [
+        'Easy climbing: 5-10 min on comfortable terrain',
+        'Mix of movement styles',
+      ]
+      warmup.benchmark = [
+        'One moderate effort climb',
+        'Check in with body awareness',
+      ]
+    }
+
+    // Adjust for hydration/fueling
+    if (formData.hydration_feel === 'dehydrated') {
+      warmup.warnings.push('💧 Drink water now - aim for 500ml before hard efforts')
+    }
+    if (formData.fueling_status === 'fasted') {
+      warmup.warnings.push('🍌 Consider a quick snack if session > 1hr')
+    }
+
+    // Adjust for skin condition
+    if (formData.skin_condition === 'split' || formData.skin_condition === 'worn') {
+      warmup.warnings.push('🩹 Tape splits before climbing - avoid sharp holds')
+    }
+    if (formData.skin_condition === 'sweaty') {
+      warmup.warnings.push('🧴 Use chalk liberally - consider liquid chalk base')
+    }
+
+    // Adjust for partner status
+    if (formData.partner_status === 'solo' && isRope) {
+      warmup.warnings.push('👥 Find a belay partner before rope climbing')
+    }
+
+    // Adjust for motivation
+    if (formData.motivation <= 3) {
+      warmup.intensity = 'easy'
+      warmup.warnings.push('😌 Low psych is okay - focus on movement quality over sends')
+    } else if (formData.motivation >= 8) {
+      warmup.warnings.push('🔥 High psych! Don\'t skip warm-up - channel energy after')
+    }
+
+    // Menstrual cycle adjustments
+    if (formData.menstrual_phase === 'ovulation') {
+      warmup.activation.push('Extra shoulder/joint stability work')
+      warmup.warnings.push('⚠️ Ovulation phase - joints more lax, be careful with big moves')
+    } else if (formData.menstrual_phase === 'luteal') {
+      warmup.warnings.push('😴 Luteal phase - energy may be lower, adjust expectations')
+    }
+
+    setGeneratedWarmup(warmup)
+    setWarmupGenerated(true)
+  }
 
   const indoorEnvironments = [
     { value: 'indoor_bouldering', label: 'Bouldering' },
@@ -636,51 +785,99 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
           <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider">D. Physical Readiness (Biofeedback)</h3>
         </div>
 
-        {/* Recommended Warm-up Screen */}
+        {/* Warm-up Section */}
         {!warmupComplete ? (
           <div className="rounded-xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 to-orange-500/5 backdrop-blur-sm p-5">
-            <div className="text-center mb-4">
-              <div className="text-4xl mb-2">🔥</div>
-              <h2 className="text-lg font-bold text-amber-300">Recommended Warm-up</h2>
-              <p className="text-xs text-slate-400 mt-1">Complete before rating your readiness</p>
-            </div>
-            
-            <div className="space-y-3 mb-5">
-              <div className="rounded-lg bg-white/5 p-3 border border-white/10">
-                <h3 className="text-xs font-semibold text-amber-300 mb-2">General Activation (5-7 min)</h3>
-                <ul className="text-xs text-slate-300 space-y-1">
-                  <li>• Light cardio: jumping jacks, jogging in place</li>
-                  <li>• Arm circles & shoulder rotations</li>
-                  <li>• Wrist circles & finger extensions</li>
-                </ul>
-              </div>
-              
-              <div className="rounded-lg bg-white/5 p-3 border border-white/10">
-                <h3 className="text-xs font-semibold text-amber-300 mb-2">Climbing-Specific (5-8 min)</h3>
-                <ul className="text-xs text-slate-300 space-y-1">
-                  <li>• Easy traversing or jug climbing (3-5 min)</li>
-                  <li>• Progressive hangs: jugs → better holds → target hold</li>
-                  <li>• Pull-up progression: scap pulls → easy pulls → hard pulls</li>
-                </ul>
-              </div>
-              
-              <div className="rounded-lg bg-white/5 p-3 border border-white/10">
-                <h3 className="text-xs font-semibold text-amber-300 mb-2">Final Benchmark</h3>
-                <ul className="text-xs text-slate-300 space-y-1">
-                  <li>• 1-2 moderately hard problems/routes</li>
-                  <li>• Or: Max hang at ~80% effort</li>
-                  <li>• Note how this felt for the next question</li>
-                </ul>
-              </div>
-            </div>
+            {!warmupGenerated ? (
+              <>
+                {/* Generate Warm-up Button */}
+                <div className="text-center mb-4">
+                  <div className="text-4xl mb-2">🔥</div>
+                  <h2 className="text-lg font-bold text-amber-300">Generate Your Warm-up</h2>
+                  <p className="text-xs text-slate-400 mt-1">Based on your entries in Sections A-C</p>
+                </div>
 
-            <button
-              type="button"
-              onClick={() => setWarmupComplete(true)}
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-base shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 hover:scale-[1.02] transition-all"
-            >
-              🔥 I'm Warm - Rate Readiness
-            </button>
+                {!canGenerateWarmup && (
+                  <div className="mb-4 p-3 rounded-lg bg-white/5 border border-white/10">
+                    <p className="text-xs text-slate-400 text-center">
+                      Complete Sections A-C above to generate a personalized warm-up
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={generateWarmup}
+                  disabled={!canGenerateWarmup}
+                  className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-base shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 transition-all"
+                >
+                  ✨ Generate My Warm-up
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Generated Warm-up Display */}
+                <div className="text-center mb-4">
+                  <div className="text-4xl mb-2">🔥</div>
+                  <h2 className="text-lg font-bold text-amber-300">Your Personalized Warm-up</h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {generatedWarmup?.duration} • {generatedWarmup?.intensity} intensity
+                  </p>
+                </div>
+
+                {/* Warnings */}
+                {generatedWarmup?.warnings && generatedWarmup.warnings.length > 0 && (
+                  <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <h3 className="text-xs font-semibold text-amber-300 mb-2">Today's Notes</h3>
+                    <ul className="text-xs text-amber-200/80 space-y-1">
+                      {generatedWarmup.warnings.map((warning, i) => (
+                        <li key={i}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                <div className="space-y-3 mb-5">
+                  {/* Activation */}
+                  <div className="rounded-lg bg-white/5 p-3 border border-white/10">
+                    <h3 className="text-xs font-semibold text-amber-300 mb-2">1. General Activation</h3>
+                    <ul className="text-xs text-slate-300 space-y-1">
+                      {generatedWarmup?.activation.map((item, i) => (
+                        <li key={i}>• {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  {/* Climbing-Specific */}
+                  <div className="rounded-lg bg-white/5 p-3 border border-white/10">
+                    <h3 className="text-xs font-semibold text-amber-300 mb-2">2. Climbing-Specific</h3>
+                    <ul className="text-xs text-slate-300 space-y-1">
+                      {generatedWarmup?.climbing.map((item, i) => (
+                        <li key={i}>• {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  {/* Benchmark */}
+                  <div className="rounded-lg bg-white/5 p-3 border border-white/10">
+                    <h3 className="text-xs font-semibold text-amber-300 mb-2">3. Final Benchmark</h3>
+                    <ul className="text-xs text-slate-300 space-y-1">
+                      {generatedWarmup?.benchmark.map((item, i) => (
+                        <li key={i}>• {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setWarmupComplete(true)}
+                  className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-base shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 hover:scale-[1.02] transition-all"
+                >
+                  🔥 I'm Warm - Rate Readiness
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <>
