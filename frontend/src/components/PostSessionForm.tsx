@@ -125,7 +125,7 @@ export function PostSessionForm({ sessionType, location, sessionId, isHistorical
         {/* SECTION A: Objective Performance */}
         {/* ============================================ */}
         <div className="mb-2">
-          <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">A. Objective Performance (The "Truth")</h3>
+          <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">A. Objective Performance</h3>
         </div>
 
         {/* 1. Hardest Grade Sent */}
