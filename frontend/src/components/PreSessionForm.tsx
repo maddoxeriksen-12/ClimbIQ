@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSessionStore } from '../stores/sessionStore'
 import { useAuth } from '../hooks/useAuth'
+import { generateSessionRecommendation } from '../lib/recommendationService'
 
 interface PreSessionData {
   // A. Context & Environment
@@ -77,6 +78,7 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isIndoor, setIsIndoor] = useState(true)
   const [warmupGenerated, setWarmupGenerated] = useState(false)
+  const [isGeneratingWarmup, setIsGeneratingWarmup] = useState(false)
   const [warmupComplete, setWarmupComplete] = useState(false)
   const [generatedWarmup, setGeneratedWarmup] = useState<{
     duration: string
@@ -97,7 +99,9 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
   const canGenerateWarmup = formData.session_environment && formData.partner_status
 
   // Generate personalized warm-up based on Sections A-C
-  const generateWarmup = () => {
+  const generateWarmup = async () => {
+    setIsGeneratingWarmup(true)
+    
     const warmup = {
       duration: '10-15 min',
       intensity: 'moderate',
@@ -105,6 +109,39 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
       climbing: [] as string[],
       benchmark: [] as string[],
       warnings: [] as string[],
+    }
+
+    // Fetch expert recommendation from backend
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const recommendation = await generateSessionRecommendation(formData as any)
+      
+      if (recommendation) {
+        // Extract duration/intensity from backend messages if available
+        const warmupMsg = recommendation.suggestions.find(s => s.type === 'warmup')?.message
+        
+        if (warmupMsg) {
+          if (warmupMsg.includes('extended') || warmupMsg.includes('20-25')) {
+            warmup.duration = '20-25 min'
+          } else if (warmupMsg.includes('short') || warmupMsg.includes('5-10')) {
+            warmup.duration = '5-10 min'
+          }
+          
+          if (warmupMsg.includes('high intensity') || warmupMsg.includes('recruitment')) {
+            warmup.intensity = 'high'
+          } else if (warmupMsg.includes('low intensity') || warmupMsg.includes('gentle')) {
+            warmup.intensity = 'gentle'
+          }
+        }
+
+        // Map backend warnings
+        recommendation.warnings.forEach(w => {
+          warmup.warnings.push(`⚠️ ${w.message}`)
+        })
+      }
+    } catch (err) {
+      console.error('Failed to fetch expert recommendation:', err)
+      // Fallback to local logic if backend fails
     }
 
     // Adjust based on session environment
@@ -122,23 +159,29 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
 
     // Adjust for sleep quality / recovery
     if (formData.sleep_quality <= 4) {
-      warmup.duration = '15-20 min'
-      warmup.intensity = 'gentle'
+      if (warmup.duration === '10-15 min') warmup.duration = '15-20 min' // Only extend if not already set by backend
+      if (warmup.intensity === 'moderate') warmup.intensity = 'gentle'
       warmup.activation.push('Extra mobility work: cat-cow stretches, hip circles')
-      warmup.warnings.push('⚠️ Low sleep - extend warm-up & lower intensity expectations')
+      if (!warmup.warnings.some(w => w.includes('Low sleep'))) {
+        warmup.warnings.push('⚠️ Low sleep - extend warm-up & lower intensity expectations')
+      }
     }
 
     // Adjust for stress
     if (formData.stress_level >= 7) {
       warmup.activation.push('Box breathing: 4-4-4-4 for 2 minutes')
-      warmup.warnings.push('⚠️ High stress - focus on breathing & stay present')
+      if (!warmup.warnings.some(w => w.includes('High stress'))) {
+        warmup.warnings.push('⚠️ High stress - focus on breathing & stay present')
+      }
     }
 
     // Adjust for finger health
     if (formData.finger_tendon_health <= 5) {
       warmup.activation.push('Extra finger warm-up: rice bucket or finger curls')
       warmup.climbing.push('Start on large holds only - NO crimping until fully warm')
-      warmup.warnings.push('⚠️ Finger concerns - prioritize tendon warm-up')
+      if (!warmup.warnings.some(w => w.includes('Finger concerns'))) {
+        warmup.warnings.push('⚠️ Finger concerns - prioritize tendon warm-up')
+      }
     }
 
     // Adjust for DOMS
@@ -146,7 +189,9 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
       const soreAreas = formData.doms_locations.join(', ')
       warmup.activation.push(`Dynamic stretches targeting: ${soreAreas}`)
       if (formData.doms_severity >= 6) {
-        warmup.warnings.push('⚠️ Significant DOMS - consider lower volume today')
+        if (!warmup.warnings.some(w => w.includes('DOMS'))) {
+          warmup.warnings.push('⚠️ Significant DOMS - consider lower volume today')
+        }
       }
     }
 
@@ -194,43 +239,62 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
 
     // Adjust for hydration/fueling
     if (formData.hydration_feel === 'dehydrated') {
-      warmup.warnings.push('💧 Drink water now - aim for 500ml before hard efforts')
+      if (!warmup.warnings.some(w => w.includes('Drink water'))) {
+        warmup.warnings.push('💧 Drink water now - aim for 500ml before hard efforts')
+      }
     }
     if (formData.fueling_status === 'fasted') {
-      warmup.warnings.push('🍌 Consider a quick snack if session > 1hr')
+      if (!warmup.warnings.some(w => w.includes('snack'))) {
+        warmup.warnings.push('🍌 Consider a quick snack if session > 1hr')
+      }
     }
 
     // Adjust for skin condition
     if (formData.skin_condition === 'split' || formData.skin_condition === 'worn') {
-      warmup.warnings.push('🩹 Tape splits before climbing - avoid sharp holds')
+      if (!warmup.warnings.some(w => w.includes('Tape splits'))) {
+        warmup.warnings.push('🩹 Tape splits before climbing - avoid sharp holds')
+      }
     }
     if (formData.skin_condition === 'sweaty') {
-      warmup.warnings.push('🧴 Use chalk liberally - consider liquid chalk base')
+      if (!warmup.warnings.some(w => w.includes('Use chalk'))) {
+        warmup.warnings.push('🧴 Use chalk liberally - consider liquid chalk base')
+      }
     }
 
     // Adjust for partner status
     if (formData.partner_status === 'solo' && isRope) {
-      warmup.warnings.push('👥 Find a belay partner before rope climbing')
+      if (!warmup.warnings.some(w => w.includes('belay partner'))) {
+        warmup.warnings.push('👥 Find a belay partner before rope climbing')
+      }
     }
 
     // Adjust for motivation
     if (formData.motivation <= 3) {
       warmup.intensity = 'easy'
-      warmup.warnings.push('😌 Low psych is okay - focus on movement quality over sends')
+      if (!warmup.warnings.some(w => w.includes('Low psych'))) {
+        warmup.warnings.push('😌 Low psych is okay - focus on movement quality over sends')
+      }
     } else if (formData.motivation >= 8) {
-      warmup.warnings.push('🔥 High psych! Don\'t skip warm-up - channel energy after')
+      if (!warmup.warnings.some(w => w.includes('High psych'))) {
+        warmup.warnings.push('🔥 High psych! Don\'t skip warm-up - channel energy after')
+      }
     }
 
     // Menstrual cycle adjustments
     if (formData.menstrual_phase === 'ovulation') {
       warmup.activation.push('Extra shoulder/joint stability work')
-      warmup.warnings.push('⚠️ Ovulation phase - joints more lax, be careful with big moves')
+      if (!warmup.warnings.some(w => w.includes('Ovulation'))) {
+        warmup.warnings.push('⚠️ Ovulation phase - joints more lax, be careful with big moves')
+      }
     } else if (formData.menstrual_phase === 'luteal') {
-      warmup.warnings.push('😴 Luteal phase - energy may be lower, adjust expectations')
+      if (!warmup.warnings.some(w => w.includes('Luteal'))) {
+        warmup.warnings.push('😴 Luteal phase - energy may be lower, adjust expectations')
+      }
     }
 
     setGeneratedWarmup(warmup)
     setWarmupGenerated(true)
+    setIsGeneratingWarmup(false)
   }
 
   const indoorEnvironments = [
@@ -808,10 +872,17 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
                 <button
                   type="button"
                   onClick={generateWarmup}
-                  disabled={!canGenerateWarmup}
+                  disabled={!canGenerateWarmup || isGeneratingWarmup}
                   className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-base shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 transition-all"
                 >
-                  ✨ Generate My Warm-up
+                  {isGeneratingWarmup ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      Consulting Expert Model...
+                    </span>
+                  ) : (
+                    '✨ Generate My Warm-up'
+                  )}
                 </button>
               </>
             ) : (

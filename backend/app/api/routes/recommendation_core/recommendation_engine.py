@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 import math
 from supabase import Client
+from app.api.routes.expert_capture.prior_extractor import LITERATURE_PRIORS
 
 
 class RecommendationEngine:
@@ -27,10 +28,25 @@ class RecommendationEngine:
         self._cache_ttl_seconds = 300  # 5 minute cache
     
     def _load_priors(self) -> Dict[str, Dict]:
-        """Load population priors from database"""
+        """Load population priors from database, falling back to literature"""
+        priors = {}
+        
+        # 1. Load literature priors as baseline
+        for var, data in LITERATURE_PRIORS.items():
+            priors[var] = {
+                "mean": data["mean_effect"],
+                "std": data["std"],
+                "variance": data["std"] ** 2,
+                "confidence": data["confidence"],
+                "source": "literature_baseline",
+                "description": f"Baseline from {data.get('source', 'literature')}",
+                "effect_direction": "linear", # Default to linear
+                "metadata": {},
+            }
+
+        # 2. Overlay database priors (expert + updated literature)
         try:
             result = self.supabase.table("population_priors").select("*").execute()
-            priors = {}
             for row in (result.data or []):
                 priors[row["variable_name"]] = {
                     "mean": row["population_mean"],
@@ -45,8 +61,8 @@ class RecommendationEngine:
                 }
             return priors
         except Exception as e:
-            print(f"[ENGINE] Error loading priors: {e}")
-            return {}
+            print(f"[ENGINE] Error loading priors from DB, using literature only: {e}")
+            return priors
     
     def _load_rules(self) -> List[Dict]:
         """Load active expert rules from database, sorted by priority"""
