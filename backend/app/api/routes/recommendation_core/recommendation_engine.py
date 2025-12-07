@@ -398,18 +398,54 @@ class RecommendationEngine:
         """Generate specific suggestions for the recommended session type"""
         suggestions = []
         
-        # Warmup suggestion
+        # --- Dynamic Warmup Recommendation ---
+        # Check priors for specific warmup advice
+        warmup_prior = self._priors_cache.get("warmup_duration_min", {})
+        warmup_effect = warmup_prior.get("mean", 0)
+        
+        intensity_prior = self._priors_cache.get("warmup_intensity", {})
+        intensity_effect = intensity_prior.get("mean", 0)
+        
+        warmup_msg = "Complete a 10-15 minute warmup before climbing."
+        
+        # Adjust duration based on model
+        if warmup_effect > 0.03:
+            warmup_msg = "Complete an extended 20-25 minute warmup."
+        elif warmup_effect < 0:
+             warmup_msg = "Keep your warmup short (5-10 mins) to conserve energy."
+             
+        # Adjust intensity based on model
+        if intensity_effect > 0.05:
+            warmup_msg += " Include some higher intensity recruitment pulls."
+        else:
+            warmup_msg += " Keep intensity low and focus on mobility."
+
         if not user_state.get("warmup_completed", False):
             suggestions.append({
                 "type": "warmup",
-                "message": "Complete a 10-15 minute warmup before climbing. Include mobility, light traversing, and progressively harder climbs.",
+                "message": warmup_msg,
+            })
+            
+        # --- Dynamic Session Structure Recommendation ---
+        rest_prior = self._priors_cache.get("main_session_rest_level", {})
+        rest_effect = rest_prior.get("mean", 0)
+        
+        if session_type in ["project", "limit_bouldering"] and rest_effect > 0.1:
+             suggestions.append({
+                "type": "structure",
+                "message": "Prioritize long rests (3-5 min) between attempts to maximize quality.",
+            })
+        elif session_type == "volume" and rest_effect < 0.05:
+             suggestions.append({
+                "type": "structure",
+                "message": "Keep rests short (1-2 min) to maintain heart rate and flow.",
             })
         
         # Session-type specific suggestions
         if session_type == "project":
             suggestions.append({
                 "type": "projecting",
-                "message": "Conditions look good for projecting. Focus on your current project with adequate rest between attempts (3+ min).",
+                "message": "Conditions look good for projecting. Focus on your current project.",
             })
         elif session_type == "volume":
             suggestions.append({
