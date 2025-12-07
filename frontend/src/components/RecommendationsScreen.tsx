@@ -33,11 +33,13 @@ interface RecommendationsScreenProps {
 export function RecommendationsScreen({ preSessionData, sessionType, onContinue }: RecommendationsScreenProps) {
   const [expandedRec, setExpandedRec] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [insights, setInsights] = useState<SessionInsights | null>(null)
 
   useEffect(() => {
     async function fetchInsights() {
       setLoading(true)
+      setError(null)
       try {
         // Call the real backend API
         const data = await generateSessionRecommendation({
@@ -45,7 +47,7 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
           session_type_preference: sessionType // Pass the user's intent
         })
 
-        if (data) {
+        if (data && typeof data.predicted_quality === 'number') {
           // Transform API response to UI format
           const transformedInsights: SessionInsights = {
             overallReadiness: Math.round(data.predicted_quality * 10), // Scale 1-10 to 1-100
@@ -89,10 +91,12 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
             }
           }
           setInsights(transformedInsights)
+        } else {
+          setError('No recommendation data returned from the engine.')
         }
       } catch (err) {
         console.error('Error fetching recommendations', err)
-        // Fallback to local logic if API fails could be implemented here
+        setError('Unable to reach the recommendation engine. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -122,7 +126,13 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
     )
   }
 
-  if (!insights) return <div className="text-center py-20 text-slate-400">Failed to load recommendations.</div>
+  if (!insights) {
+    return (
+      <div className="text-center py-20 text-slate-400">
+        {error ?? 'Failed to load recommendations.'}
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto pb-8">

@@ -71,6 +71,29 @@ class PreSessionData(BaseModel):
     
     # Climbing-specific
     skin_condition: Optional[int] = None
+
+    # --- Additional frontend survey variables (allowed via extra="allow") ---
+    # These fields are explicitly documented here for clarity but are not
+    # strictly required for validation, since `extra = "allow"` is enabled.
+    # They are mapped into the core engine variables in the route below.
+    session_environment: Optional[str] = None
+    planned_duration: Optional[int] = None
+    partner_status: Optional[str] = None
+    crowdedness: Optional[int] = None
+    fueling_status: Optional[str] = None
+    hydration_feel: Optional[str] = None
+    finger_tendon_health: Optional[int] = None
+    doms_locations: Optional[list] = None
+    doms_severity: Optional[int] = None
+    menstrual_phase: Optional[str] = None
+    motivation: Optional[int] = None
+    primary_goal: Optional[str] = None
+    warmup_rpe: Optional[str] = None
+    warmup_compliance: Optional[str] = None
+    upper_body_power: Optional[int] = None
+    shoulder_integrity: Optional[int] = None
+    leg_springiness: Optional[int] = None
+    finger_strength: Optional[int] = None
     
     class Config:
         extra = "allow"  # Allow additional fields
@@ -88,10 +111,61 @@ async def generate_recommendation(
     session quality and recommend appropriate session types.
     """
     engine = get_recommendation_engine()
-    
+
     # Convert to dict, excluding None values
-    user_state = {k: v for k, v in pre_session.model_dump().items() if v is not None}
-    
+    raw_state = pre_session.model_dump()
+    user_state = {k: v for k, v in raw_state.items() if v is not None}
+
+    # ------------------------------------------------------------------
+    # Map rich frontend survey variables into the core engine features.
+    # This is where we translate UI-specific fields into the variables
+    # that the Bayesian priors and rules actually understand.
+    # ------------------------------------------------------------------
+
+    # 1) Hydration: map string "hydration_feel" -> numeric "hydration_status"
+    if "hydration_status" not in user_state and "hydration_feel" in user_state:
+        hydration_map = {
+            "dehydrated": 3,       # clearly suboptimal
+            "neutral": 7,          # okay
+            "well_hydrated": 9,    # ideal
+        }
+        feel = user_state.get("hydration_feel")
+        if isinstance(feel, str):
+            user_state["hydration_status"] = hydration_map.get(feel, 7)
+
+    # 2) Muscle soreness: map DOMS severity -> "muscle_soreness" scale
+    if "muscle_soreness" not in user_state and "doms_severity" in user_state:
+        # doms_severity is already 1–10 in the UI; treat it directly
+        user_state["muscle_soreness"] = user_state["doms_severity"]
+
+    # 3) Energy level: derive from upper_body_power & leg_springiness if present
+    if "energy_level" not in user_state:
+        ub = user_state.get("upper_body_power")
+        leg = user_state.get("leg_springiness")
+        if isinstance(ub, (int, float)) and isinstance(leg, (int, float)):
+            user_state["energy_level"] = round((ub + leg) / 2)
+
+    # 4) Motivation: ensure both "motivation" (for priors) and "motivation_level"
+    #    (for session-type rules) are populated.
+    if "motivation" in user_state and "motivation_level" not in user_state:
+        user_state["motivation_level"] = user_state["motivation"]
+    elif "motivation_level" in user_state and "motivation" not in user_state:
+        user_state["motivation"] = user_state["motivation_level"]
+
+    # 5) Finger health: map finger_tendon_health into injury_severity proxy
+    if "injury_severity" not in user_state and "finger_tendon_health" in user_state:
+        # Lower tendon health -> higher injury severity (inverse relationship)
+        fth = user_state["finger_tendon_health"]
+        if isinstance(fth, (int, float)):
+            user_state["injury_severity"] = max(0, 10 - int(fth))
+
+    # 6) Basic warmup completion proxy: if a personalized warmup was generated
+    #    and compliance is "exact", treat warmup as completed.
+    if "warmup_completed" not in user_state and "warmup_compliance" in user_state:
+        compliance = user_state["warmup_compliance"]
+        if isinstance(compliance, str) and compliance in ("exact", "modified_pain", "own_routine"):
+            user_state["warmup_completed"] = True
+
     # Generate recommendation
     recommendation = engine.generate_recommendation(user_state)
     

@@ -281,10 +281,26 @@ class RecommendationEngine:
                 if action.get("type") == "override":
                     return action.get("recommendation", "light_session")
         
-        # Otherwise, base on predicted quality and user state
-        energy = user_state.get("energy_level", 5)
-        motivation = user_state.get("motivation_level", 5)
-        soreness = user_state.get("muscle_soreness", 5)
+        # Otherwise, base on predicted quality and user state.
+        # We are defensive here and support both the "core" engine fields
+        # and the richer survey aliases coming from the frontend.
+
+        # Energy: prefer explicit energy_level, fall back to survey proxies
+        energy = user_state.get("energy_level")
+        if energy is None:
+            # Derive energy from upper-body power and leg springiness if present
+            ub = user_state.get("upper_body_power")
+            leg = user_state.get("leg_springiness")
+            if isinstance(ub, (int, float)) and isinstance(leg, (int, float)):
+                energy = (ub + leg) / 2
+            else:
+                energy = 5
+
+        # Motivation: support both "motivation_level" and "motivation"
+        motivation = user_state.get("motivation_level", user_state.get("motivation", 5))
+
+        # Soreness: support both "muscle_soreness" and DOMS proxy
+        soreness = user_state.get("muscle_soreness", user_state.get("doms_severity", 5))
         
         # High quality prediction + high motivation = projecting
         if adjusted_quality >= 7.5 and motivation >= 8 and energy >= 7:
