@@ -93,29 +93,29 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
   const isFormValid = formData.session_environment && formData.partner_status
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-lg mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Pre-Session Check-In</h1>
-        <p className="text-slate-400">Section A: Context & Environment</p>
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold mb-1">Pre-Session Check-In</h1>
+        <p className="text-slate-400 text-sm">Section A: Context & Environment</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {/* 1. Session Environment */}
-        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
-          <h2 className="font-semibold mb-4">1. Session Environment</h2>
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+          <h2 className="text-sm font-semibold mb-3">1. Session Environment</h2>
           
           {/* Indoor/Outdoor Toggle */}
-          <div className="flex rounded-xl bg-white/5 p-1 mb-4">
+          <div className="flex rounded-lg bg-white/5 p-0.5 mb-3">
             <button
               type="button"
               onClick={() => {
                 setIsIndoor(true)
                 setFormData({ ...formData, session_environment: '' })
               }}
-              className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all ${
+              className={`flex-1 py-2 px-3 rounded-md text-xs font-semibold transition-all ${
                 isIndoor
-                  ? 'bg-gradient-to-r from-fuchsia-500 to-cyan-500 text-white shadow-lg'
+                  ? 'bg-gradient-to-r from-fuchsia-500 to-cyan-500 text-white shadow'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -127,9 +127,9 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
                 setIsIndoor(false)
                 setFormData({ ...formData, session_environment: '' })
               }}
-              className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all ${
+              className={`flex-1 py-2 px-3 rounded-md text-xs font-semibold transition-all ${
                 !isIndoor
-                  ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-lg'
+                  ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -138,13 +138,13 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
           </div>
 
           {/* Environment Options */}
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-1 gap-1.5">
             {sessionEnvironments.map((env) => (
               <button
                 key={env.value}
                 type="button"
                 onClick={() => setFormData({ ...formData, session_environment: env.value })}
-                className={`py-3 px-4 rounded-xl text-left text-sm font-medium transition-all ${
+                className={`py-2 px-3 rounded-lg text-left text-xs font-medium transition-all ${
                   formData.session_environment === env.value
                     ? isIndoor 
                       ? 'bg-gradient-to-r from-fuchsia-500/20 to-cyan-500/20 text-white border border-fuchsia-500/30'
@@ -159,9 +159,9 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
         </div>
 
         {/* 2. Planned Duration */}
-        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
-          <h2 className="font-semibold mb-4">2. Planned Duration</h2>
-          <div className="flex items-center gap-4">
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+          <h2 className="text-sm font-semibold mb-3">2. Planned Duration</h2>
+          <div className="flex items-center gap-3">
             <input
               type="number"
               min="15"
@@ -169,22 +169,22 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
               step="15"
               value={formData.planned_duration}
               onChange={(e) => setFormData({ ...formData, planned_duration: parseInt(e.target.value) || 60 })}
-              className="w-28 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-lg text-white text-center focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50"
+              className="w-20 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white text-center focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50"
             />
-            <span className="text-slate-400">minutes</span>
+            <span className="text-slate-400 text-xs">minutes</span>
           </div>
         </div>
 
         {/* 3. Climbing Partner Status */}
-        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
-          <h2 className="font-semibold mb-4">3. Climbing Partner Status</h2>
-          <div className="grid grid-cols-1 gap-2">
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+          <h2 className="text-sm font-semibold mb-3">3. Climbing Partner Status</h2>
+          <div className="grid grid-cols-2 gap-1.5">
             {partnerOptions.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => setFormData({ ...formData, partner_status: opt.value })}
-                className={`py-3 px-4 rounded-xl text-left text-sm font-medium transition-all ${
+                className={`py-2 px-3 rounded-lg text-xs font-medium transition-all ${
                   formData.partner_status === opt.value
                     ? 'bg-gradient-to-r from-fuchsia-500/20 to-cyan-500/20 text-white border border-fuchsia-500/30'
                     : 'bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10'
@@ -197,13 +197,13 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
         </div>
 
         {/* 4. Crowdedness/Business */}
-        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
-          <h2 className="font-semibold mb-4">4. Crowdedness/Business</h2>
-          <div className="space-y-4">
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+          <h2 className="text-sm font-semibold mb-3">4. Crowdedness/Business</h2>
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">1 = Empty</span>
-              <span className="text-2xl font-bold text-fuchsia-400">{formData.crowdedness}</span>
-              <span className="text-sm text-slate-400">5 = Impossible to move</span>
+              <span className="text-xs text-slate-400">1 = Empty</span>
+              <span className="text-lg font-bold text-fuchsia-400">{formData.crowdedness}</span>
+              <span className="text-xs text-slate-400">5 = Can't move</span>
             </div>
             <input
               type="range"
@@ -211,9 +211,9 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
               max="5"
               value={formData.crowdedness}
               onChange={(e) => setFormData({ ...formData, crowdedness: parseInt(e.target.value) })}
-              className="w-full h-3 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-fuchsia-500 [&::-webkit-slider-thumb]:to-cyan-500 [&::-webkit-slider-thumb]:shadow-lg"
+              className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-fuchsia-500 [&::-webkit-slider-thumb]:to-cyan-500 [&::-webkit-slider-thumb]:shadow-lg"
             />
-            <div className="flex justify-between text-xs text-slate-500">
+            <div className="flex justify-between text-[10px] text-slate-500">
               <span>1</span>
               <span>2</span>
               <span>3</span>
@@ -221,7 +221,7 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
               <span>5</span>
             </div>
             {formData.crowdedness === 5 && (
-              <p className="text-sm text-amber-400 mt-2">⚠️ Rest times ruined</p>
+              <p className="text-xs text-amber-400">⚠️ Rest times ruined</p>
             )}
           </div>
         </div>
@@ -230,11 +230,11 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
         <button
           type="submit"
           disabled={isSubmitting || !isFormValid}
-          className="w-full py-4 rounded-xl bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-semibold text-lg shadow-lg shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 hover:scale-[1.01] disabled:opacity-50 disabled:hover:scale-100 transition-all"
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-semibold text-sm shadow-lg shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 hover:scale-[1.01] disabled:opacity-50 disabled:hover:scale-100 transition-all"
         >
           {isSubmitting ? (
             <span className="flex items-center justify-center gap-2">
-              <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+              <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
               Starting...
             </span>
           ) : (
