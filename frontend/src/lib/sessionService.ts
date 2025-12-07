@@ -332,13 +332,15 @@ export async function createSession(input: CreateSessionInput): Promise<{ data: 
       return { data: null, error: new Error('User not authenticated') }
     }
 
+    const userId = userData.user.id
+
     // Use custom start time for historical entries, otherwise use current time
     const startedAt = input.custom_started_at || new Date().toISOString()
     
     const { data, error } = await supabase
       .from('climbing_sessions')
       .insert({
-        user_id: userData.user.id,
+        user_id: userId,
         session_type: input.session_type,
         location: input.location,
         is_outdoor: input.is_outdoor ?? false,
@@ -414,7 +416,50 @@ export async function createSession(input: CreateSessionInput): Promise<{ data: 
       .single()
 
     if (error) throw error
-    return { data: data as ClimbingSession, error: null }
+    
+    const session = data as ClimbingSession
+
+    // Also insert into the pre_session_data table for normalized storage
+    if (input.pre_session_data && session) {
+      const pre = input.pre_session_data
+      try {
+        await supabase.from('pre_session_data').insert({
+          session_id: session.id,
+          user_id: userId,
+          // A. Context & Environment
+          session_environment: pre.session_environment as string,
+          planned_duration: pre.planned_duration as number,
+          partner_status: pre.partner_status as string,
+          crowdedness: pre.crowdedness as number,
+          // B. Systemic Recovery & Lifestyle
+          sleep_quality: pre.sleep_quality as number,
+          sleep_hours: pre.sleep_hours as number,
+          stress_level: pre.stress_level as number,
+          fueling_status: pre.fueling_status as string,
+          hydration_feel: pre.hydration_feel as string,
+          skin_condition: pre.skin_condition as string,
+          finger_tendon_health: pre.finger_tendon_health as number,
+          doms_locations: pre.doms_locations as string[],
+          doms_severity: pre.doms_severity as number,
+          menstrual_phase: pre.menstrual_phase as string,
+          // C. Intent & Psych
+          motivation: pre.motivation as number,
+          primary_goal: pre.primary_goal as string,
+          // D. Physical Readiness
+          warmup_rpe: pre.warmup_rpe as string,
+          warmup_compliance: pre.warmup_compliance as string,
+          upper_body_power: pre.upper_body_power as number,
+          shoulder_integrity: pre.shoulder_integrity as number,
+          leg_springiness: pre.leg_springiness as number,
+          finger_strength: pre.finger_strength as number,
+        })
+      } catch (preErr) {
+        console.warn('Warning: Failed to insert pre_session_data:', preErr)
+        // Don't fail the main operation
+      }
+    }
+
+    return { data: session, error: null }
   } catch (err) {
     console.error('Error creating session:', err)
     return { data: null, error: err as Error }
@@ -424,6 +469,12 @@ export async function createSession(input: CreateSessionInput): Promise<{ data: 
 // Complete a session (post-session form submission)
 export async function completeSession(input: CompleteSessionInput): Promise<{ data: ClimbingSession | null; error: Error | null }> {
   try {
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) {
+      return { data: null, error: new Error('User not authenticated') }
+    }
+
+    const userId = userData.user.id
     const endTime = input.actual_end_time ?? new Date().toISOString()
     
     // Get the session to calculate duration
@@ -536,7 +587,47 @@ export async function completeSession(input: CompleteSessionInput): Promise<{ da
       .single()
 
     if (error) throw error
-    return { data: data as ClimbingSession, error: null }
+    
+    const completedSession = data as ClimbingSession
+
+    // Also insert into the post_session_data table for normalized storage
+    if (input.post_session_data) {
+      const post = input.post_session_data
+      try {
+        await supabase.from('post_session_data').insert({
+          session_id: input.session_id,
+          user_id: userId,
+          // A. Objective Performance
+          hardest_grade_sent: post.hardest_grade_sent as string,
+          hardest_grade_attempted: post.hardest_grade_attempted as string,
+          volume_estimation: post.volume_estimation as string,
+          strength_metrics: post.strength_metrics ?? [],
+          dominant_style: post.dominant_style as string,
+          // B. Subjective Experience
+          rpe: post.rpe as number,
+          session_density: post.session_density as string,
+          intra_session_fueling: post.intra_session_fueling as string,
+          // C. Failure Analysis
+          limiting_factors: post.limiting_factors as string[],
+          flash_pump: post.flash_pump as boolean,
+          // D. Health & Injury Update
+          new_pain_location: post.new_pain_location as string,
+          new_pain_severity: post.new_pain_severity as number,
+          fingers_stiffer_than_usual: post.fingers_stiffer_than_usual as boolean,
+          skin_status_post: post.skin_status_post as string,
+          doms_severity_post: post.doms_severity_post as number,
+          finger_power_post: post.finger_power_post as number,
+          shoulder_mobility_post: post.shoulder_mobility_post as number,
+          // E. Learning Loop
+          prediction_error: post.prediction_error as number,
+        })
+      } catch (postErr) {
+        console.warn('Warning: Failed to insert post_session_data:', postErr)
+        // Don't fail the main operation
+      }
+    }
+
+    return { data: completedSession, error: null }
   } catch (err) {
     console.error('Error completing session:', err)
     return { data: null, error: err as Error }
