@@ -269,7 +269,7 @@ export function PostSessionForm({ sessionType, location, sessionId, isHistorical
         {/* SECTION B: Subjective Experience (RPE) */}
         {/* ============================================ */}
         <div className="mt-6 mb-2">
-          <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider">B. Subjective Experience (RPE)</h3>
+          <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider">B. Subjective Experience</h3>
         </div>
 
         {/* 1. RPE */}
@@ -339,7 +339,7 @@ export function PostSessionForm({ sessionType, location, sessionId, isHistorical
         {/* SECTION C: Failure Analysis */}
         {/* ============================================ */}
         <div className="mt-6 mb-2">
-          <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider">C. Failure Analysis (The Limiting Factor)</h3>
+          <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider">C. Failure Analysis</h3>
         </div>
 
         {/* 1. Primary Limiting Factor */}
