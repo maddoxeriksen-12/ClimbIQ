@@ -30,17 +30,23 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isIndoor, setIsIndoor] = useState(true)
 
-  const sessionEnvironments = [
-    { value: 'indoor_bouldering', label: 'Indoor Bouldering' },
-    { value: 'indoor_rope', label: 'Indoor Rope' },
-    { value: 'indoor_both', label: 'Indoor Bouldering and Indoor Rope' },
-    { value: 'outdoor_bouldering', label: 'Outdoor Bouldering' },
-    { value: 'outdoor_rope', label: 'Outdoor Rope' },
-    { value: 'outdoor_both', label: 'Outdoor Rope and Outdoor Bouldering' },
+  const indoorEnvironments = [
+    { value: 'indoor_bouldering', label: 'Bouldering' },
+    { value: 'indoor_rope', label: 'Rope' },
+    { value: 'indoor_both', label: 'Bouldering and Rope' },
     { value: 'training', label: 'Training (Board/Hangboard)' },
     { value: 'gym_training', label: 'Gym Training Area' },
   ]
+
+  const outdoorEnvironments = [
+    { value: 'outdoor_bouldering', label: 'Bouldering' },
+    { value: 'outdoor_rope', label: 'Rope' },
+    { value: 'outdoor_both', label: 'Rope and Bouldering' },
+  ]
+
+  const sessionEnvironments = isIndoor ? indoorEnvironments : outdoorEnvironments
 
   const partnerOptions = [
     { value: 'solo', label: 'Solo' },
@@ -98,6 +104,40 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
         {/* 1. Session Environment */}
         <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
           <h2 className="font-semibold mb-4">1. Session Environment</h2>
+          
+          {/* Indoor/Outdoor Toggle */}
+          <div className="flex rounded-xl bg-white/5 p-1 mb-4">
+            <button
+              type="button"
+              onClick={() => {
+                setIsIndoor(true)
+                setFormData({ ...formData, session_environment: '' })
+              }}
+              className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all ${
+                isIndoor
+                  ? 'bg-gradient-to-r from-fuchsia-500 to-cyan-500 text-white shadow-lg'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              🏢 Indoor
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsIndoor(false)
+                setFormData({ ...formData, session_environment: '' })
+              }}
+              className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all ${
+                !isIndoor
+                  ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-lg'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              🏔️ Outdoor
+            </button>
+          </div>
+
+          {/* Environment Options */}
           <div className="grid grid-cols-1 gap-2">
             {sessionEnvironments.map((env) => (
               <button
@@ -106,7 +146,9 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
                 onClick={() => setFormData({ ...formData, session_environment: env.value })}
                 className={`py-3 px-4 rounded-xl text-left text-sm font-medium transition-all ${
                   formData.session_environment === env.value
-                    ? 'bg-gradient-to-r from-fuchsia-500/20 to-cyan-500/20 text-white border border-fuchsia-500/30'
+                    ? isIndoor 
+                      ? 'bg-gradient-to-r from-fuchsia-500/20 to-cyan-500/20 text-white border border-fuchsia-500/30'
+                      : 'bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-white border border-emerald-500/30'
                     : 'bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10'
                 }`}
               >
