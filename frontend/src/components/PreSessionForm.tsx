@@ -22,6 +22,13 @@ interface PreSessionData {
   // C. Intent & Psych
   motivation: number
   primary_goal: string
+  // D. Physical Readiness (Biofeedback)
+  warmup_rpe: string
+  warmup_compliance: string
+  upper_body_power: number
+  shoulder_integrity: number
+  leg_springiness: number
+  finger_strength: number
 }
 
 interface PreSessionFormProps {
@@ -58,10 +65,18 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
     // C. Intent & Psych
     motivation: 5,
     primary_goal: '',
+    // D. Physical Readiness (Biofeedback)
+    warmup_rpe: '',
+    warmup_compliance: '',
+    upper_body_power: 5,
+    shoulder_integrity: 5,
+    leg_springiness: 5,
+    finger_strength: 5,
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isIndoor, setIsIndoor] = useState(true)
+  const [warmupComplete, setWarmupComplete] = useState(false)
 
   // Check if user is female (for menstrual cycle question)
   const isFemale = user?.user_metadata?.sex === 'female'
@@ -140,6 +155,20 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
     { value: 'active_recovery', label: 'Active Recovery' },
     { value: 'social_fun', label: 'Social/Fun' },
     { value: 'tell_me', label: 'Tell me what to do' },
+  ]
+
+  const warmupRpeOptions = [
+    { value: 'easy', label: 'Easy/Too Light (RPE 1-3)' },
+    { value: 'just_right', label: 'Just Right/Snappy (RPE 4-6)' },
+    { value: 'heavy', label: 'Heavy/Grindy (RPE 7-8)' },
+    { value: 'failed', label: 'Failed/Painful (RPE 9-10)' },
+  ]
+
+  const warmupComplianceOptions = [
+    { value: 'exact', label: 'No, did it exactly' },
+    { value: 'skipped', label: 'Yes, skipped some parts (Short on time)' },
+    { value: 'modified_pain', label: 'Yes, modified due to pain/tweak' },
+    { value: 'own_routine', label: 'No, did my own routine' },
   ]
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -459,15 +488,15 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
                   ? '[&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-red-500 [&::-webkit-slider-thumb]:to-orange-500'
                   : '[&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-cyan-500 [&::-webkit-slider-thumb]:to-emerald-500'
               }`}
-                />
-              </div>
+                  />
+                </div>
           {showFingerWarning && (
             <div className="mt-3 p-3 rounded-lg bg-red-500/20 border border-red-500/30">
               <p className="text-xs font-semibold text-red-300">⚠️ STOP - Finger Health Warning</p>
               <p className="text-xs text-red-200/80 mt-1">
                 Consider <strong>Active Recovery</strong> or rest. Climbing with tweaky fingers risks serious injury.
               </p>
-          </div>
+                </div>
         )}
               </div>
 
@@ -477,9 +506,9 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
           <div className="space-y-3">
             <div className="flex flex-wrap gap-1.5">
               {domsLocations.map((loc) => (
-            <button
+                    <button
                   key={loc.value}
-              type="button"
+                      type="button"
               onClick={() => {
                     if (loc.value === 'none') {
                       setFormData({ ...formData, doms_locations: [], doms_severity: 1 })
@@ -499,17 +528,17 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
                   }`}
                 >
                           {loc.label}
-                </button>
-                      ))}
-                  </div>
+                    </button>
+                  ))}
+                </div>
             {formData.doms_locations.length > 0 && (
               <div className="pt-2 space-y-2">
                     <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-400">Severity: 1 = Mild</span>
                   <span className="text-lg font-bold text-amber-400">{formData.doms_severity}</span>
                   <span className="text-xs text-slate-400">10 = Debilitating</span>
-                    </div>
-                    <input
+              </div>
+                <input
                       type="range"
                       min="1"
                   max="10"
@@ -517,10 +546,10 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
                   onChange={(e) => setFormData({ ...formData, doms_severity: parseInt(e.target.value) })}
                   className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-amber-500 [&::-webkit-slider-thumb]:to-orange-500 [&::-webkit-slider-thumb]:shadow-lg"
                 />
-                    </div>
-            )}
-                  </div>
-                  </div>
+          </div>
+        )}
+            </div>
+              </div>
 
         {/* 8. Menstrual Cycle Phase (if female) */}
         {isFemale && (
@@ -528,9 +557,9 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
             <h2 className="text-sm font-semibold mb-3">8. Menstrual Cycle Phase</h2>
             <div className="grid grid-cols-2 gap-1.5">
               {menstrualOptions.map((opt) => (
-              <button
+            <button
                   key={opt.value}
-                type="button"
+              type="button"
                   onClick={() => setFormData({ ...formData, menstrual_phase: opt.value })}
                   className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
                     formData.menstrual_phase === opt.value
@@ -539,10 +568,10 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
                   }`}
                 >
                   {opt.label}
-              </button>
+            </button>
               ))}
-              </div>
-            </div>
+          </div>
+                  </div>
           )}
 
         {/* ============================================ */}
@@ -550,27 +579,27 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
         {/* ============================================ */}
         <div className="mt-6 mb-2">
           <h3 className="text-xs font-bold text-violet-400 uppercase tracking-wider">C. Intent & Psych</h3>
-        </div>
+                  </div>
 
         {/* 1. Motivation (Psych Level) */}
         <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
           <h2 className="text-sm font-semibold mb-3">1. Motivation (Psych Level)</h2>
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between">
               <span className="text-xs text-slate-400">1 = Dreading it</span>
               <span className="text-lg font-bold text-violet-400">{formData.motivation}</span>
               <span className="text-xs text-slate-400">10 = Can't wait to crush</span>
-            </div>
-            <input
-              type="range"
-              min="1"
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
               max="10"
               value={formData.motivation}
               onChange={(e) => setFormData({ ...formData, motivation: parseInt(e.target.value) })}
               className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-violet-500 [&::-webkit-slider-thumb]:to-fuchsia-500 [&::-webkit-slider-thumb]:shadow-lg"
             />
-          </div>
-        </div>
+                    </div>
+                  </div>
 
         {/* 2. Primary Session Goal */}
         <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
@@ -600,21 +629,211 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
           )}
         </div>
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={isSubmitting || !isFormValid}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-semibold text-sm shadow-lg shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 hover:scale-[1.01] disabled:opacity-50 disabled:hover:scale-100 transition-all"
-        >
-          {isSubmitting ? (
-            <span className="flex items-center justify-center gap-2">
-              <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              Starting...
-            </span>
-          ) : (
-            'Start Session →'
-          )}
-        </button>
+        {/* ============================================ */}
+        {/* SECTION D: Physical Readiness (Biofeedback) */}
+        {/* ============================================ */}
+        <div className="mt-6 mb-2">
+          <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider">D. Physical Readiness (Biofeedback)</h3>
+        </div>
+
+        {/* Recommended Warm-up Screen */}
+        {!warmupComplete ? (
+          <div className="rounded-xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 to-orange-500/5 backdrop-blur-sm p-5">
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-2">🔥</div>
+              <h2 className="text-lg font-bold text-amber-300">Recommended Warm-up</h2>
+              <p className="text-xs text-slate-400 mt-1">Complete before rating your readiness</p>
+            </div>
+            
+            <div className="space-y-3 mb-5">
+              <div className="rounded-lg bg-white/5 p-3 border border-white/10">
+                <h3 className="text-xs font-semibold text-amber-300 mb-2">General Activation (5-7 min)</h3>
+                <ul className="text-xs text-slate-300 space-y-1">
+                  <li>• Light cardio: jumping jacks, jogging in place</li>
+                  <li>• Arm circles & shoulder rotations</li>
+                  <li>• Wrist circles & finger extensions</li>
+                </ul>
+              </div>
+              
+              <div className="rounded-lg bg-white/5 p-3 border border-white/10">
+                <h3 className="text-xs font-semibold text-amber-300 mb-2">Climbing-Specific (5-8 min)</h3>
+                <ul className="text-xs text-slate-300 space-y-1">
+                  <li>• Easy traversing or jug climbing (3-5 min)</li>
+                  <li>• Progressive hangs: jugs → better holds → target hold</li>
+                  <li>• Pull-up progression: scap pulls → easy pulls → hard pulls</li>
+                </ul>
+              </div>
+              
+              <div className="rounded-lg bg-white/5 p-3 border border-white/10">
+                <h3 className="text-xs font-semibold text-amber-300 mb-2">Final Benchmark</h3>
+                <ul className="text-xs text-slate-300 space-y-1">
+                  <li>• 1-2 moderately hard problems/routes</li>
+                  <li>• Or: Max hang at ~80% effort</li>
+                  <li>• Note how this felt for the next question</li>
+                </ul>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setWarmupComplete(true)}
+              className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-base shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 hover:scale-[1.02] transition-all"
+            >
+              🔥 I'm Warm - Rate Readiness
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* 1. Warm-up Benchmark RPE */}
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+              <h2 className="text-sm font-semibold mb-2">1. Warm-up Benchmark RPE</h2>
+              <p className="text-xs text-slate-400 mb-3">"How did the hardest part of the warm-up feel?" (e.g., last hang or pull-up)</p>
+              <div className="grid grid-cols-1 gap-1.5">
+                {warmupRpeOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, warmup_rpe: opt.value })}
+                    className={`py-2 px-3 rounded-lg text-left text-xs font-medium transition-all ${
+                      formData.warmup_rpe === opt.value
+                        ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-white border border-amber-500/30'
+                        : 'bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {formData.warmup_rpe === 'failed' && (
+                <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                  <p className="text-xs text-red-300">⚠️ Consider scaling back today's session or focusing on technique/recovery.</p>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Warm-up Compliance */}
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+              <h2 className="text-sm font-semibold mb-2">2. Warm-up Compliance</h2>
+              <p className="text-xs text-slate-400 mb-3">"Did you modify the recommended warm-up?"</p>
+              <div className="grid grid-cols-1 gap-1.5">
+                {warmupComplianceOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, warmup_compliance: opt.value })}
+                    className={`py-2 px-3 rounded-lg text-left text-xs font-medium transition-all ${
+                      formData.warmup_compliance === opt.value
+                        ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-white border border-amber-500/30'
+                        : 'bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. Upper Body Power */}
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+              <h2 className="text-sm font-semibold mb-3">3. Upper Body Power ("Pull" feel)</h2>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">1 = Heavy/Slow</span>
+                  <span className="text-lg font-bold text-amber-400">{formData.upper_body_power}</span>
+                  <span className="text-xs text-slate-400">10 = Light/Explosive</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={formData.upper_body_power}
+                  onChange={(e) => setFormData({ ...formData, upper_body_power: parseInt(e.target.value) })}
+                  className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-amber-500 [&::-webkit-slider-thumb]:to-orange-500 [&::-webkit-slider-thumb]:shadow-lg"
+                />
+              </div>
+            </div>
+
+            {/* 4. Shoulder Integrity */}
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+              <h2 className="text-sm font-semibold mb-3">4. Shoulder Integrity</h2>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">1 = Stiff/Painful</span>
+                  <span className="text-lg font-bold text-amber-400">{formData.shoulder_integrity}</span>
+                  <span className="text-xs text-slate-400">10 = Mobile/Stable</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={formData.shoulder_integrity}
+                  onChange={(e) => setFormData({ ...formData, shoulder_integrity: parseInt(e.target.value) })}
+                  className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-amber-500 [&::-webkit-slider-thumb]:to-orange-500 [&::-webkit-slider-thumb]:shadow-lg"
+                />
+              </div>
+            </div>
+
+            {/* 5. Leg Springiness */}
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+              <h2 className="text-sm font-semibold mb-3">5. Leg "Springiness" (CNS Readiness)</h2>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">1 = Heavy/Sluggish</span>
+                  <span className="text-lg font-bold text-amber-400">{formData.leg_springiness}</span>
+                  <span className="text-xs text-slate-400">10 = Bouncy/Explosive</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={formData.leg_springiness}
+                  onChange={(e) => setFormData({ ...formData, leg_springiness: parseInt(e.target.value) })}
+                  className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-amber-500 [&::-webkit-slider-thumb]:to-orange-500 [&::-webkit-slider-thumb]:shadow-lg"
+                />
+              </div>
+            </div>
+
+            {/* 6. Finger Strength */}
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+              <h2 className="text-sm font-semibold mb-3">6. Finger Strength</h2>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">1 = Jugs only</span>
+                  <span className="text-lg font-bold text-amber-400">{formData.finger_strength}</span>
+                  <span className="text-xs text-slate-400">10 = Explosive crimp</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={formData.finger_strength}
+                  onChange={(e) => setFormData({ ...formData, finger_strength: parseInt(e.target.value) })}
+                  className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-amber-500 [&::-webkit-slider-thumb]:to-orange-500 [&::-webkit-slider-thumb]:shadow-lg"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 pt-1">
+                  <span>Deep jugs/bar hangs</span>
+                  <span>Max crimp secure</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isSubmitting || !isFormValid}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-semibold text-sm shadow-lg shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 hover:scale-[1.01] disabled:opacity-50 disabled:hover:scale-100 transition-all"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Starting...
+                </span>
+              ) : (
+                'Start Session →'
+              )}
+            </button>
+          </>
+        )}
       </form>
     </div>
   )
