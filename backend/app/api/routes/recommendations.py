@@ -70,7 +70,7 @@ class PreSessionData(BaseModel):
     warmup_duration_min: Optional[int] = None
     
     # Climbing-specific
-    skin_condition: Optional[int] = None
+    skin_condition: Optional[str] = None  # String values: fresh, pink, split, sweaty, dry, worn
 
     # --- Additional frontend survey variables (allowed via extra="allow") ---
     # These fields are explicitly documented here for clarity but are not
@@ -165,6 +165,18 @@ async def generate_recommendation(
         compliance = user_state["warmup_compliance"]
         if isinstance(compliance, str) and compliance in ("exact", "modified_pain", "own_routine"):
             user_state["warmup_completed"] = True
+
+    # 7) Skin condition: map string values to numeric scale (1-10)
+    if "skin_condition" in user_state and isinstance(user_state["skin_condition"], str):
+        skin_map = {
+            "fresh": 9,      # optimal - thick, healthy skin
+            "pink": 7,       # good - slightly worn but fine
+            "dry": 6,        # okay - may need moisturizing
+            "sweaty": 5,     # suboptimal - grip issues
+            "split": 3,      # poor - needs taping
+            "worn": 2,       # poor - painful, risk of injury
+        }
+        user_state["skin_condition"] = skin_map.get(user_state["skin_condition"], 5)
 
     # Generate recommendation
     recommendation = engine.generate_recommendation(user_state)
