@@ -400,6 +400,7 @@ class RecommendationEngine:
             "coefficient_breakdown": contributions,
             "messages": rule_recommendations.get("messages", []),
             "avoid": list(set(rule_recommendations.get("avoid", []))),
+            "include": list(set(rule_recommendations.get("include", []))),
             "generated_at": datetime.utcnow().isoformat(),
             "priors_count": len(self._priors_cache),
             "rules_count": len(self._rules_cache),
