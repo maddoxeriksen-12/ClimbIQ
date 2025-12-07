@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from app.core.security import get_current_user
 from app.core.supabase import get_supabase_client
 from app.services.recommendation_service import RecommendationService
+from app.services.explanation_service import get_explanation_service
 from app.api.routes.recommendation_core.recommendation_engine import RecommendationEngine
 
 
@@ -282,3 +283,106 @@ async def submit_feedback(
   return result.data[0]
 
 
+# --- Explanation ("Why?") endpoints ---
+
+class ExplanationRequest(BaseModel):
+    """Request for explanation of a recommendation."""
+    recommendation_type: str  # warmup, session_structure, rest, intensity, avoid, include
+    target_element: Optional[str] = None  # extended_warmup, long_rests, etc.
+    recommendation_message: str  # The actual recommendation text
+    user_state: Dict[str, Any]  # Current user state variables
+    key_factors: Optional[List[Dict[str, Any]]] = None  # Key factors from recommendation
+
+
+class ExplanationFeedbackRequest(BaseModel):
+    """Feedback on an explanation."""
+    recommendation_type: str
+    explanation_shown: Dict[str, Any]
+    was_helpful: bool
+    clarity_rating: Optional[int] = None  # 1-5
+    feedback_text: Optional[str] = None
+    session_id: Optional[str] = None
+    explanation_id: Optional[str] = None
+    cache_id: Optional[str] = None
+
+
+@router.post("/recommendations/explain")
+async def get_explanation(
+    request: ExplanationRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get an explanation for why a specific recommendation was made.
+
+    Uses template matching first, then falls back to Grok LLM for complex cases.
+    Explanations are cached for reuse.
+    """
+    service = get_explanation_service()
+
+    explanation = await service.get_explanation(
+        recommendation_type=request.recommendation_type,
+        target_element=request.target_element,
+        recommendation_message=request.recommendation_message,
+        user_state=request.user_state,
+        key_factors=request.key_factors or [],
+    )
+
+    return {
+        "success": True,
+        "explanation": explanation,
+    }
+
+
+@router.post("/recommendations/explain/feedback")
+async def submit_explanation_feedback(
+    request: ExplanationFeedbackRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Submit feedback on an explanation to improve future explanations.
+    """
+    service = get_explanation_service()
+
+    result = await service.submit_feedback(
+        user_id=current_user["id"],
+        recommendation_type=request.recommendation_type,
+        explanation_shown=request.explanation_shown,
+        was_helpful=request.was_helpful,
+        clarity_rating=request.clarity_rating,
+        feedback_text=request.feedback_text,
+        session_id=request.session_id,
+        explanation_id=request.explanation_id,
+        cache_id=request.cache_id,
+    )
+
+    if not result.get("success"):
+        raise HTTPException(status_code=500, detail=result.get("error", "Failed to submit feedback"))
+
+    return result
+
+
+@router.get("/recommendations/explanations/templates")
+async def get_explanation_templates(
+    recommendation_type: Optional[str] = None,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get available explanation templates (for admin/debugging).
+    """
+    supabase = get_supabase_client()
+
+    query = supabase.table("recommendation_explanations").select(
+        "id, recommendation_type, target_element, condition_pattern, "
+        "short_explanation, factors_explained, confidence, priority, usage_count, "
+        "positive_feedback_count, negative_feedback_count"
+    ).eq("is_active", True)
+
+    if recommendation_type:
+        query = query.eq("recommendation_type", recommendation_type)
+
+    result = query.order("priority", desc=True).execute()
+
+    return {
+        "templates": result.data or [],
+        "count": len(result.data or []),
+    }

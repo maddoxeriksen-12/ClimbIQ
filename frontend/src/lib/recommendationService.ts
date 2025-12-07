@@ -29,6 +29,30 @@ export interface RecommendationResponse {
   include: string[]
 }
 
+export interface ExplanationFactor {
+  variable: string
+  value?: number | string
+  impact: string
+}
+
+export interface Explanation {
+  source: 'template' | 'cached' | 'generated' | 'fallback'
+  explanation_id?: string
+  cache_id?: string
+  summary: string
+  short_summary?: string
+  mechanism?: string
+  factors: ExplanationFactor[]
+  science_note?: string
+  actionable_tip?: string
+  confidence?: 'high' | 'medium' | 'low'
+}
+
+export interface ExplanationResponse {
+  success: boolean
+  explanation: Explanation
+}
+
 export async function generateSessionRecommendation(preSessionData: Record<string, unknown>): Promise<RecommendationResponse> {
   // Clean data to remove null/undefined values which Pydantic might reject
   const cleanData = Object.fromEntries(
@@ -39,3 +63,42 @@ export async function generateSessionRecommendation(preSessionData: Record<strin
   return response.data
 }
 
+export async function getRecommendationExplanation(
+  recommendationType: string,
+  recommendationMessage: string,
+  userState: Record<string, unknown>,
+  keyFactors?: Array<{ variable: string; effect?: number; description?: string }>,
+  targetElement?: string
+): Promise<ExplanationResponse> {
+  const response = await api.post('/api/v1/recommendations/explain', {
+    recommendation_type: recommendationType,
+    target_element: targetElement,
+    recommendation_message: recommendationMessage,
+    user_state: userState,
+    key_factors: keyFactors,
+  })
+  return response.data
+}
+
+export async function submitExplanationFeedback(
+  recommendationType: string,
+  explanationShown: Explanation,
+  wasHelpful: boolean,
+  clarityRating?: number,
+  feedbackText?: string,
+  sessionId?: string,
+  explanationId?: string,
+  cacheId?: string
+): Promise<{ success: boolean; feedback_id?: string }> {
+  const response = await api.post('/api/v1/recommendations/explain/feedback', {
+    recommendation_type: recommendationType,
+    explanation_shown: explanationShown,
+    was_helpful: wasHelpful,
+    clarity_rating: clarityRating,
+    feedback_text: feedbackText,
+    session_id: sessionId,
+    explanation_id: explanationId,
+    cache_id: cacheId,
+  })
+  return response.data
+}

@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react'
-import { generateSessionRecommendation } from '../lib/recommendationService'
+import {
+  generateSessionRecommendation,
+  getRecommendationExplanation,
+  submitExplanationFeedback,
+  type Explanation,
+  type RecommendationResponse
+} from '../lib/recommendationService'
 
 interface Recommendation {
   id: string
@@ -9,6 +15,7 @@ interface Recommendation {
   reasoning: string
   priority: 'high' | 'medium' | 'low'
   icon: string
+  type: string // warmup, session_structure, etc.
 }
 
 interface SessionInsights {
@@ -24,6 +31,12 @@ interface SessionInsights {
   }
 }
 
+interface ExplanationState {
+  loading: boolean
+  explanation: Explanation | null
+  error: string | null
+}
+
 interface RecommendationsScreenProps {
   preSessionData: Record<string, unknown>
   sessionType: string
@@ -35,6 +48,9 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [insights, setInsights] = useState<SessionInsights | null>(null)
+  const [rawResponse, setRawResponse] = useState<RecommendationResponse | null>(null)
+  const [explanations, setExplanations] = useState<Record<string, ExplanationState>>({})
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     async function fetchInsights() {
@@ -48,11 +64,14 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
         })
 
         if (data && typeof data.predicted_quality === 'number') {
+          // Store raw response for explanations
+          setRawResponse(data)
+
           // Transform API response to UI format
           const transformedInsights: SessionInsights = {
             overallReadiness: Math.round(data.predicted_quality * 10), // Scale 1-10 to 1-100
             readinessLabel: data.predicted_quality >= 8 ? 'Optimal' : data.predicted_quality >= 6 ? 'Good' : 'Low',
-            
+
             keyFactors: data.key_factors.map(f => ({
               label: f.variable.replace(/_/g, ' '), // e.g. "sleep_quality" -> "sleep quality"
               value: f.direction === 'positive' ? 'Supporting' : 'Limiting',
@@ -68,7 +87,8 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
                 description: w.message,
                 reasoning: `Triggered by rule: ${w.rule}`,
                 priority: 'high' as const,
-                icon: '🛡️'
+                icon: '🛡️',
+                type: 'safety'
               })),
               // Map suggestions to standard recommendations
               ...data.suggestions.map((s, i) => ({
@@ -78,7 +98,8 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
                 description: s.message,
                 reasoning: 'Based on your current physiological state and goals.',
                 priority: 'medium' as const,
-                icon: '💡'
+                icon: '💡',
+                type: s.type
               }))
             ],
 
@@ -115,6 +136,62 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
     positive: 'text-emerald-400',
     neutral: 'text-slate-400',
     negative: 'text-rose-400',
+  }
+
+  // Fetch detailed explanation for a recommendation
+  async function fetchExplanation(rec: Recommendation) {
+    if (!rawResponse) return
+
+    setExplanations(prev => ({
+      ...prev,
+      [rec.id]: { loading: true, explanation: null, error: null }
+    }))
+
+    try {
+      const result = await getRecommendationExplanation(
+        rec.type,
+        rec.description,
+        preSessionData,
+        rawResponse.key_factors,
+        rec.title.toLowerCase().replace(/[^a-z]/g, '_')
+      )
+
+      if (result.success) {
+        setExplanations(prev => ({
+          ...prev,
+          [rec.id]: { loading: false, explanation: result.explanation, error: null }
+        }))
+      } else {
+        throw new Error('Failed to get explanation')
+      }
+    } catch {
+      setExplanations(prev => ({
+        ...prev,
+        [rec.id]: { loading: false, explanation: null, error: 'Could not load explanation' }
+      }))
+    }
+  }
+
+  // Submit feedback on an explanation
+  async function handleExplanationFeedback(rec: Recommendation, wasHelpful: boolean) {
+    const state = explanations[rec.id]
+    if (!state?.explanation) return
+
+    try {
+      await submitExplanationFeedback(
+        rec.type,
+        state.explanation,
+        wasHelpful,
+        undefined,
+        undefined,
+        undefined,
+        state.explanation.explanation_id,
+        state.explanation.cache_id
+      )
+      setFeedbackSubmitted(prev => ({ ...prev, [rec.id]: true }))
+    } catch (err) {
+      console.error('Failed to submit feedback:', err)
+    }
   }
 
   if (loading) {
@@ -248,35 +325,172 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
           <span>💡</span> Detailed Recommendations
         </h2>
         
-        {insights.recommendations.map((rec) => (
-          <div
-            key={rec.id}
-            className={`rounded-2xl border ${priorityColors[rec.priority]} p-4 transition-all cursor-pointer hover:border-white/20`}
-            onClick={() => setExpandedRec(expandedRec === rec.id ? null : rec.id)}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">{rec.icon}</span>
-                <div>
-                  <h3 className="font-medium">{rec.title}</h3>
-                  <p className="text-sm text-slate-400 mt-1">{rec.description}</p>
+        {insights.recommendations.map((rec) => {
+          const expState = explanations[rec.id]
+          const hasFeedback = feedbackSubmitted[rec.id]
+
+          return (
+            <div
+              key={rec.id}
+              className={`rounded-2xl border ${priorityColors[rec.priority]} p-4 transition-all`}
+            >
+              <div
+                className="flex items-start justify-between cursor-pointer hover:opacity-80"
+                onClick={() => setExpandedRec(expandedRec === rec.id ? null : rec.id)}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">{rec.icon}</span>
+                  <div>
+                    <h3 className="font-medium">{rec.title}</h3>
+                    <p className="text-sm text-slate-400 mt-1">{rec.description}</p>
+                  </div>
                 </div>
+                <span className={`text-slate-400 transition-transform ${expandedRec === rec.id ? 'rotate-180' : ''}`}>
+                  ▼
+                </span>
               </div>
-              <span className={`text-slate-400 transition-transform ${expandedRec === rec.id ? 'rotate-180' : ''}`}>
-                ▼
-              </span>
+
+              {expandedRec === rec.id && (
+                <div className="mt-4 pt-4 border-t border-white/10 animate-in fade-in slide-in-from-top-2 duration-200">
+                  {/* Why? Button */}
+                  {!expState?.explanation && !expState?.loading && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        fetchExplanation(rec)
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-fuchsia-500/20 to-cyan-500/20 border border-white/10 hover:border-white/20 transition-all text-sm font-medium"
+                    >
+                      <span>🤔</span>
+                      <span className="bg-gradient-to-r from-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
+                        Why this recommendation?
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Loading State */}
+                  {expState?.loading && (
+                    <div className="flex items-center gap-3 text-sm text-slate-400">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-fuchsia-500"></div>
+                      <span>Generating explanation...</span>
+                    </div>
+                  )}
+
+                  {/* Error State */}
+                  {expState?.error && (
+                    <p className="text-sm text-rose-400">{expState.error}</p>
+                  )}
+
+                  {/* Explanation Display */}
+                  {expState?.explanation && (
+                    <div className="space-y-4">
+                      {/* Summary */}
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-fuchsia-500/10 to-cyan-500/10 border border-white/5">
+                        <p className="text-sm text-slate-200 leading-relaxed">
+                          {expState.explanation.summary}
+                        </p>
+                      </div>
+
+                      {/* Mechanism */}
+                      {expState.explanation.mechanism && (
+                        <div className="flex items-start gap-2 text-sm">
+                          <span className="text-cyan-400 mt-0.5">🧬</span>
+                          <div>
+                            <span className="text-slate-500">Mechanism: </span>
+                            <span className="text-slate-300">{expState.explanation.mechanism}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Science Note */}
+                      {expState.explanation.science_note && (
+                        <div className="flex items-start gap-2 text-sm">
+                          <span className="text-amber-400 mt-0.5">📚</span>
+                          <div>
+                            <span className="text-slate-500">Research: </span>
+                            <span className="text-slate-300 italic">{expState.explanation.science_note}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Actionable Tip */}
+                      {expState.explanation.actionable_tip && (
+                        <div className="flex items-start gap-2 text-sm p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                          <span className="text-emerald-400 mt-0.5">💡</span>
+                          <span className="text-emerald-200">{expState.explanation.actionable_tip}</span>
+                        </div>
+                      )}
+
+                      {/* Factors */}
+                      {expState.explanation.factors.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs text-slate-500 uppercase tracking-wider">Contributing Factors</p>
+                          <div className="flex flex-wrap gap-2">
+                            {expState.explanation.factors.map((factor, i) => (
+                              <span
+                                key={i}
+                                className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-slate-300"
+                                title={factor.impact}
+                              >
+                                {factor.variable.replace(/_/g, ' ')}: {factor.value}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Feedback */}
+                      {!hasFeedback ? (
+                        <div className="flex items-center gap-4 pt-2 border-t border-white/5">
+                          <span className="text-xs text-slate-500">Was this helpful?</span>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleExplanationFeedback(rec, true)
+                              }}
+                              className="px-3 py-1 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs transition-colors"
+                            >
+                              👍 Yes
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleExplanationFeedback(rec, false)
+                              }}
+                              className="px-3 py-1 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs transition-colors"
+                            >
+                              👎 No
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500 pt-2 border-t border-white/5">
+                          Thanks for your feedback!
+                        </p>
+                      )}
+
+                      {/* Source indicator */}
+                      <p className="text-xs text-slate-600">
+                        {expState.explanation.source === 'template' && '📖 Based on climbing science literature'}
+                        {expState.explanation.source === 'cached' && '⚡ Cached explanation'}
+                        {expState.explanation.source === 'generated' && '🤖 AI-generated explanation'}
+                        {expState.explanation.source === 'fallback' && '📋 Basic explanation'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Fallback reasoning if no explanation requested yet */}
+                  {!expState && (
+                    <p className="text-sm text-slate-400 mt-3">
+                      {rec.reasoning}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
-            
-            {expandedRec === rec.id && (
-              <div className="mt-4 pt-4 border-t border-white/10 animate-in fade-in slide-in-from-top-2 duration-200">
-                <p className="text-sm text-slate-300 flex items-start gap-2">
-                  <span className="text-fuchsia-400 mt-0.5">💭</span>
-                  <span><strong className="text-white">Why:</strong> {rec.reasoning}</span>
-                </p>
-              </div>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Continue Button */}

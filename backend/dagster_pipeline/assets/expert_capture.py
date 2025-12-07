@@ -370,3 +370,239 @@ def updated_population_priors_table(
         }
     )
 
+
+@asset(
+    group_name="expert_capture",
+    description="Extract explanation patterns from expert reasoning for 'Why?' feature",
+    compute_kind="python",
+)
+def extracted_explanation_patterns(
+    context: AssetExecutionContext,
+    supabase: SupabaseResource,
+) -> Output[pd.DataFrame]:
+    """
+    Extract explanation patterns from expert scenario reviews.
+
+    This asset analyzes expert reasoning from scenario reviews to identify:
+    1. Common condition patterns (e.g., "when sleep_quality <= 4")
+    2. Explanation templates used by experts
+    3. Mechanisms referenced in expert reasoning
+
+    These patterns are used to populate the recommendation_explanations table
+    for the hybrid "Why?" feature.
+    """
+    client = supabase.client
+
+    # Fetch expert reviews with reasoning
+    result = client.table('expert_reviews') \
+        .select('*, expert_scenarios(pre_session_snapshot, scenario_description)') \
+        .not_.is_('reasoning', 'null') \
+        .order('created_at', desc=True) \
+        .limit(500) \
+        .execute()
+
+    reviews = result.data or []
+    context.log.info(f"Found {len(reviews)} expert reviews with reasoning")
+
+    if not reviews:
+        return Output(
+            pd.DataFrame(columns=[
+                'recommendation_type', 'target_element', 'condition_pattern',
+                'explanation_template', 'factors_explained', 'source_scenario_id',
+                'confidence', 'expert_id'
+            ]),
+            metadata={"num_patterns_extracted": 0}
+        )
+
+    # Extract patterns from expert reasoning
+    patterns = []
+
+    # Recommendation type keywords for classification
+    type_keywords = {
+        'warmup': ['warmup', 'warm-up', 'warm up', 'activation', 'mobility'],
+        'session_structure': ['session', 'duration', 'structure', 'rest', 'intervals'],
+        'intensity': ['intensity', 'load', 'difficulty', 'effort', 'grade'],
+        'avoid': ['avoid', 'skip', 'dont', "don't", 'careful', 'risk'],
+        'include': ['include', 'focus', 'prioritize', 'emphasize', 'add'],
+        'rest': ['rest', 'recovery', 'break', 'pause'],
+    }
+
+    for review in reviews:
+        reasoning = review.get('reasoning', '')
+        if not reasoning or len(reasoning) < 20:
+            continue
+
+        scenario = review.get('expert_scenarios', {}) or {}
+        pre_session = scenario.get('pre_session_snapshot', {}) or {}
+
+        # Determine recommendation type from reasoning text
+        rec_type = 'general'
+        for rtype, keywords in type_keywords.items():
+            if any(kw.lower() in reasoning.lower() for kw in keywords):
+                rec_type = rtype
+                break
+
+        # Extract factors mentioned in reasoning
+        factors_explained = []
+        factor_keywords = [
+            'sleep', 'stress', 'energy', 'motivation', 'soreness', 'fatigue',
+            'finger', 'injury', 'hydration', 'recovery', 'rest', 'caffeine'
+        ]
+        for factor in factor_keywords:
+            if factor.lower() in reasoning.lower():
+                # Map to actual variable names
+                factor_map = {
+                    'sleep': 'sleep_quality',
+                    'stress': 'stress_level',
+                    'energy': 'energy_level',
+                    'motivation': 'motivation',
+                    'soreness': 'muscle_soreness',
+                    'fatigue': 'energy_level',
+                    'finger': 'finger_tendon_health',
+                    'injury': 'injury_severity',
+                    'hydration': 'hydration_status',
+                    'recovery': 'days_since_rest_day',
+                    'rest': 'days_since_rest_day',
+                    'caffeine': 'caffeine_today',
+                }
+                if factor in factor_map:
+                    factors_explained.append(factor_map[factor])
+
+        # Build condition pattern from pre_session data + factors mentioned
+        conditions = []
+        for factor in set(factors_explained):
+            if factor in pre_session:
+                value = pre_session[factor]
+                if isinstance(value, (int, float)):
+                    # Determine operator based on whether this is a "bad" value
+                    # Low values are typically bad for: sleep_quality, energy_level, motivation, hydration_status
+                    # High values are typically bad for: stress_level, muscle_soreness, injury_severity
+                    bad_high = ['stress_level', 'muscle_soreness', 'injury_severity']
+                    if factor in bad_high:
+                        op = '>=' if value >= 6 else '<='
+                    else:
+                        op = '<=' if value <= 5 else '>='
+                    conditions.append({
+                        'variable': factor,
+                        'op': op,
+                        'value': value
+                    })
+
+        condition_pattern = {'ALL': conditions} if len(conditions) > 1 else (conditions[0] if conditions else {})
+
+        patterns.append({
+            'recommendation_type': rec_type,
+            'target_element': review.get('recommended_session_type'),
+            'condition_pattern': condition_pattern,
+            'explanation_template': reasoning[:500],  # Truncate if too long
+            'factors_explained': list(set(factors_explained)),
+            'source_scenario_id': review.get('scenario_id'),
+            'expert_id': review.get('expert_id'),
+            'confidence': 'medium',  # Expert-derived patterns get medium confidence
+        })
+
+    df = pd.DataFrame(patterns)
+
+    context.log.info(f"Extracted {len(df)} explanation patterns from expert reviews")
+
+    return Output(
+        df,
+        metadata={
+            "num_patterns_extracted": len(df),
+            "recommendation_types": MetadataValue.json(
+                df['recommendation_type'].value_counts().to_dict() if len(df) > 0 else {}
+            ),
+            "unique_factors": MetadataValue.int(
+                len(set([f for factors in df['factors_explained'].tolist() for f in factors])) if len(df) > 0 else 0
+            ),
+            "preview": MetadataValue.md(df.head(5).to_markdown()) if len(df) > 0 else "No patterns",
+        }
+    )
+
+
+@asset(
+    group_name="expert_capture",
+    description="Write extracted explanation patterns to recommendation_explanations table",
+    compute_kind="database",
+)
+def updated_explanation_templates(
+    context: AssetExecutionContext,
+    extracted_explanation_patterns: pd.DataFrame,
+    supabase: SupabaseResource,
+) -> Output[Dict[str, Any]]:
+    """
+    Write extracted explanation patterns to the recommendation_explanations table.
+
+    This creates new explanation templates derived from expert reasoning,
+    complementing the literature-based seed templates.
+    """
+    client = supabase.client
+
+    if extracted_explanation_patterns.empty:
+        context.log.info("No explanation patterns to write")
+        return Output(
+            {"templates_written": 0},
+            metadata={"templates_written": 0}
+        )
+
+    templates_written = 0
+    templates_skipped = 0
+
+    for _, row in extracted_explanation_patterns.iterrows():
+        # Skip if no meaningful condition pattern
+        if not row['condition_pattern'] or (
+            isinstance(row['condition_pattern'], dict) and
+            row['condition_pattern'].get('ALL', []) == []
+        ):
+            templates_skipped += 1
+            continue
+
+        # Check for duplicates (same type + similar condition)
+        try:
+            existing = client.table('recommendation_explanations') \
+                .select('id') \
+                .eq('recommendation_type', row['recommendation_type']) \
+                .eq('source_type', 'expert') \
+                .execute()
+
+            # If we already have many expert templates for this type, skip
+            if len(existing.data or []) >= 10:
+                templates_skipped += 1
+                continue
+        except Exception:
+            pass
+
+        # Insert new template
+        try:
+            record = {
+                'recommendation_type': row['recommendation_type'],
+                'target_element': row['target_element'],
+                'condition_pattern': row['condition_pattern'],
+                'explanation_template': row['explanation_template'],
+                'factors_explained': row['factors_explained'],
+                'source_type': 'expert',
+                'expert_scenario_ids': [row['source_scenario_id']] if row['source_scenario_id'] else [],
+                'confidence': row['confidence'],
+                'priority': 60,  # Expert templates get priority 60 (between literature and AI)
+                'is_active': True,
+            }
+
+            client.table('recommendation_explanations').insert(record).execute()
+            templates_written += 1
+
+        except Exception as e:
+            context.log.warning(f"Failed to insert explanation template: {e}")
+
+    context.log.info(f"Wrote {templates_written} explanation templates, skipped {templates_skipped}")
+
+    return Output(
+        {
+            "templates_written": templates_written,
+            "templates_skipped": templates_skipped,
+            "timestamp": datetime.utcnow().isoformat(),
+        },
+        metadata={
+            "templates_written": templates_written,
+            "templates_skipped": templates_skipped,
+        }
+    )
