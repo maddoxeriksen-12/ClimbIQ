@@ -92,6 +92,44 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
   // Check if user is female (for menstrual cycle question)
   const isFemale = user?.user_metadata?.sex === 'female'
 
+  // Get user's training history for personalized warmup
+  const trainingHistory = user?.user_metadata?.training_history
+  const injuryHistory = user?.user_metadata?.injury_history
+  const psychProfile = user?.user_metadata?.psychological_profile
+
+  // Helper to get warmup grades based on user's current level
+  const getWarmupGrades = () => {
+    const currentBoulder = trainingHistory?.currentBoulderGrade || 'V3'
+    const currentSport = trainingHistory?.currentSportGrade || '5.10a'
+
+    // Parse boulder grade (V0-V17)
+    const boulderMatch = currentBoulder.match(/V(\d+)/)
+    const boulderNum = boulderMatch ? parseInt(boulderMatch[1]) : 3
+
+    // Calculate warmup pyramid based on current grade
+    const warmupStart = Math.max(0, boulderNum - 4)
+    const warmupEnd = Math.max(1, boulderNum - 2)
+    const flashGrade = Math.max(0, boulderNum - 1)
+
+    // Parse sport grade
+    const sportMatch = currentSport.match(/5\.(\d+)([a-d]?)/)
+    const sportNum = sportMatch ? parseInt(sportMatch[1]) : 10
+    const sportLetter = sportMatch?.[2] || 'a'
+    const sportWarmup = `5.${Math.max(6, sportNum - 2)}`
+    const sportBenchmark = `5.${Math.max(7, sportNum - 1)}`
+
+    return {
+      boulderPyramid: `VB → V${warmupStart} → V${warmupStart + 1} → V${warmupEnd}`,
+      flashGrade: `V${flashGrade}`,
+      comfortableGrade: `V${Math.max(0, boulderNum - 2)}`,
+      sportWarmup,
+      sportBenchmark,
+      onsightMinus1: `5.${sportNum}${sportLetter}` // Their flash grade
+    }
+  }
+
+  const grades = getWarmupGrades()
+
   // Finger warning when < 5
   const showFingerWarning = formData.finger_tendon_health < 5
 
@@ -195,25 +233,25 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
       }
     }
 
-    // Climbing-specific based on session type
+    // Climbing-specific based on session type (personalized to user's grade)
     if (isBouldering) {
       warmup.climbing = [
         'Easy traversing on jugs: 3-5 min',
-        'Progressive boulder pyramid: VB → V0 → V1 → V2',
+        `Progressive boulder pyramid: ${grades.boulderPyramid}`,
         'Practice mantles & top-outs at low height',
       ]
       warmup.benchmark = [
-        `Attempt 1-2 problems at ${formData.motivation >= 7 ? 'flash grade' : 'comfortable grade'}`,
+        `Attempt 1-2 problems at ${formData.motivation >= 7 ? grades.flashGrade : grades.comfortableGrade}`,
         'Note: How explosive do moves feel?',
       ]
     } else if (isRope) {
       warmup.climbing = [
-        'Easy route: 1 full pitch at flash-2 grade',
+        `Easy route: 1 full pitch at ${grades.sportWarmup}`,
         'Focus on smooth movement & breathing',
         isOutdoor ? 'Check gear: harness, belay device, rope ends' : 'Practice clipping at various heights',
       ]
       warmup.benchmark = [
-        'Climb one route at onsight-1 grade',
+        `Climb one route at ${grades.sportBenchmark}`,
         'Note: How does sustained effort feel?',
       ]
     } else if (isTraining) {
@@ -228,13 +266,42 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
       ]
     } else {
       warmup.climbing = [
-        'Easy climbing: 5-10 min on comfortable terrain',
+        `Easy climbing: 5-10 min at ${grades.comfortableGrade} or below`,
         'Mix of movement styles',
       ]
       warmup.benchmark = [
-        'One moderate effort climb',
+        `One moderate effort climb around ${grades.flashGrade}`,
         'Check in with body awareness',
       ]
+    }
+
+    // Add chronic condition warnings from injury history
+    if (injuryHistory?.chronic_conditions?.length > 0) {
+      const conditions = injuryHistory.chronic_conditions
+      if (conditions.includes('Finger joint capsulitis') || conditions.includes('Chronic finger issues')) {
+        warmup.activation.push('Finger glides & tendon glides: 2 sets of 10')
+      }
+      if (conditions.includes('Chronic shoulder issues') || conditions.includes('Shoulder impingement')) {
+        warmup.activation.push('Band pull-aparts & external rotations: 15 each')
+      }
+      if (conditions.includes('Chronic elbow issues') || conditions.includes('Golfer\'s elbow') || conditions.includes('Tennis elbow')) {
+        warmup.activation.push('Wrist curls & reverse curls with light weight: 15 each')
+      }
+    }
+
+    // Add psychological considerations
+    if (psychProfile) {
+      if (psychProfile.leadClimbingFear >= 7 && isRope && !isOutdoor) {
+        warmup.climbing.push('Practice falling from increasing heights (if comfortable)')
+      }
+      if (psychProfile.dynoCommitmentTolerance === 'low' && isBouldering) {
+        warmup.climbing.push('Include 2-3 easy dynamic moves to build confidence')
+      }
+      if (psychProfile.selfConfidenceBaseline <= 4) {
+        if (!warmup.warnings.some(w => w.includes('confidence'))) {
+          warmup.warnings.push('💪 Start with problems you know you can send to build confidence')
+        }
+      }
     }
 
     // Adjust for hydration/fueling
