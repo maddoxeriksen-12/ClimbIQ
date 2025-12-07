@@ -3,12 +3,18 @@ import { useCustomVariablesStore } from '../stores/customVariablesStore'
 import { CustomVariablesSection } from './CustomVariableInput'
 import { useAuth } from '../hooks/useAuth'
 
+interface StrengthMetricEntry {
+  exercise: string
+  value: string
+  unit: string
+}
+
 interface PostSessionData {
   // A. Objective Performance
   hardest_grade_sent: string
   hardest_grade_attempted: string
   volume_estimation: string
-  objective_strength_metric: string
+  strength_metrics: StrengthMetricEntry[]
   dominant_style: string
   // B. Subjective Experience
   rpe: number
@@ -57,7 +63,7 @@ export function PostSessionForm({ sessionType, location, sessionId, isHistorical
     hardest_grade_sent: '',
     hardest_grade_attempted: '',
     volume_estimation: '',
-    objective_strength_metric: '',
+    strength_metrics: [],
     dominant_style: '',
     // B. Subjective Experience
     rpe: 5,
@@ -165,6 +171,37 @@ export function PostSessionForm({ sessionType, location, sessionId, isHistorical
     { value: 'split_bleeding', label: 'Split/Bleeding' },
   ]
 
+  const strengthExerciseOptions = [
+    { value: 'max_hang', label: 'Max Hang (20mm)' },
+    { value: 'half_crimp_hang', label: 'Half Crimp Hang' },
+    { value: 'open_hand_hang', label: 'Open Hand Hang' },
+    { value: 'weighted_pullup', label: 'Weighted Pull-up' },
+    { value: 'one_arm_hang', label: 'One-Arm Hang' },
+    { value: 'campus_max', label: 'Campus Max (rung size)' },
+    { value: 'repeaters', label: 'Repeaters (time)' },
+    { value: 'other', label: 'Other' },
+  ]
+
+  const addStrengthMetric = () => {
+    setFormData({
+      ...formData,
+      strength_metrics: [...formData.strength_metrics, { exercise: '', value: '', unit: 'lbs' }],
+    })
+  }
+
+  const updateStrengthMetric = (index: number, field: keyof StrengthMetricEntry, value: string) => {
+    const updated = [...formData.strength_metrics]
+    updated[index] = { ...updated[index], [field]: value }
+    setFormData({ ...formData, strength_metrics: updated })
+  }
+
+  const removeStrengthMetric = (index: number) => {
+    setFormData({
+      ...formData,
+      strength_metrics: formData.strength_metrics.filter((_, i) => i !== index),
+    })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -268,17 +305,85 @@ export function PostSessionForm({ sessionType, location, sessionId, isHistorical
           </div>
         </div>
 
-        {/* 4. Objective Strength Metric */}
+        {/* 4. Objective Strength Metrics */}
         <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
-          <h2 className="text-sm font-semibold mb-2">4. Objective Strength Metric (If Training)</h2>
-          <p className="text-xs text-slate-400 mb-3">e.g., Max Hang weight, Weighted Pull-up max, or N/A</p>
-          <input
-            type="text"
-            value={formData.objective_strength_metric}
-            onChange={(e) => setFormData({ ...formData, objective_strength_metric: e.target.value })}
-            placeholder="e.g., +45lbs hang, BW+70 pull-up, or N/A"
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-          />
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold">4. Objective Strength Metrics (If Training)</h2>
+            <button
+              type="button"
+              onClick={addStrengthMetric}
+              className="text-xs text-emerald-400 hover:text-emerald-300 font-medium"
+            >
+              + Add Metric
+            </button>
+          </div>
+          <p className="text-xs text-slate-400 mb-3">Record your training numbers (hangboard, pull-ups, etc.)</p>
+          
+          {formData.strength_metrics.length === 0 ? (
+            <button
+              type="button"
+              onClick={addStrengthMetric}
+              className="w-full py-3 rounded-lg border border-dashed border-white/20 text-xs text-slate-400 hover:text-white hover:border-white/40 transition-colors"
+            >
+              + Add strength metric (optional)
+            </button>
+          ) : (
+            <div className="space-y-3">
+              {formData.strength_metrics.map((metric, index) => (
+                <div key={index} className="p-3 rounded-lg bg-white/5 border border-white/10 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-emerald-300">Metric {index + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeStrengthMetric(index)}
+                      className="text-xs text-slate-400 hover:text-red-400 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    <select
+                      value={metric.exercise}
+                      onChange={(e) => updateStrengthMetric(index, 'exercise', e.target.value)}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    >
+                      <option value="">Select exercise...</option>
+                      {strengthExerciseOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={metric.value}
+                        onChange={(e) => updateStrengthMetric(index, 'value', e.target.value)}
+                        placeholder="Value (e.g., +45, BW+70)"
+                        className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                      />
+                      <select
+                        value={metric.unit}
+                        onChange={(e) => updateStrengthMetric(index, 'unit', e.target.value)}
+                        className="w-20 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                      >
+                        <option value="lbs">lbs</option>
+                        <option value="kg">kg</option>
+                        <option value="sec">sec</option>
+                        <option value="reps">reps</option>
+                        <option value="mm">mm</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addStrengthMetric}
+                className="w-full py-2 rounded-lg border border-dashed border-white/20 text-xs text-slate-400 hover:text-white hover:border-white/40 transition-colors"
+              >
+                + Add another metric
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 5. Dominant Climbing Style/Angle */}

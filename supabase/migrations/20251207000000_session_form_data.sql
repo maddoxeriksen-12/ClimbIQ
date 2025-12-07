@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS post_session_data (
     hardest_grade_sent TEXT, -- V-scale (VB-V15+) or YDS (5.5-5.15a+)
     hardest_grade_attempted TEXT, -- V-scale or YDS
     volume_estimation TEXT, -- low, moderate, high, very_high
-    objective_strength_metric TEXT, -- free text: "+45lbs hang", "BW+70 pull-up", "N/A"
+    strength_metrics JSONB DEFAULT '[]', -- array of {exercise, value, unit} objects
     dominant_style TEXT, -- overhang, vertical, slab, crack, mixed
     
     -- B. Subjective Experience
@@ -235,7 +235,7 @@ SELECT
     post.hardest_grade_sent,
     post.hardest_grade_attempted,
     post.volume_estimation,
-    post.objective_strength_metric,
+    post.strength_metrics,
     post.dominant_style,
     post.rpe,
     post.session_density,
