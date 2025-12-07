@@ -19,6 +19,9 @@ interface PreSessionData {
   doms_locations: string[]
   doms_severity: number
   menstrual_phase: string
+  // C. Intent & Psych
+  motivation: number
+  primary_goal: string
 }
 
 interface PreSessionFormProps {
@@ -52,6 +55,9 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
     doms_locations: [],
     doms_severity: 1,
     menstrual_phase: '',
+    // C. Intent & Psych
+    motivation: 5,
+    primary_goal: '',
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -122,6 +128,18 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
     { value: 'ovulation', label: 'Ovulation (High Risk Laxity)' },
     { value: 'luteal', label: 'Luteal (High Fatigue)' },
     { value: 'menstruation', label: 'Menstruation' },
+  ]
+
+  const primaryGoalOptions = [
+    { value: 'limit_bouldering', label: 'Limit Bouldering' },
+    { value: 'volume_mileage', label: 'Volume/Mileage' },
+    { value: 'aerobic_capacity', label: 'Aerobic Capacity (ARC)' },
+    { value: 'anaerobic_capacity', label: 'Anaerobic Capacity (4x4s)' },
+    { value: 'strength_power', label: 'Strength/Power (Hangboard/Campus)' },
+    { value: 'technique_drills', label: 'Technique Drills' },
+    { value: 'active_recovery', label: 'Active Recovery' },
+    { value: 'social_fun', label: 'Social/Fun' },
+    { value: 'tell_me', label: 'Tell me what to do' },
   ]
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -526,6 +544,61 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
               </div>
             </div>
           )}
+
+        {/* ============================================ */}
+        {/* SECTION C: Intent & Psych */}
+        {/* ============================================ */}
+        <div className="mt-6 mb-2">
+          <h3 className="text-xs font-bold text-violet-400 uppercase tracking-wider">C. Intent & Psych</h3>
+        </div>
+
+        {/* 1. Motivation (Psych Level) */}
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+          <h2 className="text-sm font-semibold mb-3">1. Motivation (Psych Level)</h2>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400">1 = Dreading it</span>
+              <span className="text-lg font-bold text-violet-400">{formData.motivation}</span>
+              <span className="text-xs text-slate-400">10 = Can't wait to crush</span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="10"
+              value={formData.motivation}
+              onChange={(e) => setFormData({ ...formData, motivation: parseInt(e.target.value) })}
+              className="w-full h-2 rounded-full bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-violet-500 [&::-webkit-slider-thumb]:to-fuchsia-500 [&::-webkit-slider-thumb]:shadow-lg"
+            />
+          </div>
+        </div>
+
+        {/* 2. Primary Session Goal */}
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+          <h2 className="text-sm font-semibold mb-3">2. Primary Session Goal</h2>
+          <div className="grid grid-cols-1 gap-1.5">
+            {primaryGoalOptions.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setFormData({ ...formData, primary_goal: opt.value })}
+                className={`py-2 px-3 rounded-lg text-left text-xs font-medium transition-all ${
+                  formData.primary_goal === opt.value
+                    ? 'bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 text-white border border-violet-500/30'
+                    : 'bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {formData.primary_goal === 'tell_me' && (
+            <div className="mt-3 p-3 rounded-lg bg-violet-500/10 border border-violet-500/20">
+              <p className="text-xs text-violet-300">
+                🤖 <strong>AI Mode:</strong> We'll recommend a goal based on your Long-term Goal (from your profile) balanced against your Daily Readiness.
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Submit Button */}
         <button
