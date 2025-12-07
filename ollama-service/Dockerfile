@@ -36,8 +36,7 @@ RUN chmod +x /start.sh
 # Expose the Ollama API port
 EXPOSE 11434
 
-# Health check - generous timing for CPU inference
-HEALTHCHECK --interval=30s --timeout=30s --start-period=120s --retries=5 \
-  CMD curl -f http://localhost:11434/api/tags || exit 1
+# Note: Using Railway's healthcheck instead of Docker's to avoid conflicts
+# Railway healthcheck is configured in railway.json
 
 CMD ["/start.sh"]
