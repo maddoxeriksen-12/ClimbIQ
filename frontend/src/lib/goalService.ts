@@ -165,9 +165,9 @@ export async function getActiveGoal(): Promise<{ data: ClimbingGoal | null; erro
       .eq('user_id', userData.user.id)
       .eq('is_active', true)
       .limit(1)
-      .single()
+      .maybeSingle()
 
-    if (error && error.code !== 'PGRST116') throw error
+    if (error) throw error
     return { data: data as ClimbingGoal | null, error: null }
   } catch (err) {
     console.error('Error getting active goal:', err)
@@ -204,9 +204,9 @@ export async function getGoalProgress(goalId: string): Promise<{ data: GoalProgr
       .from('goal_progress')
       .select('*')
       .eq('goal_id', goalId)
-      .single()
+      .maybeSingle()
 
-    if (error && error.code !== 'PGRST116') throw error
+    if (error) throw error
     
     // If no progress exists, return default
     if (!data) {
