@@ -794,21 +794,59 @@ function ScenarioReviewPanel({
             <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider text-slate-300">
               <span className="text-base">📊</span> Pre-Session State
             </h3>
-            <div className="space-y-3">
-              <ProfileSlider label="Energy Level" value={Number(preSession.energy_level) || 5} max={10} color="emerald" />
-              <ProfileSlider label="Motivation" value={Number(preSession.motivation) || 5} max={10} color="cyan" />
-              <ProfileSlider label="Sleep Quality" value={Number(preSession.sleep_quality) || 5} max={10} color="violet" />
-              {typeof preSession.sleep_hours === 'number' && <ProfileItem label="Sleep Hours" value={String(preSession.sleep_hours)} />}
-              <ProfileSlider label="Stress Level" value={Number(preSession.stress_level) || 5} max={10} color="amber" inverted />
-              <ProfileSlider label="Muscle Soreness" value={Number(preSession.muscle_soreness) || 5} max={10} color="red" inverted />
+
+            {/* A. Context & Environment */}
+            <div className="mb-4">
+              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-medium">Context & Environment</h4>
+              <div className="space-y-2">
+                <ProfileItem label="Environment" value={String(preSession.session_environment || 'N/A').replace(/_/g, ' ')} />
+                <ProfileItem label="Planned Duration" value={preSession.planned_duration ? `${preSession.planned_duration} min` : 'N/A'} />
+                <ProfileItem label="Partner Status" value={String(preSession.partner_status || 'N/A').replace(/_/g, ' ')} />
+                {typeof preSession.crowdedness === 'number' && (
+                  <ProfileSlider label="Crowdedness" value={Number(preSession.crowdedness)} max={10} color="cyan" />
+                )}
+              </div>
             </div>
-            
-            <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
-              <ProfileItem label="Days Since Last Session" value={String(preSession.days_since_last_session ?? 'N/A')} />
-              <ProfileItem label="Days Since Rest" value={String(preSession.days_since_rest_day ?? 'N/A')} />
-              <ProfileItem label="Planned Duration" value={preSession.planned_duration ? `${preSession.planned_duration} min` : 'N/A'} />
-              <ProfileItem label="Primary Goal" value={String(preSession.primary_goal || 'N/A').replace(/_/g, ' ')} />
-              <div className="flex gap-2 flex-wrap mt-3">
+
+            {/* B. Systemic Recovery & Lifestyle */}
+            <div className="mb-4 pt-4 border-t border-white/10">
+              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-medium">Recovery & Lifestyle</h4>
+              <div className="space-y-3">
+                <ProfileSlider label="Sleep Quality" value={Number(preSession.sleep_quality) || 5} max={10} color="violet" />
+                {typeof preSession.sleep_hours === 'number' && <ProfileItem label="Sleep Hours" value={String(preSession.sleep_hours)} />}
+                <ProfileSlider label="Stress Level" value={Number(preSession.stress_level) || 5} max={10} color="amber" inverted />
+                <ProfileItem label="Fueling Status" value={String(preSession.fueling_status || 'N/A').replace(/_/g, ' ')} />
+                <ProfileItem label="Hydration" value={String(preSession.hydration_feel || 'N/A').replace(/_/g, ' ')} />
+                <ProfileItem label="Skin Condition" value={String(preSession.skin_condition || 'N/A').replace(/_/g, ' ')} />
+                <ProfileSlider label="Finger/Tendon Health" value={Number(preSession.finger_tendon_health) || 5} max={10} color="orange" />
+                <ProfileSlider label="DOMS Severity" value={Number(preSession.doms_severity || preSession.muscle_soreness) || 1} max={10} color="red" inverted />
+                <ProfileItem label="Days Since Last Session" value={String(preSession.days_since_last_session ?? 'N/A')} />
+                <ProfileItem label="Days Since Rest" value={String(preSession.days_since_rest_day ?? 'N/A')} />
+              </div>
+            </div>
+
+            {/* C. Intent & Psych */}
+            <div className="mb-4 pt-4 border-t border-white/10">
+              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-medium">Intent & Psychology</h4>
+              <div className="space-y-3">
+                <ProfileSlider label="Motivation" value={Number(preSession.motivation) || 5} max={10} color="cyan" />
+                <ProfileItem label="Primary Goal" value={String(preSession.primary_goal || 'N/A').replace(/_/g, ' ')} />
+                <ProfileSlider label="Fear of Falling" value={Number(preSession.fear_of_falling) || 5} max={10} color="red" inverted />
+                <ProfileSlider label="Performance Anxiety" value={Number(preSession.performance_anxiety) || 5} max={10} color="amber" inverted />
+              </div>
+            </div>
+
+            {/* D. Physical Readiness */}
+            <div className="pt-4 border-t border-white/10">
+              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-medium">Physical Readiness</h4>
+              <div className="space-y-3">
+                <ProfileSlider label="Energy Level" value={Number(preSession.energy_level) || 5} max={10} color="emerald" />
+                <ProfileSlider label="Upper Body Power" value={Number(preSession.upper_body_power) || 5} max={10} color="emerald" />
+                <ProfileSlider label="Shoulder Integrity" value={Number(preSession.shoulder_integrity) || 5} max={10} color="blue" />
+                <ProfileSlider label="Leg Springiness" value={Number(preSession.leg_springiness) || 5} max={10} color="teal" />
+                <ProfileSlider label="Finger Strength" value={Number(preSession.finger_strength) || 5} max={10} color="orange" />
+              </div>
+              <div className="flex gap-2 flex-wrap mt-4">
                 {Boolean(preSession.is_outdoor) && <span className="px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-medium">Outdoor</span>}
                 {Boolean(preSession.caffeine_today) && <span className="px-2 py-1 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-medium">Caffeine</span>}
                 {Boolean(preSession.alcohol_last_24h) && <span className="px-2 py-1 rounded-lg bg-red-500/20 text-red-300 text-xs font-medium">Alcohol 24h</span>}
