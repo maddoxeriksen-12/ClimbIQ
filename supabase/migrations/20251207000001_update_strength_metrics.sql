@@ -4,6 +4,11 @@
 -- Run this if you've already applied the 20251207000000_session_form_data.sql migration
 
 -- ============================================
+-- DROP DEPENDENT VIEW FIRST
+-- ============================================
+DROP VIEW IF EXISTS complete_session_data;
+
+-- ============================================
 -- UPDATE POST_SESSION_DATA TABLE
 -- ============================================
 
@@ -43,7 +48,7 @@ BEGIN
         END
         WHERE strength_metrics IS NULL OR strength_metrics = '[]'::jsonb;
         
-        -- Drop old column
+        -- Drop old column (view already dropped above)
         ALTER TABLE post_session_data DROP COLUMN IF EXISTS objective_strength_metric;
         
         RAISE NOTICE 'Migrated objective_strength_metric to strength_metrics';
