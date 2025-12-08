@@ -1,7 +1,13 @@
 import { useState } from 'react'
 import { useSessionStore } from '../stores/sessionStore'
 import { useAuth } from '../hooks/useAuth'
-import { generateSessionRecommendation } from '../lib/recommendationService'
+import {
+  generateSessionRecommendation,
+  getRecommendationExplanation,
+  submitExplanationFeedback,
+  type Explanation,
+  type RecommendationResponse,
+} from '../lib/recommendationService'
 
 interface PreSessionData {
   // A. Context & Environment
@@ -80,6 +86,7 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
   const [warmupGenerated, setWarmupGenerated] = useState(false)
   const [isGeneratingWarmup, setIsGeneratingWarmup] = useState(false)
   const [warmupComplete, setWarmupComplete] = useState(false)
+  const [lastRecommendation, setLastRecommendation] = useState<RecommendationResponse | null>(null)
   const [generatedWarmup, setGeneratedWarmup] = useState<{
     duration: string
     intensity: string
@@ -88,6 +95,19 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
     benchmark: string[]
     warnings: string[]
   } | null>(null)
+
+  interface ExplanationState {
+    loading: boolean
+    explanation: Explanation | null
+    error: string | null
+  }
+
+  const [warmupExplanation, setWarmupExplanation] = useState<ExplanationState>({
+    loading: false,
+    explanation: null,
+    error: null,
+  })
+  const [warmupFeedbackSubmitted, setWarmupFeedbackSubmitted] = useState(false)
 
   // Check if user is female (for menstrual cycle question)
   const isFemale = user?.user_metadata?.sex === 'female'
@@ -153,7 +173,14 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const recommendation = await generateSessionRecommendation(formData as any)
-      
+      setLastRecommendation(recommendation)
+      setWarmupExplanation({
+        loading: false,
+        explanation: null,
+        error: null,
+      })
+      setWarmupFeedbackSubmitted(false)
+
       if (recommendation) {
         // Extract duration/intensity from backend messages if available
         const warmupMsg = recommendation.suggestions.find(s => s.type === 'warmup')?.message
@@ -481,6 +508,82 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
     setGeneratedWarmup(warmup)
     setWarmupGenerated(true)
     setIsGeneratingWarmup(false)
+  }
+
+  // Fetch AI explanation for the generated warm-up
+  const fetchWarmupExplanation = async () => {
+    if (!lastRecommendation) return
+
+    const warmupSuggestion = lastRecommendation.suggestions.find(s => s.type === 'warmup')
+    if (!warmupSuggestion) return
+
+    setWarmupExplanation({
+      loading: true,
+      explanation: null,
+      error: null,
+    })
+
+    try {
+      // Derive a more specific target element based on the warmup message content
+      const msg = warmupSuggestion.message.toLowerCase()
+      let targetElement: string | undefined
+      if (msg.includes('extended') || msg.includes('20-25')) {
+        targetElement = 'extended_warmup'
+      } else if (msg.includes('short') || msg.includes('5-10')) {
+        targetElement = 'short_warmup'
+      }
+
+      const result = await getRecommendationExplanation(
+        'warmup',
+        warmupSuggestion.message,
+        formData as unknown as Record<string, unknown>,
+        lastRecommendation.key_factors,
+        targetElement,
+      )
+
+      if (result.success) {
+        setWarmupExplanation({
+          loading: false,
+          explanation: result.explanation,
+          error: null,
+        })
+      } else {
+        setWarmupExplanation({
+          loading: false,
+          explanation: null,
+          error: 'Could not load explanation',
+        })
+      }
+    } catch (err) {
+      console.error('Failed to fetch warm-up explanation:', err)
+      setWarmupExplanation({
+        loading: false,
+        explanation: null,
+        error: 'Could not load explanation',
+      })
+    }
+  }
+
+  // Submit simple thumbs-up / thumbs-down feedback on the warm-up explanation
+  const handleWarmupExplanationFeedback = async (wasHelpful: boolean) => {
+    const state = warmupExplanation
+    if (!state.explanation) return
+
+    try {
+      await submitExplanationFeedback(
+        'warmup',
+        state.explanation,
+        wasHelpful,
+        undefined,
+        undefined,
+        undefined,
+        state.explanation.explanation_id,
+        state.explanation.cache_id,
+      )
+      setWarmupFeedbackSubmitted(true)
+    } catch (err) {
+      console.error('Failed to submit warm-up explanation feedback:', err)
+    }
   }
 
   const indoorEnvironments = [
@@ -1081,6 +1184,101 @@ export function PreSessionForm({ onComplete }: PreSessionFormProps) {
                     {generatedWarmup?.duration} • {generatedWarmup?.intensity} intensity
                   </p>
                 </div>
+
+              {/* AI Explanation for Warm-up */}
+              <div className="mb-4 space-y-3">
+                {!warmupExplanation.explanation && !warmupExplanation.loading && (
+                  <button
+                    type="button"
+                    onClick={fetchWarmupExplanation}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-500/20 to-cyan-500/20 border border-white/10 hover:border-white/20 transition-all text-xs font-medium"
+                  >
+                    <span>🤔</span>
+                    <span className="bg-gradient-to-r from-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
+                      Why this warm-up?
+                    </span>
+                  </button>
+                )}
+
+                {warmupExplanation.loading && (
+                  <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+                    <div className="w-4 h-4 rounded-full border-2 border-fuchsia-500 border-t-transparent animate-spin" />
+                    <span>Generating explanation...</span>
+                  </div>
+                )}
+
+                {warmupExplanation.error && (
+                  <p className="text-xs text-rose-400 text-center">
+                    {warmupExplanation.error}
+                  </p>
+                )}
+
+                {warmupExplanation.explanation && (
+                  <div className="space-y-3">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-fuchsia-500/10 to-cyan-500/10 border border-white/5">
+                      <p className="text-xs text-slate-200 leading-relaxed">
+                        {warmupExplanation.explanation.summary}
+                      </p>
+                    </div>
+
+                    {warmupExplanation.explanation.mechanism && (
+                      <div className="flex items-start gap-2 text-[11px]">
+                        <span className="text-cyan-400 mt-0.5">🧬</span>
+                        <div>
+                          <span className="text-slate-500">Mechanism: </span>
+                          <span className="text-slate-300">
+                            {warmupExplanation.explanation.mechanism}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {warmupExplanation.explanation.actionable_tip && (
+                      <div className="flex items-start gap-2 text-[11px] p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                        <span className="text-emerald-400 mt-0.5">💡</span>
+                        <span className="text-emerald-200">
+                          {warmupExplanation.explanation.actionable_tip}
+                        </span>
+                      </div>
+                    )}
+
+                    {!warmupFeedbackSubmitted && (
+                      <div className="flex items-center justify-between gap-3 pt-1 border-t border-white/5">
+                        <span className="text-[11px] text-slate-500">Was this helpful?</span>
+                        <div className="flex gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleWarmupExplanationFeedback(true)}
+                            className="px-2.5 py-1 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[11px] transition-colors"
+                          >
+                            👍 Yes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleWarmupExplanationFeedback(false)}
+                            className="px-2.5 py-1 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-[11px] transition-colors"
+                          >
+                            👎 No
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {warmupFeedbackSubmitted && (
+                      <p className="text-[11px] text-slate-500 pt-1 border-t border-white/5">
+                        Thanks for your feedback!
+                      </p>
+                    )}
+
+                    <p className="text-[10px] text-slate-600">
+                      {warmupExplanation.explanation.source === 'template' && '📖 Based on climbing science templates'}
+                      {warmupExplanation.explanation.source === 'cached' && '⚡ Cached explanation from a similar state'}
+                      {warmupExplanation.explanation.source === 'generated' && '🤖 AI-generated explanation for your current state'}
+                      {warmupExplanation.explanation.source === 'fallback' && '📋 Basic safety-focused explanation'}
+                    </p>
+                  </div>
+                )}
+              </div>
 
                 {/* Warnings */}
                 {generatedWarmup?.warnings && generatedWarmup.warnings.length > 0 && (

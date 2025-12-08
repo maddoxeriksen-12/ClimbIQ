@@ -54,6 +54,12 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
   const [rawResponse, setRawResponse] = useState<RecommendationResponse | null>(null)
   const [explanations, setExplanations] = useState<Record<string, ExplanationState>>({})
   const [feedbackSubmitted, setFeedbackSubmitted] = useState<Record<string, boolean>>({})
+  const [structureExplanation, setStructureExplanation] = useState<ExplanationState>({
+    loading: false,
+    explanation: null,
+    error: null,
+  })
+  const [structureFeedbackSubmitted, setStructureFeedbackSubmitted] = useState(false)
 
   useEffect(() => {
     async function fetchInsights() {
@@ -207,6 +213,92 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
     }
   }
 
+  // Fetch explanation for the overall session structure
+  async function fetchStructureExplanation() {
+    if (!rawResponse) return
+
+    setStructureExplanation({
+      loading: true,
+      explanation: null,
+      error: null,
+    })
+
+    try {
+      // Derive a specific target element when we can, so templates can match
+      const stress = preSessionData.stress_level as number | undefined
+      const motivation = (preSessionData.motivation as number | undefined) ??
+        (preSessionData.motivation_level as number | undefined)
+      const primaryGoal = preSessionData.primary_goal as string | undefined
+      const energy = (preSessionData.energy_level as number | undefined) ??
+        (preSessionData.upper_body_power as number | undefined)
+
+      let targetElement: string | undefined
+      if (typeof stress === 'number' && stress >= 8) {
+        targetElement = 'mindful_approach'
+      } else if (typeof motivation === 'number' && motivation <= 3) {
+        targetElement = 'fun_focus'
+      } else if (primaryGoal === 'limit_bouldering' && typeof energy === 'number' && energy >= 7) {
+        targetElement = 'long_rests'
+      }
+
+      const sessionSummary =
+        `Session type: ${rawResponse.session_type}. ` +
+        `Warmup ~${insights?.sessionPlan.suggestedDuration ? Math.round((insights.sessionPlan.suggestedDuration * 0.2)) : 0} min, ` +
+        `main work focused on ${insights?.sessionPlan.focusAreas.join(', ') || 'general consistency'}, ` +
+        `with intensity pattern ${insights?.sessionPlan.suggestedIntensity}.`
+
+      const result = await getRecommendationExplanation(
+        'session_structure',
+        sessionSummary,
+        preSessionData,
+        rawResponse.key_factors,
+        targetElement,
+      )
+
+      if (result.success) {
+        setStructureExplanation({
+          loading: false,
+          explanation: result.explanation,
+          error: null,
+        })
+      } else {
+        setStructureExplanation({
+          loading: false,
+          explanation: null,
+          error: 'Could not load explanation',
+        })
+      }
+    } catch (err) {
+      console.error('Error fetching session structure explanation', err)
+      setStructureExplanation({
+        loading: false,
+        explanation: null,
+        error: 'Could not load explanation',
+      })
+    }
+  }
+
+  async function handleStructureExplanationFeedback(wasHelpful: boolean) {
+    const state = structureExplanation
+    if (!state.explanation) return
+
+    try {
+      await submitExplanationFeedback(
+        'session_structure',
+        state.explanation,
+        wasHelpful,
+        undefined,
+        undefined,
+        undefined,
+        state.explanation.explanation_id,
+        state.explanation.cache_id,
+      )
+      setStructureFeedbackSubmitted(true)
+    } catch (err) {
+      console.error('Failed to submit session structure explanation feedback:', err)
+    }
+  }
+
   // Submit feedback on an explanation
   async function handleExplanationFeedback(rec: Recommendation, wasHelpful: boolean) {
     const state = explanations[rec.id]
@@ -320,6 +412,94 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
         <h2 className="font-semibold mb-4 flex items-center gap-2">
           <span>📋</span> Session Plan
         </h2>
+        {/* Why this session structure? */}
+        <div className="mb-4 space-y-2">
+          {!structureExplanation.explanation && !structureExplanation.loading && (
+            <button
+              type="button"
+              onClick={fetchStructureExplanation}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-fuchsia-500/15 to-cyan-500/15 border border-white/10 hover:border-white/20 transition-all text-[11px] font-medium"
+            >
+              <span>🤔</span>
+              <span className="bg-gradient-to-r from-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
+                Why this session structure?
+              </span>
+            </button>
+          )}
+          {structureExplanation.loading && (
+            <div className="flex items-center gap-2 text-[11px] text-slate-400">
+              <div className="w-3 h-3 rounded-full border-2 border-fuchsia-500 border-t-transparent animate-spin" />
+              <span>Generating explanation...</span>
+            </div>
+          )}
+          {structureExplanation.error && (
+            <p className="text-[11px] text-rose-400">{structureExplanation.error}</p>
+          )}
+          {structureExplanation.explanation && (
+            <div className="space-y-2">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-fuchsia-500/10 to-cyan-500/10 border border-white/5">
+                <p className="text-xs text-slate-200 leading-relaxed">
+                  {structureExplanation.explanation.summary}
+                </p>
+              </div>
+              {structureExplanation.explanation.mechanism && (
+                <div className="flex items-start gap-2 text-[11px]">
+                  <span className="text-cyan-400 mt-0.5">🧬</span>
+                  <div>
+                    <span className="text-slate-500">Mechanism: </span>
+                    <span className="text-slate-300">
+                      {structureExplanation.explanation.mechanism}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {structureExplanation.explanation.actionable_tip && (
+                <div className="flex items-start gap-2 text-[11px] p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  <span className="text-emerald-400 mt-0.5">💡</span>
+                  <span className="text-emerald-200">
+                    {structureExplanation.explanation.actionable_tip}
+                  </span>
+                </div>
+              )}
+              {!structureFeedbackSubmitted && (
+                <div className="flex items-center justify-between gap-3 pt-1 border-t border-white/5">
+                  <span className="text-[11px] text-slate-500">Was this helpful?</span>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleStructureExplanationFeedback(true)}
+                      className="px-2.5 py-1 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[11px] transition-colors"
+                    >
+                      👍 Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStructureExplanationFeedback(false)}
+                      className="px-2.5 py-1 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-[11px] transition-colors"
+                    >
+                      👎 No
+                    </button>
+                  </div>
+                </div>
+              )}
+              {structureFeedbackSubmitted && (
+                <p className="text-[11px] text-slate-500 pt-1 border-t border-white/5">
+                  Thanks for your feedback!
+                </p>
+              )}
+              <p className="text-[10px] text-slate-600">
+                {structureExplanation.explanation.source === 'template' &&
+                  '📖 Based on climbing science templates for session structure'}
+                {structureExplanation.explanation.source === 'cached' &&
+                  '⚡ Cached explanation for a similar session structure'}
+                {structureExplanation.explanation.source === 'generated' &&
+                  '🤖 AI-generated explanation for this session structure'}
+                {structureExplanation.explanation.source === 'fallback' &&
+                  '📋 Basic explanation when templates/AI were unavailable'}
+              </p>
+            </div>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="p-4 rounded-xl bg-white/5 border border-white/5">
             <p className="text-xs text-slate-500 mb-1">Suggested Duration</p>

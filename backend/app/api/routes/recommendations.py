@@ -380,8 +380,11 @@ async def generate_recommendation(
             # Invert: frontend high (calm) -> backend low (calm)
             user_state["stress_level"] = max(1, 11 - int(stress))
 
-    # Generate recommendation
-    recommendation = engine.generate_recommendation(user_state)
+    # Generate recommendation (pass user_id so ACWR and personalization layers can be used)
+    recommendation = engine.generate_recommendation(
+        user_state,
+        user_id=current_user["id"],
+    )
 
     # Add personalized reasoning to structured_plan blocks using LLM
     # This runs in parallel for warmup/main/cooldown to minimize latency
