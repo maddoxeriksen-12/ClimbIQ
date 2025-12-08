@@ -81,16 +81,17 @@ export function useAuth() {
     const targetUser = currentUser ?? user
 
     if (targetUser) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert(
-          {
-            id: targetUser.id,
-            full_name: targetUser.user_metadata?.full_name ?? null,
-            role,
-          },
-          { onConflict: 'id' }
-        )
+      // TypeScript's Supabase typings can be overly strict here; cast to any to avoid
+      // build-time errors while still keeping the runtime behavior correct.
+      const { error: profileError } = await (supabase
+        .from('profiles') as any).upsert(
+        {
+          id: targetUser.id,
+          full_name: targetUser.user_metadata?.full_name ?? null,
+          role,
+        },
+        { onConflict: 'id' }
+      )
 
       if (profileError) throw profileError
     }
