@@ -5,6 +5,7 @@ import {
   getScenariosByIds,
   getExpertDataStats,
   getMyResponseForScenario,
+  triggerScenarioConsensus,
   getExpertResponses,
   upsertExpertResponse,
   updateScenario,
@@ -802,14 +803,24 @@ function ScenarioReviewPanel({
     
     if (error) {
       alert('Failed to save response. Please try again.')
-    } else {
+      setSaving(false)
+      return
+    }
+
+    try {
       if (scenario.status === 'pending') {
         await updateScenario(scenario.id, { status: 'in_review' })
       }
+
+      // If this submission is marked complete, trigger consensus + prior extraction on the backend
+      if (isComplete) {
+        await triggerScenarioConsensus(scenario.id)
+      }
+
       onResponseSaved()
+    } finally {
+      setSaving(false)
     }
-    
-    setSaving(false)
   }
 
   const baseline = (scenario.baseline_snapshot || {}) as Record<string, unknown>

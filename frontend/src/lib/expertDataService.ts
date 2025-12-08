@@ -477,6 +477,25 @@ export async function upsertExpertResponse(input: CreateExpertResponseInput): Pr
   }
 }
 
+export async function triggerScenarioConsensus(
+  scenarioId: string,
+): Promise<{ success: boolean; error: Error | null }> {
+  try {
+    const { api } = await import('./api')
+
+    const apiUrl = import.meta.env.VITE_API_URL
+    if (!apiUrl) {
+      throw new Error('API URL not configured. Please set VITE_API_URL environment variable.')
+    }
+
+    await api.post(`/api/v1/expert-capture/scenarios/${scenarioId}/consensus`)
+    return { success: true, error: null }
+  } catch (err) {
+    console.error('Error triggering scenario consensus:', err)
+    return { success: false, error: err as Error }
+  }
+}
+
 // ==================== Consensus ====================
 
 export async function getConsensus(scenarioId: string): Promise<{ data: ScenarioConsensus | null; error: Error | null }> {
