@@ -944,7 +944,7 @@ function ScenarioReviewPanel({
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-x-hidden overflow-y-auto lg:overflow-y-hidden">
         {/* LEFT PANEL - Scenario Info */}
         <div className="w-full lg:w-[42%] lg:min-w-[450px] lg:max-w-[650px] border-r border-white/10 overflow-y-auto bg-[#0c1210]">
           {/* Climber Profile Panel */}
