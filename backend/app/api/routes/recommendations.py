@@ -319,11 +319,84 @@ async def get_explanation(
     """
     service = get_explanation_service()
 
+    # Normalize user_state from frontend to match engine semantics so that
+    # templates and LLM see the same meaning as the recommendation engine.
+    raw_state = dict(request.user_state or {})
+    user_state: Dict[str, Any] = {k: v for k, v in raw_state.items() if v is not None}
+
+    # Hydration: hydration_feel (dehydrated/neutral/well_hydrated) -> hydration_status (1-10)
+    if "hydration_status" not in user_state and "hydration_feel" in user_state:
+        hydration_map = {
+            "dehydrated": 3,
+            "neutral": 7,
+            "well_hydrated": 9,
+        }
+        feel = user_state.get("hydration_feel")
+        if isinstance(feel, str):
+            user_state["hydration_status"] = hydration_map.get(feel, 7)
+
+    # DOMS: frontend 1 = debilitating (bad), 10 = barely noticeable (good)
+    # Explanation templates expect muscle_soreness where higher = more sore (bad).
+    if "muscle_soreness" not in user_state and "doms_severity" in user_state:
+        doms = user_state["doms_severity"]
+        if isinstance(doms, (int, float)):
+            user_state["muscle_soreness"] = max(1, 11 - int(doms))
+
+    # Energy: derive from upper_body_power & leg_springiness if available
+    if "energy_level" not in user_state:
+        ub = user_state.get("upper_body_power")
+        leg = user_state.get("leg_springiness")
+        if isinstance(ub, (int, float)) and isinstance(leg, (int, float)):
+            user_state["energy_level"] = round((ub + leg) / 2)
+
+    # Motivation: keep motivation and motivation_level in sync
+    if "motivation" in user_state and "motivation_level" not in user_state:
+        user_state["motivation_level"] = user_state["motivation"]
+    elif "motivation_level" in user_state and "motivation" not in user_state:
+        user_state["motivation"] = user_state["motivation_level"]
+
+    # Finger health: map finger_tendon_health into injury_severity proxy
+    if "injury_severity" not in user_state and "finger_tendon_health" in user_state:
+        fth = user_state["finger_tendon_health"]
+        if isinstance(fth, (int, float)):
+            user_state["injury_severity"] = max(0, 10 - int(fth))
+
+    # Warmup completion: treat all explicit compliance states except "failed"
+    # as a completed warmup so we don't overstate "skipped warmup".
+    if "warmup_completed" not in user_state and "warmup_compliance" in user_state:
+        compliance = user_state["warmup_compliance"]
+        if isinstance(compliance, str) and compliance in ("exact", "skipped", "modified_pain", "own_routine"):
+            user_state["warmup_completed"] = True
+
+        # Also soften wording passed to the explanation LLM/templates so "skipped"
+        # is not interpreted as doing no warmup at all.
+        if compliance == "skipped":
+            user_state["warmup_compliance"] = "completed_warmup_with_minor_skips"
+
+    # Skin condition: map string to numeric scale for templates if present
+    if "skin_condition" in user_state and isinstance(user_state["skin_condition"], str):
+        skin_map = {
+            "fresh": 9,
+            "pink": 7,
+            "dry": 6,
+            "sweaty": 5,
+            "split": 3,
+            "worn": 2,
+        }
+        user_state["skin_condition"] = skin_map.get(user_state["skin_condition"], 5)
+
+    # Stress: frontend 1 = anxious/stressed, 10 = zen/relaxed.
+    # Explanation templates expect higher stress_level = more stressed.
+    if "stress_level" in user_state:
+        stress = user_state["stress_level"]
+        if isinstance(stress, (int, float)):
+            user_state["stress_level"] = max(1, 11 - int(stress))
+
     explanation = await service.get_explanation(
         recommendation_type=request.recommendation_type,
         target_element=request.target_element,
         recommendation_message=request.recommendation_message,
-        user_state=request.user_state,
+        user_state=user_state,
         key_factors=request.key_factors or [],
     )
 
