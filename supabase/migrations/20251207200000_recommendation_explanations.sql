@@ -252,9 +252,10 @@ ON recommendation_explanations FOR ALL
 TO authenticated
 USING (
     EXISTS (
-        SELECT 1 FROM user_profiles
-        WHERE user_profiles.id = auth.uid()
-        AND user_profiles.is_coach = TRUE
+        SELECT 1
+        FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.is_coach = TRUE
     )
 );
 

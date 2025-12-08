@@ -35,9 +35,10 @@ export interface RecommendationResponse {
   }
   structured_plan?: {
     warmup: Array<{
-      phase: string
+      phase?: string
       title: string
       duration_min?: number
+      intensity_score?: number
       focus?: string
       exercises: Array<{
         name: string
@@ -50,9 +51,10 @@ export interface RecommendationResponse {
       }>
     }>
     main: Array<{
-      phase: string
+      phase?: string
       title: string
       duration_min?: number
+      intensity_score?: number
       focus?: string
       exercises: Array<{
         name: string
@@ -65,9 +67,10 @@ export interface RecommendationResponse {
       }>
     }>
     cooldown: Array<{
-      phase: string
+      phase?: string
       title: string
       duration_min?: number
+      intensity_score?: number
       focus?: string
       exercises: Array<{
         name: string
@@ -79,6 +82,11 @@ export interface RecommendationResponse {
         notes?: string
       }>
     }>
+    component_sources?: {
+      warmup: 'expert' | 'scaffold'
+      main: 'expert' | 'scaffold'
+      cooldown: 'expert' | 'scaffold'
+    }
   }
 }
 

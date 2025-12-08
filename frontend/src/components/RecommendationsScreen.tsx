@@ -383,9 +383,22 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
             {/* Warmup Outline */}
             {rawResponse.structured_plan.warmup.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">
-                  Warmup Outline
-                </p>
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Warmup Outline
+                  </p>
+                  {rawResponse.structured_plan.component_sources?.warmup === 'expert' ? (
+                    <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      Expert-informed
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-slate-500" />
+                      General template
+                    </span>
+                  )}
+                </div>
                 <div className="space-y-3">
                   {rawResponse.structured_plan.warmup.map((block, i) => (
                     <div key={`wu-${i}`} className="p-3 rounded-xl bg-white/5 border border-white/10">
@@ -415,9 +428,22 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
             {/* Main Session Outline */}
             {rawResponse.structured_plan.main.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">
-                  Main Session Structure
-                </p>
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Main Session Structure
+                  </p>
+                  {rawResponse.structured_plan.component_sources?.main === 'expert' ? (
+                    <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      Expert-informed
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-slate-500" />
+                      General template
+                    </span>
+                  )}
+                </div>
                 <div className="space-y-3">
                   {rawResponse.structured_plan.main.map((block, i) => (
                     <div key={`main-${i}`} className="p-3 rounded-xl bg-white/5 border border-white/10">
@@ -451,9 +477,22 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
             {/* Cooldown Outline */}
             {rawResponse.structured_plan.cooldown.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">
-                  Cooldown
-                </p>
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Cooldown
+                  </p>
+                  {rawResponse.structured_plan.component_sources?.cooldown === 'expert' ? (
+                    <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      Expert-informed
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-slate-500" />
+                      General template
+                    </span>
+                  )}
+                </div>
                 <div className="space-y-3">
                   {rawResponse.structured_plan.cooldown.map((block, i) => (
                     <div key={`cd-${i}`} className="p-3 rounded-xl bg-white/5 border border-white/10">

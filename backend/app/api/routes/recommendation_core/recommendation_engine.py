@@ -24,6 +24,7 @@ class RecommendationEngine:
         self.supabase = supabase
         self._priors_cache: Dict[str, Dict] = {}
         self._rules_cache: List[Dict] = []
+        self._components_cache: List[Dict] = []
         self._cache_timestamp: Optional[datetime] = None
         self._cache_ttl_seconds = 300  # 5 minute cache
     
@@ -84,16 +85,30 @@ class RecommendationEngine:
         except Exception as e:
             print(f"[ENGINE] Error loading rules: {e}")
             return []
+
+    def _load_session_components(self) -> List[Dict]:
+        """Load active session structure components from database"""
+        try:
+            result = self.supabase.table("session_structure_components")\
+                .select("*")\
+                .eq("is_active", True)\
+                .order("priority", desc=True)\
+                .execute()
+            return result.data or []
+        except Exception as e:
+            print(f"[ENGINE] Error loading session components: {e}")
+            return []
     
     def _refresh_cache_if_needed(self) -> None:
         """Refresh cache if expired"""
         now = datetime.utcnow()
-        if (self._cache_timestamp is None or 
+        if (self._cache_timestamp is None or
             (now - self._cache_timestamp).total_seconds() > self._cache_ttl_seconds):
             self._priors_cache = self._load_priors()
             self._rules_cache = self._load_rules()
+            self._components_cache = self._load_session_components()
             self._cache_timestamp = now
-            print(f"[ENGINE] Cache refreshed: {len(self._priors_cache)} priors, {len(self._rules_cache)} rules")
+            print(f"[ENGINE] Cache refreshed: {len(self._priors_cache)} priors, {len(self._rules_cache)} rules, {len(self._components_cache)} components")
     
     def _evaluate_condition(self, condition: Dict, user_state: Dict) -> bool:
         """Evaluate a single condition against user state"""
@@ -139,6 +154,174 @@ class RecommendationEngine:
         else:
             # Single condition
             return self._evaluate_condition(conditions, user_state)
+
+    def _evaluate_component_condition(self, condition: Dict, user_state: Dict) -> bool:
+        """
+        Evaluate a component condition pattern against user state.
+        Component patterns use 'variable' instead of 'field'.
+        """
+        # Empty condition matches all (fallback)
+        if not condition:
+            return True
+
+        # Handle compound conditions
+        if "ALL" in condition:
+            return all(
+                self._evaluate_component_condition(c, user_state)
+                for c in condition["ALL"]
+            )
+        elif "ANY" in condition:
+            return any(
+                self._evaluate_component_condition(c, user_state)
+                for c in condition["ANY"]
+            )
+        elif "NOT" in condition:
+            return not self._evaluate_component_condition(condition["NOT"], user_state)
+
+        # Single condition with variable/op/value
+        variable = condition.get("variable")
+        op = condition.get("op")
+        value = condition.get("value")
+
+        if variable not in user_state:
+            return False
+
+        user_value = user_state[variable]
+
+        try:
+            if op == ">=":
+                return user_value >= value
+            elif op == "<=":
+                return user_value <= value
+            elif op == ">":
+                return user_value > value
+            elif op == "<":
+                return user_value < value
+            elif op == "==":
+                return user_value == value
+            elif op == "!=":
+                return user_value != value
+            elif op == "in":
+                return user_value in value
+            elif op == "contains":
+                return value in user_value
+            else:
+                return False
+        except (TypeError, ValueError):
+            return False
+
+    def _match_phase_components(
+        self, phase: str, user_state: Dict
+    ) -> List[Dict]:
+        """Find all components for a phase that match the user state"""
+        matched = []
+        for comp in self._components_cache:
+            if comp.get("phase") != phase:
+                continue
+            condition = comp.get("condition_pattern", {})
+            if self._evaluate_component_condition(condition, user_state):
+                matched.append(comp)
+        return matched
+
+    def _calculate_phase_budgets(self, planned_duration: int) -> Dict[str, int]:
+        """
+        Resource budgeting: Allocate time to phases based on total duration.
+        Prevents "Frankenstein sessions" that exceed user's available time.
+        """
+        return {
+            'warmup': min(int(planned_duration * 0.20), 20),    # Max 20% or 20 min
+            'main': int(planned_duration * 0.55),               # 55% for main work
+            'cooldown': min(int(planned_duration * 0.15), 15),  # Max 15% or 15 min
+            'hangboard': min(int(planned_duration * 0.15), 20), # Max 15% or 20 min
+            'antagonist': min(int(planned_duration * 0.10), 15),# Max 10% or 15 min
+        }
+
+    def _calculate_max_intensity(self, user_state: Dict) -> int:
+        """
+        Calculate maximum safe intensity (0-10) based on user state.
+        Low energy/high soreness = lower max intensity allowed.
+        """
+        energy = user_state.get("energy_level", 7)
+        soreness = user_state.get("muscle_soreness", 3)
+        sleep = user_state.get("sleep_quality", 7)
+
+        # Base intensity from energy
+        base = min(10, energy + 2)  # energy=5 -> max_intensity=7
+
+        # Reduce for high soreness
+        if soreness >= 7:
+            base -= 2
+        elif soreness >= 5:
+            base -= 1
+
+        # Reduce for poor sleep
+        if sleep <= 4:
+            base -= 1
+
+        return max(3, min(10, base))  # Clamp to 3-10
+
+    def _validate_composition(
+        self,
+        matched: List[Dict],
+        time_budget: int,
+        max_intensity: int
+    ) -> List[Dict]:
+        """
+        Apply conflict resolution and resource constraints.
+
+        1. Conflict groups: Only keep highest-priority component per group
+        2. Intensity: Filter out components above max_intensity
+        3. Time budget: Drop lowest-priority components if over budget
+        """
+        # Step 1: Resolve conflict groups (keep highest priority per group)
+        seen_groups: Dict[str, bool] = {}
+        conflict_resolved = []
+        for comp in sorted(matched, key=lambda c: c.get("priority", 50), reverse=True):
+            group = comp.get("conflict_group")
+            if group:
+                if group not in seen_groups:
+                    seen_groups[group] = True
+                    conflict_resolved.append(comp)
+                # else: skip - higher priority already claimed this group
+            else:
+                conflict_resolved.append(comp)
+
+        # Step 2: Filter by intensity
+        block_content = lambda c: c.get("block_content", {})
+        intensity_filtered = [
+            c for c in conflict_resolved
+            if block_content(c).get("intensity_score", 5) <= max_intensity
+        ]
+
+        # Step 3: Apply time budget (greedy by priority)
+        time_used = 0
+        budget_validated = []
+        for comp in sorted(intensity_filtered, key=lambda c: c.get("priority", 50), reverse=True):
+            duration = block_content(comp).get("duration_min", 10)
+            if time_used + duration <= time_budget:
+                budget_validated.append(comp)
+                time_used += duration
+            # else: skip - would exceed budget
+
+        return budget_validated
+
+    def _compose_phase_blocks(self, components: List[Dict]) -> List[Dict]:
+        """Compose components into phase blocks based on composition_mode"""
+        blocks: List[Dict] = []
+
+        for comp in sorted(components, key=lambda c: c.get("priority", 50), reverse=True):
+            mode = comp.get("composition_mode", "replace")
+            content = comp.get("block_content", {})
+
+            if mode == "replace":
+                blocks = [content]
+            elif mode == "prepend":
+                blocks.insert(0, content)
+            elif mode == "append":
+                blocks.append(content)
+            # 'modify' would merge properties into existing blocks (future)
+
+        return blocks
     
     def _match_rules(self, user_state: Dict) -> List[Dict]:
         """Find all rules that match the current user state"""
@@ -585,188 +768,158 @@ class RecommendationEngine:
     
     def _build_structured_plan(self, session_type: str, user_state: Dict) -> Dict[str, Any]:
         """
-        Build a rough, step-by-step session structure with warmup and main session
-        blocks. This is a heuristic scaffold used until we have enough expert
-        scenario data to learn personalized structures.
+        Build session structure by composing matching components from the database.
+        Falls back to inline scaffold templates when no components match.
+
+        Implements:
+        - Conflict group checking (only one component per conflict_group)
+        - Resource budgeting (phase time limits based on planned_duration)
+        - Intensity constraints (based on user energy/recovery state)
         """
-        primary_goal = user_state.get("primary_goal")
-        energy = user_state.get("energy_level", 6)
-        soreness = user_state.get("muscle_soreness", 3)
-        
-        warmup_blocks: List[Dict[str, Any]] = []
-        main_blocks: List[Dict[str, Any]] = []
-        cooldown_blocks: List[Dict[str, Any]] = []
+        # Add session_type to user_state for component matching
+        user_state_with_session = {**user_state, "session_type": session_type}
 
-        # --- Warmup scaffold (shared) ---
-        warmup_blocks.append({
-            "phase": "warmup",
-            "title": "General Activation",
-            "duration_min": 5 if session_type != "active_recovery" else 10,
-            "exercises": [
-                {
-                    "name": "Light cardio",
-                    "duration": "3–5 min",
-                    "notes": "Easy jog, bike, or brisk walk until slightly warm."
-                },
-                {
-                    "name": "Joint prep",
-                    "duration": "2–3 min",
-                    "notes": "Arm circles, shoulder rolls, hip circles, wrist and ankle circles."
-                },
-            ],
-        })
+        # Calculate constraints
+        planned_duration = user_state.get("planned_duration", 90)
+        phase_budgets = self._calculate_phase_budgets(planned_duration)
+        max_intensity = self._calculate_max_intensity(user_state)
 
-        warmup_blocks.append({
-            "phase": "warmup",
-            "title": "Climbing-Specific Prep",
-            "duration_min": 10,
-            "exercises": [
-                {
-                    "name": "Easy traverses",
-                    "duration": "5–7 min",
-                    "notes": "On jugs / big holds, breathing through the nose, low pump."
-                },
-                {
-                    "name": "Gradual difficulty build",
-                    "sets": 3,
-                    "reps": "1 problem per set",
-                    "notes": "VB → V0 → V1 (or equivalent); focus on smooth movement."
-                },
-            ],
-        })
+        # Track which phases used expert vs scaffold data
+        component_sources: Dict[str, str] = {}
 
-        # --- Main session scaffold based on session_type ---
-        if session_type == "active_recovery":
-            main_blocks.append({
-                "phase": "main",
-                "title": "Active Recovery Climbing",
-                "duration_min": 30,
-                "focus": "Very easy climbing or movement to promote circulation.",
-                "exercises": [
-                    {
-                        "name": "Easy traverses",
-                        "duration": "20–30 min total",
-                        "intensity": "RPE 2–3/10",
-                        "notes": "Stay on jugs and good feet, keep breathing relaxed."
-                    },
-                    {
-                        "name": "Mobility flow",
-                        "duration": "10–15 min",
-                        "notes": "Hip openers, thoracic rotations, gentle hamstring and calf stretches."
-                    },
-                ],
-            })
-        elif session_type == "volume":
-            main_blocks.append({
-                "phase": "main",
-                "title": "Volume Mileage Block",
-                "duration_min": 45,
-                "focus": "Accumulate submaximal climbs to build aerobic and technical base.",
-                "exercises": [
-                    {
-                        "name": "Continuous circuits",
-                        "sets": 3,
-                        "reps": "4–6 problems per set",
-                        "rest": "3–4 min between sets",
-                        "notes": "2–3 grades below limit; focus on efficiency and footwork."
-                    },
-                    {
-                        "name": "Downclimb drills",
-                        "sets": 2,
-                        "reps": "2–3 problems per set",
-                        "notes": "Climb up and down the same problem to extend time on wall."
-                    },
-                ],
-            })
-        elif session_type == "project":
-            main_blocks.append({
-                "phase": "main",
-                "title": "Limit Bouldering / Project Work",
-                "duration_min": 60,
-                "focus": "High-quality attempts on your hardest climbs.",
-                "exercises": [
-                    {
-                        "name": "Project attempts",
-                        "sets": 4,
-                        "reps": "2–3 quality attempts per set",
-                        "rest": "3–5 min between attempts",
-                        "notes": "Full commitment on each go; stop before form breaks down."
-                    },
-                    {
-                        "name": "Movement rehearsal",
-                        "sets": 2,
-                        "reps": "5–8 low-intensity rehearsals",
-                        "notes": "Practice crux sequences on easier angles or with bigger holds."
-                    },
-                ],
-            })
-        elif session_type == "technique":
-            main_blocks.append({
-                "phase": "main",
-                "title": "Technique Drills Block",
-                "duration_min": 45,
-                "focus": "Refine movement quality at moderate difficulty.",
-                "exercises": [
-                    {
-                        "name": "Silent feet drill",
-                        "sets": 3,
-                        "reps": "3 problems per set",
-                        "notes": "No sound when placing feet; prioritize precision over difficulty."
-                    },
-                    {
-                        "name": "Hip position drill",
-                        "sets": 2,
-                        "reps": "3–4 problems",
-                        "notes": "Keep hips close, experiment with drop-knees and flagging."
-                    },
-                ],
-            })
-        else:
-            # Generic light session scaffold
-            main_blocks.append({
-                "phase": "main",
-                "title": "General Climbing Session",
-                "duration_min": 45,
-                "focus": "Balanced mix of movement quality and moderate effort.",
-                "exercises": [
-                    {
-                        "name": "Pyramid set",
-                        "sets": 4,
-                        "reps": "1 problem per set",
-                        "notes": "Easy → moderate → near-limit → moderate; long rest before harder climbs."
-                    },
-                    {
-                        "name": "Technique finisher",
-                        "duration": "10–15 min",
-                        "notes": "Pick easy problems and exaggerate good habits: quiet feet, relaxed grip, steady breathing."
-                    },
-                ],
-            })
+        # Build each phase
+        phases = ["warmup", "main", "cooldown"]
+        result: Dict[str, List[Dict]] = {}
 
-        # --- Cooldown scaffold ---
-        cooldown_blocks.append({
-            "phase": "cooldown",
-            "title": "Cooldown & Reset",
-            "duration_min": 10,
-            "exercises": [
-                {
-                    "name": "Easy movement",
-                    "duration": "5 min",
-                    "notes": "Very easy climbing or walking to gradually bring HR down."
-                },
-                {
-                    "name": "Stretch & breathe",
-                    "duration": "5–10 min",
-                    "notes": "Focus on forearms, shoulders, hips; 4–6 slow breaths per stretch."
-                },
-            ],
-        })
+        for phase in phases:
+            # Find matching components for this phase
+            matched = self._match_phase_components(phase, user_state_with_session)
+
+            if matched:
+                # Apply validation (conflict groups, intensity, budget)
+                validated = self._validate_composition(
+                    matched,
+                    phase_budgets.get(phase, 30),
+                    max_intensity
+                )
+
+                if validated:
+                    # Compose blocks from validated components
+                    result[phase] = self._compose_phase_blocks(validated)
+                    # Track source (expert if any expert component used)
+                    if any(c.get("source_type") == "expert" for c in validated):
+                        component_sources[phase] = "expert"
+                    else:
+                        component_sources[phase] = "scaffold"
+                else:
+                    # All components filtered out, use inline fallback
+                    result[phase] = self._get_fallback_blocks(phase, session_type)
+                    component_sources[phase] = "scaffold"
+            else:
+                # No components matched, use inline fallback
+                result[phase] = self._get_fallback_blocks(phase, session_type)
+                component_sources[phase] = "scaffold"
 
         return {
-            "warmup": warmup_blocks,
-            "main": main_blocks,
-            "cooldown": cooldown_blocks,
+            "warmup": result.get("warmup", []),
+            "main": result.get("main", []),
+            "cooldown": result.get("cooldown", []),
+            "component_sources": component_sources,
         }
+
+    def _get_fallback_blocks(self, phase: str, session_type: str) -> List[Dict]:
+        """
+        Return inline fallback blocks when no database components match.
+        This is the original scaffold logic as a safety net.
+        """
+        if phase == "warmup":
+            return [
+                {
+                    "title": "General Activation",
+                    "duration_min": 5 if session_type != "active_recovery" else 10,
+                    "intensity_score": 2,
+                    "exercises": [
+                        {"name": "Light cardio", "duration": "3-5 min", "notes": "Easy jog, bike, or brisk walk"},
+                        {"name": "Joint prep", "duration": "2-3 min", "notes": "Arm circles, shoulder rolls, hip circles"},
+                    ],
+                },
+                {
+                    "title": "Climbing-Specific Prep",
+                    "duration_min": 10,
+                    "intensity_score": 3,
+                    "exercises": [
+                        {"name": "Easy traverses", "duration": "5-7 min", "notes": "On jugs, breathing through the nose"},
+                        {"name": "Gradual difficulty build", "sets": 3, "reps": "1 problem per set", "notes": "VB -> V0 -> V1"},
+                    ],
+                },
+            ]
+        elif phase == "main":
+            if session_type == "active_recovery":
+                return [{
+                    "title": "Active Recovery Climbing",
+                    "duration_min": 30,
+                    "intensity_score": 2,
+                    "focus": "Very easy climbing to promote circulation",
+                    "exercises": [
+                        {"name": "Easy traverses", "duration": "20-30 min", "intensity": "RPE 2-3"},
+                        {"name": "Mobility flow", "duration": "10-15 min"},
+                    ],
+                }]
+            elif session_type == "volume":
+                return [{
+                    "title": "Volume Mileage Block",
+                    "duration_min": 45,
+                    "intensity_score": 5,
+                    "focus": "Accumulate submaximal climbs",
+                    "exercises": [
+                        {"name": "Continuous circuits", "sets": 3, "reps": "4-6 problems", "rest": "3-4 min"},
+                        {"name": "Downclimb drills", "sets": 2, "reps": "2-3 problems"},
+                    ],
+                }]
+            elif session_type == "project":
+                return [{
+                    "title": "Limit Bouldering / Project Work",
+                    "duration_min": 60,
+                    "intensity_score": 9,
+                    "focus": "High-quality attempts on hardest climbs",
+                    "exercises": [
+                        {"name": "Project attempts", "sets": 4, "reps": "2-3 attempts", "rest": "3-5 min"},
+                        {"name": "Movement rehearsal", "sets": 2, "reps": "5-8 rehearsals"},
+                    ],
+                }]
+            elif session_type == "technique":
+                return [{
+                    "title": "Technique Drills Block",
+                    "duration_min": 45,
+                    "intensity_score": 4,
+                    "focus": "Refine movement quality",
+                    "exercises": [
+                        {"name": "Silent feet drill", "sets": 3, "reps": "3 problems"},
+                        {"name": "Hip position drill", "sets": 2, "reps": "3-4 problems"},
+                    ],
+                }]
+            else:
+                return [{
+                    "title": "General Climbing Session",
+                    "duration_min": 45,
+                    "intensity_score": 6,
+                    "focus": "Balanced movement quality and effort",
+                    "exercises": [
+                        {"name": "Pyramid set", "sets": 4, "reps": "1 problem per set"},
+                        {"name": "Technique finisher", "duration": "10-15 min"},
+                    ],
+                }]
+        elif phase == "cooldown":
+            return [{
+                "title": "Cooldown & Reset",
+                "duration_min": 10,
+                "intensity_score": 1,
+                "exercises": [
+                    {"name": "Easy movement", "duration": "5 min", "notes": "Gradually bring HR down"},
+                    {"name": "Stretch & breathe", "duration": "5-10 min", "notes": "Forearms, shoulders, hips"},
+                ],
+            }]
+        return []
     
     def get_priors_summary(self) -> Dict[str, Any]:
         """Get summary of loaded priors for debugging/display"""
