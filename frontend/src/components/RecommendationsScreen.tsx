@@ -408,6 +408,12 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
                           <span className="text-xs text-slate-400">({block.duration_min} min)</span>
                         ) : null}
                       </p>
+                      {block.reasoning && (
+                        <p className="mt-1 text-xs text-cyan-400/80 italic flex items-start gap-1.5">
+                          <span className="text-[10px] mt-0.5">💡</span>
+                          {block.reasoning}
+                        </p>
+                      )}
                       <ul className="mt-2 text-xs text-slate-300 space-y-1 list-disc list-inside">
                         {block.exercises.map((ex, j) => (
                           <li key={`wu-ex-${i}-${j}`}>
@@ -453,6 +459,12 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
                           <span className="text-xs text-slate-400">({block.duration_min} min)</span>
                         ) : null}
                       </p>
+                      {block.reasoning && (
+                        <p className="mt-1 text-xs text-fuchsia-400/80 italic flex items-start gap-1.5">
+                          <span className="text-[10px] mt-0.5">💡</span>
+                          {block.reasoning}
+                        </p>
+                      )}
                       {block.focus && (
                         <p className="mt-1 text-xs text-slate-400">{block.focus}</p>
                       )}
@@ -502,6 +514,12 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
                           <span className="text-xs text-slate-400">({block.duration_min} min)</span>
                         ) : null}
                       </p>
+                      {block.reasoning && (
+                        <p className="mt-1 text-xs text-emerald-400/80 italic flex items-start gap-1.5">
+                          <span className="text-[10px] mt-0.5">💡</span>
+                          {block.reasoning}
+                        </p>
+                      )}
                       <ul className="mt-2 text-xs text-slate-300 space-y-1 list-disc list-inside">
                         {block.exercises.map((ex, j) => (
                           <li key={`cd-ex-${i}-${j}`}>

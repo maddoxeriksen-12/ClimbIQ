@@ -40,6 +40,7 @@ export interface RecommendationResponse {
       duration_min?: number
       intensity_score?: number
       focus?: string
+      reasoning?: string // LLM-generated personalized explanation for this block
       exercises: Array<{
         name: string
         sets?: number
@@ -56,6 +57,7 @@ export interface RecommendationResponse {
       duration_min?: number
       intensity_score?: number
       focus?: string
+      reasoning?: string // LLM-generated personalized explanation for this block
       exercises: Array<{
         name: string
         sets?: number
@@ -72,6 +74,7 @@ export interface RecommendationResponse {
       duration_min?: number
       intensity_score?: number
       focus?: string
+      reasoning?: string // LLM-generated personalized explanation for this block
       exercises: Array<{
         name: string
         sets?: number
