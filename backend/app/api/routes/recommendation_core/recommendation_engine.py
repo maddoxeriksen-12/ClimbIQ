@@ -607,19 +607,26 @@ class RecommendationEngine:
         return adjusted_quality, session_type, recommendations
     
     def _determine_session_type(
-        self, 
-        adjusted_quality: float, 
+        self,
+        adjusted_quality: float,
         user_state: Dict,
         matched_rules: List[Dict]
     ) -> str:
-        """Determine recommended session type if not overridden by rules"""
-        
+        """
+        Determine recommended session type if not overridden by rules.
+
+        Incorporates:
+        - Goal-specific adjustments (outdoor_season_prep, competition_prep, etc.)
+        - Periodization awareness (taper phases get lighter recommendations)
+        - Readiness-based thresholds
+        """
+
         # Check for rule overrides first
         for rule in matched_rules:
             for action in rule.get("actions", []):
                 if action.get("type") == "override":
                     return action.get("recommendation", "light_session")
-        
+
         # Otherwise, base on predicted quality and user state.
         # We are defensive here and support both the "core" engine fields
         # and the richer survey aliases coming from the frontend.
@@ -640,29 +647,82 @@ class RecommendationEngine:
 
         # Soreness: support both "muscle_soreness" and DOMS proxy
         soreness = user_state.get("muscle_soreness", user_state.get("doms_severity", 5))
-        
-        # High quality prediction + high motivation = projecting
-        if adjusted_quality >= 7.5 and motivation >= 8 and energy >= 7:
+
+        # Finger health for safety checks
+        finger_health = user_state.get("finger_tendon_health", 8)
+
+        # Get user's primary goal for goal-specific adjustments
+        primary_goal = user_state.get("primary_goal", "")
+
+        # Check for periodization phase (taper, deload, etc.)
+        training_phase = user_state.get("training_phase", "")
+        weeks_until_trip = user_state.get("weeks_until_trip")
+
+        # === PERIODIZATION ADJUSTMENTS ===
+        # Taper phase: reduce intensity, prioritize technique and light sessions
+        is_taper_phase = (
+            training_phase in ("taper", "deload", "pre_competition") or
+            (weeks_until_trip is not None and weeks_until_trip <= 1)
+        )
+
+        if is_taper_phase:
+            # During taper, cap at technique/volume, no projecting
+            if adjusted_quality >= 6 and energy >= 6:
+                return "technique"  # Stay sharp without overloading
+            elif adjusted_quality >= 4:
+                return "light_session"
+            else:
+                return "active_recovery"
+
+        # === GOAL-SPECIFIC ADJUSTMENTS ===
+        # Outdoor season prep: slightly more aggressive toward projecting
+        # (want to peak for outdoor performance)
+        goal_project_threshold = 7.5  # Default
+        goal_volume_threshold = 7.0
+
+        if primary_goal in ("outdoor_season_prep", "outdoor_trip", "competition_prep"):
+            # Lower threshold for projecting when goal is performance-focused
+            goal_project_threshold = 7.0
+            goal_volume_threshold = 6.5
+        elif primary_goal in ("injury_recovery", "return_to_climbing"):
+            # Higher threshold for projecting when recovering
+            goal_project_threshold = 8.5
+            goal_volume_threshold = 8.0
+        elif primary_goal in ("base_building", "general_fitness"):
+            # Favor volume over projecting for base building
+            goal_project_threshold = 8.0
+            goal_volume_threshold = 6.0
+
+        # === READINESS-BASED SESSION TYPE ===
+        # Calculate readiness score for clearer threshold logic
+        readiness_score = (energy + motivation + (10 - soreness) + finger_health) / 4
+
+        # High quality prediction + high motivation + good finger health = projecting
+        if (adjusted_quality >= goal_project_threshold and
+            motivation >= 7 and
+            energy >= 6 and
+            finger_health >= 6 and
+            readiness_score >= 7.0):
             return "project"
-        
-        # High quality, lower motivation = volume/mileage
-        if adjusted_quality >= 7 and energy >= 6:
+
+        # High quality, moderate readiness = volume/mileage
+        if adjusted_quality >= goal_volume_threshold and energy >= 5:
             return "volume"
-        
+
         # Moderate quality
         if adjusted_quality >= 5.5:
             if soreness >= 6:
                 return "technique"
             return "volume"
-        
+
         # Lower quality
         if adjusted_quality >= 4:
             return "light_session"
-        
+
         # Very low quality
         if adjusted_quality >= 3:
             return "active_recovery"
-        
+
         # Extremely low
         return "rest_day"
     
