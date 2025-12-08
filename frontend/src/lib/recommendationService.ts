@@ -27,6 +27,12 @@ export interface RecommendationResponse {
   }>
   avoid: string[]
   include: string[]
+  expert_coverage?: {
+    variables_used: number
+    variables_with_expert_data: number
+    literature_only_variables: number
+    approx_expert_scenarios: number
+  }
   structured_plan?: {
     warmup: Array<{
       phase: string

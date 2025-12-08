@@ -28,6 +28,9 @@ interface SessionInsights {
     suggestedIntensity: string
     focusAreas: string[]
     avoidAreas: string[]
+    expertScenarioCount?: number
+    expertVariableCount?: number
+    literatureOnlyVariableCount?: number
   }
 }
 
@@ -68,6 +71,25 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
           setRawResponse(data)
 
           // Transform API response to UI format
+          const warmupMinutes =
+            data.structured_plan?.warmup?.reduce(
+              (sum, block) => sum + (block.duration_min ?? 0),
+              0,
+            ) ?? 0
+          const mainMinutes =
+            data.structured_plan?.main?.reduce(
+              (sum, block) => sum + (block.duration_min ?? 0),
+              0,
+            ) ?? 0
+          const cooldownMinutes =
+            data.structured_plan?.cooldown?.reduce(
+              (sum, block) => sum + (block.duration_min ?? 0),
+              0,
+            ) ?? 0
+          const totalPlanMinutes = warmupMinutes + mainMinutes + cooldownMinutes
+
+          const coverage = data.expert_coverage
+
           const transformedInsights: SessionInsights = {
             overallReadiness: Math.round(data.predicted_quality * 10), // Scale 1-10 to 1-100
             readinessLabel: data.predicted_quality >= 8 ? 'Optimal' : data.predicted_quality >= 6 ? 'Good' : 'Low',
@@ -104,11 +126,19 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
             ],
 
             sessionPlan: {
-              // Logic to derive duration/intensity from prediction if not explicit
-              suggestedDuration: data.predicted_quality > 7 ? 120 : 90, 
+              // Prefer the sum of modeled blocks; fall back to a simple heuristic
+              suggestedDuration:
+                totalPlanMinutes > 0
+                  ? totalPlanMinutes
+                  : data.predicted_quality > 7
+                    ? 120
+                    : 90,
               suggestedIntensity: data.session_type.replace(/_/g, ' ').toUpperCase(),
               focusAreas: data.include.length > 0 ? data.include : ['General Consistency'],
-              avoidAreas: data.avoid.length > 0 ? data.avoid : ['High Risk Moves']
+              avoidAreas: data.avoid.length > 0 ? data.avoid : ['High Risk Moves'],
+              expertScenarioCount: coverage?.approx_expert_scenarios,
+              expertVariableCount: coverage?.variables_with_expert_data,
+              literatureOnlyVariableCount: coverage?.literature_only_variables,
             }
           }
           setInsights(transformedInsights)
@@ -300,6 +330,30 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
             <p className="text-xl font-bold">{insights.sessionPlan.suggestedIntensity}</p>
           </div>
         </div>
+        {typeof insights.sessionPlan.expertScenarioCount === 'number' && (
+          <p className="text-[11px] text-slate-400 mb-4">
+            Built from approximately{' '}
+            <span className="font-semibold">
+              {insights.sessionPlan.expertScenarioCount} expert-reviewed scenario
+              {insights.sessionPlan.expertScenarioCount === 1 ? '' : 's'}
+            </span>{' '}
+            across{' '}
+            <span className="font-semibold">
+              {insights.sessionPlan.expertVariableCount ?? 0} modeled factors
+            </span>
+            .{' '}
+            {typeof insights.sessionPlan.literatureOnlyVariableCount === 'number' &&
+              insights.sessionPlan.literatureOnlyVariableCount > 0 && (
+                <>
+                  The remaining{' '}
+                  <span className="font-semibold">
+                    {insights.sessionPlan.literatureOnlyVariableCount}
+                  </span>{' '}
+                  are still using baseline literature until more expert data arrives.
+                </>
+              )}
+          </p>
+        )}
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <p className="text-xs text-slate-500 mb-2">Focus Areas</p>

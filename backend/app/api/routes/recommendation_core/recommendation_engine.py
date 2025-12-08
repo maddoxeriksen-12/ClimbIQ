@@ -40,14 +40,22 @@ class RecommendationEngine:
                 "confidence": data["confidence"],
                 "source": "literature_baseline",
                 "description": f"Baseline from {data.get('source', 'literature')}",
-                "effect_direction": "linear", # Default to linear
+                "effect_direction": "linear",  # Default to linear
                 "metadata": {},
             }
-
+        
         # 2. Overlay database priors (expert + updated literature)
         try:
             result = self.supabase.table("population_priors").select("*").execute()
             for row in (result.data or []):
+                # Merge metadata with explicit n_scenarios/total_judgments so the
+                # engine can report how much expert data backs each variable.
+                existing_meta = row.get("metadata", {}) or {}
+                metadata = {
+                    **existing_meta,
+                    "n_scenarios": row.get("n_scenarios", existing_meta.get("n_scenarios", 0)),
+                    "total_judgments": row.get("total_judgments", existing_meta.get("total_judgments", 0)),
+                }
                 priors[row["variable_name"]] = {
                     "mean": row["population_mean"],
                     "std": row["population_std"],
@@ -57,7 +65,7 @@ class RecommendationEngine:
                     "effect_direction": row.get("effect_direction"),
                     "category": row.get("variable_category"),
                     "description": row.get("description"),
-                    "metadata": row.get("metadata", {}),
+                    "metadata": metadata,
                 }
             return priors
         except Exception as e:
@@ -399,6 +407,32 @@ class RecommendationEngine:
         
         # Build a rough structured session plan (warmup + main + cooldown)
         structured_plan = self._build_structured_plan(session_type, user_state)
+
+        # Summarize how much expert data informed THIS recommendation
+        expert_variables = []
+        literature_only_variables = []
+        approx_expert_scenarios = 0
+        
+        for var, effect in contributions.items():
+            prior = self._priors_cache.get(var, {})
+            source = prior.get("source", "")
+            metadata = prior.get("metadata", {}) or {}
+            n_scenarios = metadata.get("n_scenarios", 0) or 0
+            
+            if n_scenarios > 0 and source in ("expert_only", "blended", "expert_judgment"):
+                expert_variables.append(var)
+                # Use max across variables as a conservative lower bound on
+                # the number of expert scenarios that informed this plan.
+                approx_expert_scenarios = max(approx_expert_scenarios, n_scenarios)
+            elif "literature" in str(source):
+                literature_only_variables.append(var)
+        
+        expert_coverage = {
+            "variables_used": len(contributions),
+            "variables_with_expert_data": len(expert_variables),
+            "literature_only_variables": len(literature_only_variables),
+            "approx_expert_scenarios": approx_expert_scenarios,
+        }
         
         return {
             "predicted_quality": round(adjusted_quality, 1),
@@ -424,6 +458,7 @@ class RecommendationEngine:
             "priors_count": len(self._priors_cache),
             "rules_count": len(self._rules_cache),
             "structured_plan": structured_plan,
+            "expert_coverage": expert_coverage,
         }
     
     def _generate_suggestions(
