@@ -17,7 +17,7 @@ import json
 import re
 import httpx
 from typing import Any, Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.core.config import settings
 from app.core.supabase import get_supabase_client
@@ -358,12 +358,19 @@ class ExplanationService:
                 json.dumps(user_state, sort_keys=True).encode()
             ).hexdigest()[:16]
 
+            # Set a reasonable TTL (e.g. 30 days) for cached explanations
+            now = datetime.utcnow()
+            expires_at = now + timedelta(days=30)
+
             result = self.supabase.table("explanation_cache").insert({
                 "cache_key": cache_key,
                 "explanation": explanation,
                 "recommendation_type": recommendation_type,
                 "key_factors": key_factors,
                 "user_state_hash": state_hash,
+                "created_at": now.isoformat(),
+                "last_accessed_at": now.isoformat(),
+                "expires_at": expires_at.isoformat(),
             }).execute()
 
             if result.data:
@@ -480,7 +487,8 @@ class ExplanationService:
                         "format": "json",
                         "options": {
                             "temperature": 0.4,
-                            "num_predict": 800,
+                            # Explanations are short; reducing num_predict lowers latency
+                            "num_predict": 400,
                         }
                     }
                 )

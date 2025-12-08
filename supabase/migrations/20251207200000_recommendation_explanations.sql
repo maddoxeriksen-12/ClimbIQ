@@ -222,6 +222,18 @@ INSERT INTO recommendation_explanations (
     'Judelson et al. (2007) - Hydration and muscular performance',
     'Dehydration reduces blood volume, impairing nutrient delivery and waste removal',
     'literature', 'high', 80
+),
+
+-- Generic warmup explanation (fallback when no specific condition triggers)
+(
+    'warmup', NULL,
+    '{}',  -- Empty condition matches all cases
+    'A proper warmup is essential before every climbing session. It gradually increases heart rate, body temperature, and blood flow to muscles and tendons. For climbing specifically, warmup primes your neuromuscular system for precise movements, increases synovial fluid in joints, and prepares tendons for load - which is critical since tendons have poor blood supply and take longer to warm than muscles.',
+    'Warmup prepares muscles, tendons, and nervous system for climbing demands.',
+    ARRAY[]::TEXT[],
+    'Bishop (2003) - Warm up I: potential mechanisms and the effects of passive warm up',
+    'Warming up increases muscle temperature, improving enzymatic reactions and nerve conduction velocity',
+    'literature', 'high', 40
 );
 
 -- Enable RLS

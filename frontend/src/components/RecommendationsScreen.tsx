@@ -148,12 +148,17 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
     }))
 
     try {
+      // Only pass target_element if it's different from the type
+      // This allows template condition matching to select the appropriate specific template
+      const derivedTarget = rec.title.toLowerCase().replace(/[^a-z]/g, '_')
+      const targetElement = derivedTarget !== rec.type ? derivedTarget : undefined
+
       const result = await getRecommendationExplanation(
         rec.type,
         rec.description,
         preSessionData,
         rawResponse.key_factors,
-        rec.title.toLowerCase().replace(/[^a-z]/g, '_')
+        targetElement
       )
 
       if (result.success) {
