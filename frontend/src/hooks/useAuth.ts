@@ -69,10 +69,31 @@ export function useAuth() {
   }
 
   const updateUserRole = async (role: UserRole) => {
+    // 1) Update auth.user metadata (used by frontend)
     const { error } = await supabase.auth.updateUser({
       data: { role }
     })
     if (error) throw error
+
+    // 2) Keep public.profiles table in sync so backend / analytics can rely on it
+    //    RLS already allows users to insert/update their own profile.
+    const currentUser = supabase.auth.getUser ? (await supabase.auth.getUser()).data.user : user
+    const targetUser = currentUser ?? user
+
+    if (targetUser) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            id: targetUser.id,
+            full_name: targetUser.user_metadata?.full_name ?? null,
+            role,
+          },
+          { onConflict: 'id' }
+        )
+
+      if (profileError) throw profileError
+    }
   }
 
   // Helper to get user role
