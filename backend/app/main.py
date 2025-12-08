@@ -30,6 +30,16 @@ except Exception as e:
     streaming_router = None
     STREAMING_AVAILABLE = False
 
+# Try to import session execution router (Layer 4)
+try:
+    from app.api.routes.session_execution import router as session_execution_router
+    logger.info("✅ Successfully imported session execution router")
+    SESSION_EXECUTION_AVAILABLE = True
+except Exception as e:
+    logger.error(f"❌ Failed to import session execution router: {e}")
+    session_execution_router = None
+    SESSION_EXECUTION_AVAILABLE = False
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -106,5 +116,15 @@ if STREAMING_AVAILABLE and streaming_router:
     logger.info("✅ Streaming recommendations router registered")
 else:
     logger.warning("⚠️ Streaming recommendations router not available")
+
+if SESSION_EXECUTION_AVAILABLE and session_execution_router:
+    app.include_router(
+      session_execution_router,
+      prefix=settings.API_V1_PREFIX,
+      tags=["Session Execution"],
+    )
+    logger.info("✅ Session execution router registered")
+else:
+    logger.warning("⚠️ Session execution router not available")
 
 

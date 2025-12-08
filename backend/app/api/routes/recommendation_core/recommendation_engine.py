@@ -1,6 +1,13 @@
 """
 ClimbIQ Recommendation Engine
 
+5-Layer Architecture Implementation:
+Layer 1: Context & Input - Gathers static profile, dynamic history, real-time state
+Layer 2: Logic Core - Constraint solver + parametric compiler (templates, modifiers, granularity)
+Layer 3: Relevance Engine - LLM-powered explanations (handled by explanation_service.py)
+Layer 4: Session Execution - Branching logic (handled by session_execution.py)
+Layer 5: Learning Loop - Bayesian updater (handled by learning_loop.py Dagster asset)
+
 Uses Bayesian priors (from literature + expert judgments) and expert rules
 to generate personalized climbing session recommendations.
 """
@@ -10,6 +17,9 @@ from datetime import datetime
 import math
 from supabase import Client
 from app.api.routes.expert_capture.prior_extractor import LITERATURE_PRIORS
+
+# Model version for tracking predictions
+MODEL_VERSION = "v2.0.0"
 
 
 class RecommendationEngine:
@@ -25,6 +35,9 @@ class RecommendationEngine:
         self._priors_cache: Dict[str, Dict] = {}
         self._rules_cache: List[Dict] = []
         self._components_cache: List[Dict] = []
+        self._templates_cache: List[Dict] = []
+        self._modifiers_cache: List[Dict] = []
+        self._variants_cache: List[Dict] = []
         self._cache_timestamp: Optional[datetime] = None
         self._cache_ttl_seconds = 300  # 5 minute cache
     
@@ -98,7 +111,137 @@ class RecommendationEngine:
         except Exception as e:
             print(f"[ENGINE] Error loading session components: {e}")
             return []
-    
+
+    def _load_templates(self) -> List[Dict]:
+        """Load active session base templates from database"""
+        try:
+            result = self.supabase.table("session_base_templates")\
+                .select("*")\
+                .eq("is_active", True)\
+                .execute()
+            return result.data or []
+        except Exception as e:
+            print(f"[ENGINE] Error loading templates: {e}")
+            return []
+
+    def _load_modifiers(self) -> List[Dict]:
+        """Load active session modifiers from database"""
+        try:
+            result = self.supabase.table("session_modifiers")\
+                .select("*")\
+                .eq("is_active", True)\
+                .order("priority", desc=True)\
+                .execute()
+            return result.data or []
+        except Exception as e:
+            print(f"[ENGINE] Error loading modifiers: {e}")
+            return []
+
+    def _load_variants(self) -> List[Dict]:
+        """Load active exercise variants from database"""
+        try:
+            result = self.supabase.table("exercise_variants")\
+                .select("*")\
+                .eq("is_active", True)\
+                .order("priority", desc=True)\
+                .execute()
+            return result.data or []
+        except Exception as e:
+            print(f"[ENGINE] Error loading exercise variants: {e}")
+            return []
+
+    def _get_user_acwr(self, user_id: str) -> Dict[str, Any]:
+        """
+        Fetch ACWR (Acute:Chronic Workload Ratio) from materialized view.
+        Layer 1: Dynamic history sensor.
+        """
+        try:
+            result = self.supabase.rpc(
+                "get_user_acwr",
+                {"p_user_id": user_id}
+            ).execute()
+            if result.data and len(result.data) > 0:
+                return result.data[0]
+        except Exception as e:
+            print(f"[ENGINE] Error fetching ACWR: {e}")
+
+        # Default values if no ACWR data
+        return {
+            "acwr": 1.0,
+            "risk_zone": "optimal",
+            "acute_load": 0,
+            "chronic_load": 0,
+            "injury_probability": 0.05
+        }
+
+    def _get_user_deviation(self, user_id: str) -> Dict[str, Any]:
+        """
+        Fetch user-specific deviation metrics from model_outputs.
+        Layer 5: Personalization through learned deviations.
+        """
+        try:
+            result = self.supabase.table("model_outputs")\
+                .select("coefficients, recovery_index, variable_deviations, phase")\
+                .eq("user_id", user_id)\
+                .single()\
+                .execute()
+            if result.data:
+                return {
+                    "coefficients": result.data.get("coefficients", {}),
+                    "recovery_index": result.data.get("recovery_index", 1.0),
+                    "variable_deviations": result.data.get("variable_deviations", {}),
+                    "phase": result.data.get("phase", "cold_start"),
+                }
+        except Exception as e:
+            print(f"[ENGINE] Error fetching user deviation: {e}")
+
+        # Default for new users (cold start)
+        return {
+            "coefficients": {},
+            "recovery_index": 1.0,
+            "variable_deviations": {},
+            "phase": "cold_start",
+        }
+
+    def _get_matching_modifiers(self, user_state: Dict) -> List[Dict]:
+        """
+        Find all modifiers whose conditions match the user state.
+        Layer 2: Parametric compiler - modifier application.
+        """
+        matched = []
+        for modifier in self._modifiers_cache:
+            condition = modifier.get("condition_pattern", {})
+            if self._evaluate_component_condition(condition, user_state):
+                matched.append(modifier)
+        return sorted(matched, key=lambda m: m.get("priority", 50), reverse=True)
+
+    def _get_exercise_variant(self, generic_exercise: str, user_state: Dict) -> Optional[Dict]:
+        """
+        Find the best exercise variant for a generic exercise.
+        Layer 2: Parametric compiler - granularity injection.
+        """
+        best_match = None
+        best_priority = -1
+
+        for variant in self._variants_cache:
+            if variant.get("generic_exercise") != generic_exercise:
+                continue
+
+            condition = variant.get("condition_pattern", {})
+            priority = variant.get("priority", 50)
+
+            # Empty condition is fallback (lower priority than specific matches)
+            if not condition:
+                if best_match is None:
+                    best_match = variant
+                    best_priority = 0  # Fallback has lowest priority
+            elif self._evaluate_component_condition(condition, user_state):
+                if priority > best_priority:
+                    best_match = variant
+                    best_priority = priority
+
+        return best_match
+
     def _refresh_cache_if_needed(self) -> None:
         """Refresh cache if expired"""
         now = datetime.utcnow()
@@ -107,8 +250,13 @@ class RecommendationEngine:
             self._priors_cache = self._load_priors()
             self._rules_cache = self._load_rules()
             self._components_cache = self._load_session_components()
+            self._templates_cache = self._load_templates()
+            self._modifiers_cache = self._load_modifiers()
+            self._variants_cache = self._load_variants()
             self._cache_timestamp = now
-            print(f"[ENGINE] Cache refreshed: {len(self._priors_cache)} priors, {len(self._rules_cache)} rules, {len(self._components_cache)} components")
+            print(f"[ENGINE] Cache refreshed: {len(self._priors_cache)} priors, {len(self._rules_cache)} rules, "
+                  f"{len(self._components_cache)} components, {len(self._templates_cache)} templates, "
+                  f"{len(self._modifiers_cache)} modifiers, {len(self._variants_cache)} variants")
     
     def _evaluate_condition(self, condition: Dict, user_state: Dict) -> bool:
         """Evaluate a single condition against user state"""
@@ -518,13 +666,20 @@ class RecommendationEngine:
         # Extremely low
         return "rest_day"
     
-    def generate_recommendation(self, user_state: Dict) -> Dict[str, Any]:
+    def generate_recommendation(self, user_state: Dict, user_id: Optional[str] = None, session_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Generate a complete recommendation based on user's current state.
-        
+
+        5-Layer Architecture Flow:
+        Layer 1: Gather context (user_state + ACWR + user_deviation)
+        Layer 2: Apply constraints and compile session (templates + modifiers + granularity)
+        Layer 5: Store prediction for learning loop
+
         Args:
             user_state: Dictionary with pre-session data (sleep, energy, etc.)
-        
+            user_id: Optional user ID for fetching ACWR and deviations
+            session_id: Optional session ID for storing prediction
+
         Returns:
             Complete recommendation including:
             - predicted_quality: Predicted session quality (1-10)
@@ -535,9 +690,24 @@ class RecommendationEngine:
             - suggestions: Specific suggestions for the session
             - rule_matches: Rules that triggered
             - coefficient_breakdown: Contribution of each factor
+            - acwr: Workload ratio data
         """
         self._refresh_cache_if_needed()
-        
+
+        # Layer 1: Enrich user_state with dynamic history (ACWR)
+        acwr_data = {}
+        user_deviation = {}
+        if user_id:
+            acwr_data = self._get_user_acwr(user_id)
+            user_deviation = self._get_user_deviation(user_id)
+            # Add ACWR to user_state for constraint evaluation
+            user_state = {
+                **user_state,
+                "acwr": acwr_data.get("acwr", 1.0),
+                "acwr_risk_zone": acwr_data.get("risk_zone", "optimal"),
+                "injury_probability": acwr_data.get("injury_probability", 0.05),
+            }
+
         # Calculate base quality from priors
         base_quality, contributions = self._calculate_base_quality(user_state)
         
@@ -616,8 +786,21 @@ class RecommendationEngine:
             "literature_only_variables": len(literature_only_variables),
             "approx_expert_scenarios": approx_expert_scenarios,
         }
-        
-        return {
+
+        # Layer 2: Get matched modifiers for transparency
+        matched_modifiers = self._get_matching_modifiers(user_state)
+        modifier_info = [
+            {
+                "name": m.get("modifier_name"),
+                "type": m.get("modifier_type"),
+                "reason": m.get("reason"),
+                "priority": m.get("priority"),
+            }
+            for m in matched_modifiers
+        ]
+
+        # Build the response
+        result = {
             "predicted_quality": round(adjusted_quality, 1),
             "base_quality": round(base_quality, 1),
             "session_type": session_type,
@@ -642,8 +825,61 @@ class RecommendationEngine:
             "rules_count": len(self._rules_cache),
             "structured_plan": structured_plan,
             "expert_coverage": expert_coverage,
+            # New Layer 1 data
+            "acwr": acwr_data if acwr_data else None,
+            "user_deviation_phase": user_deviation.get("phase") if user_deviation else "cold_start",
+            # New Layer 2 data
+            "matched_modifiers": modifier_info,
+            "model_version": MODEL_VERSION,
         }
-    
+
+        # Layer 5: Store prediction for learning loop
+        if session_id and user_id:
+            self._store_prediction(
+                session_id=session_id,
+                predicted_quality=adjusted_quality,
+                session_type=session_type,
+                confidence=confidence,
+                key_factors=key_factors,
+                user_deviation_applied=user_deviation.get("phase") != "cold_start",
+            )
+
+        return result
+
+    def _store_prediction(
+        self,
+        session_id: str,
+        predicted_quality: float,
+        session_type: str,
+        confidence: str,
+        key_factors: List[Dict],
+        user_deviation_applied: bool = False,
+        predicted_fatigue: Optional[float] = None,
+    ) -> None:
+        """
+        Store prediction snapshot for later comparison in learning loop.
+        Layer 5: Enable predicted vs actual comparison.
+        """
+        try:
+            self.supabase.rpc(
+                "record_prediction",
+                {
+                    "p_session_id": session_id,
+                    "p_predicted_quality": predicted_quality,
+                    "p_predicted_fatigue": predicted_fatigue,
+                    "p_session_type": session_type,
+                    "p_confidence": confidence,
+                    "p_key_factors": key_factors,
+                    "p_model_version": MODEL_VERSION,
+                    "p_population_prior_used": True,
+                    "p_user_deviation_applied": user_deviation_applied,
+                }
+            ).execute()
+            print(f"[ENGINE] Stored prediction for session {session_id}")
+        except Exception as e:
+            # Don't fail the recommendation if prediction storage fails
+            print(f"[ENGINE] Error storing prediction: {e}")
+
     def _generate_suggestions(
         self, 
         session_type: str, 
