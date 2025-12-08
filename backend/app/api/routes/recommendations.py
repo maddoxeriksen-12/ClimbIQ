@@ -194,6 +194,14 @@ async def generate_recommendation(
 
     # Generate recommendation
     recommendation = engine.generate_recommendation(user_state)
+
+    # Post-process avoid list for obvious safe cases based on current state.
+    # Example: if finger tendons are reported as "bulletproof" (very low injury_severity),
+    # we should not generically warn against hangboarding.
+    avoid_list = recommendation.get("avoid") or []
+    injury_severity = user_state.get("injury_severity")
+    if isinstance(injury_severity, (int, float)) and injury_severity <= 2:
+        recommendation["avoid"] = [item for item in avoid_list if item != "hangboard"]
     
     # Add user context
     recommendation["user_id"] = current_user["id"]
