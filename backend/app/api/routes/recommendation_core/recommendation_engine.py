@@ -397,6 +397,9 @@ class RecommendationEngine:
         # Calculate confidence
         confidence = self._calculate_confidence(contributions, matched_rules)
         
+        # Build a rough structured session plan (warmup + main + cooldown)
+        structured_plan = self._build_structured_plan(session_type, user_state)
+        
         return {
             "predicted_quality": round(adjusted_quality, 1),
             "base_quality": round(base_quality, 1),
@@ -420,6 +423,7 @@ class RecommendationEngine:
             "generated_at": datetime.utcnow().isoformat(),
             "priors_count": len(self._priors_cache),
             "rules_count": len(self._rules_cache),
+            "structured_plan": structured_plan,
         }
     
     def _generate_suggestions(
@@ -543,6 +547,191 @@ class RecommendationEngine:
             return "medium"
         else:
             return "low"
+    
+    def _build_structured_plan(self, session_type: str, user_state: Dict) -> Dict[str, Any]:
+        """
+        Build a rough, step-by-step session structure with warmup and main session
+        blocks. This is a heuristic scaffold used until we have enough expert
+        scenario data to learn personalized structures.
+        """
+        primary_goal = user_state.get("primary_goal")
+        energy = user_state.get("energy_level", 6)
+        soreness = user_state.get("muscle_soreness", 3)
+        
+        warmup_blocks: List[Dict[str, Any]] = []
+        main_blocks: List[Dict[str, Any]] = []
+        cooldown_blocks: List[Dict[str, Any]] = []
+
+        # --- Warmup scaffold (shared) ---
+        warmup_blocks.append({
+            "phase": "warmup",
+            "title": "General Activation",
+            "duration_min": 5 if session_type != "active_recovery" else 10,
+            "exercises": [
+                {
+                    "name": "Light cardio",
+                    "duration": "3–5 min",
+                    "notes": "Easy jog, bike, or brisk walk until slightly warm."
+                },
+                {
+                    "name": "Joint prep",
+                    "duration": "2–3 min",
+                    "notes": "Arm circles, shoulder rolls, hip circles, wrist and ankle circles."
+                },
+            ],
+        })
+
+        warmup_blocks.append({
+            "phase": "warmup",
+            "title": "Climbing-Specific Prep",
+            "duration_min": 10,
+            "exercises": [
+                {
+                    "name": "Easy traverses",
+                    "duration": "5–7 min",
+                    "notes": "On jugs / big holds, breathing through the nose, low pump."
+                },
+                {
+                    "name": "Gradual difficulty build",
+                    "sets": 3,
+                    "reps": "1 problem per set",
+                    "notes": "VB → V0 → V1 (or equivalent); focus on smooth movement."
+                },
+            ],
+        })
+
+        # --- Main session scaffold based on session_type ---
+        if session_type == "active_recovery":
+            main_blocks.append({
+                "phase": "main",
+                "title": "Active Recovery Climbing",
+                "duration_min": 30,
+                "focus": "Very easy climbing or movement to promote circulation.",
+                "exercises": [
+                    {
+                        "name": "Easy traverses",
+                        "duration": "20–30 min total",
+                        "intensity": "RPE 2–3/10",
+                        "notes": "Stay on jugs and good feet, keep breathing relaxed."
+                    },
+                    {
+                        "name": "Mobility flow",
+                        "duration": "10–15 min",
+                        "notes": "Hip openers, thoracic rotations, gentle hamstring and calf stretches."
+                    },
+                ],
+            })
+        elif session_type == "volume":
+            main_blocks.append({
+                "phase": "main",
+                "title": "Volume Mileage Block",
+                "duration_min": 45,
+                "focus": "Accumulate submaximal climbs to build aerobic and technical base.",
+                "exercises": [
+                    {
+                        "name": "Continuous circuits",
+                        "sets": 3,
+                        "reps": "4–6 problems per set",
+                        "rest": "3–4 min between sets",
+                        "notes": "2–3 grades below limit; focus on efficiency and footwork."
+                    },
+                    {
+                        "name": "Downclimb drills",
+                        "sets": 2,
+                        "reps": "2–3 problems per set",
+                        "notes": "Climb up and down the same problem to extend time on wall."
+                    },
+                ],
+            })
+        elif session_type == "project":
+            main_blocks.append({
+                "phase": "main",
+                "title": "Limit Bouldering / Project Work",
+                "duration_min": 60,
+                "focus": "High-quality attempts on your hardest climbs.",
+                "exercises": [
+                    {
+                        "name": "Project attempts",
+                        "sets": 4,
+                        "reps": "2–3 quality attempts per set",
+                        "rest": "3–5 min between attempts",
+                        "notes": "Full commitment on each go; stop before form breaks down."
+                    },
+                    {
+                        "name": "Movement rehearsal",
+                        "sets": 2,
+                        "reps": "5–8 low-intensity rehearsals",
+                        "notes": "Practice crux sequences on easier angles or with bigger holds."
+                    },
+                ],
+            })
+        elif session_type == "technique":
+            main_blocks.append({
+                "phase": "main",
+                "title": "Technique Drills Block",
+                "duration_min": 45,
+                "focus": "Refine movement quality at moderate difficulty.",
+                "exercises": [
+                    {
+                        "name": "Silent feet drill",
+                        "sets": 3,
+                        "reps": "3 problems per set",
+                        "notes": "No sound when placing feet; prioritize precision over difficulty."
+                    },
+                    {
+                        "name": "Hip position drill",
+                        "sets": 2,
+                        "reps": "3–4 problems",
+                        "notes": "Keep hips close, experiment with drop-knees and flagging."
+                    },
+                ],
+            })
+        else:
+            # Generic light session scaffold
+            main_blocks.append({
+                "phase": "main",
+                "title": "General Climbing Session",
+                "duration_min": 45,
+                "focus": "Balanced mix of movement quality and moderate effort.",
+                "exercises": [
+                    {
+                        "name": "Pyramid set",
+                        "sets": 4,
+                        "reps": "1 problem per set",
+                        "notes": "Easy → moderate → near-limit → moderate; long rest before harder climbs."
+                    },
+                    {
+                        "name": "Technique finisher",
+                        "duration": "10–15 min",
+                        "notes": "Pick easy problems and exaggerate good habits: quiet feet, relaxed grip, steady breathing."
+                    },
+                ],
+            })
+
+        # --- Cooldown scaffold ---
+        cooldown_blocks.append({
+            "phase": "cooldown",
+            "title": "Cooldown & Reset",
+            "duration_min": 10,
+            "exercises": [
+                {
+                    "name": "Easy movement",
+                    "duration": "5 min",
+                    "notes": "Very easy climbing or walking to gradually bring HR down."
+                },
+                {
+                    "name": "Stretch & breathe",
+                    "duration": "5–10 min",
+                    "notes": "Focus on forearms, shoulders, hips; 4–6 slow breaths per stretch."
+                },
+            ],
+        })
+
+        return {
+            "warmup": warmup_blocks,
+            "main": main_blocks,
+            "cooldown": cooldown_blocks,
+        }
     
     def get_priors_summary(self) -> Dict[str, Any]:
         """Get summary of loaded priors for debugging/display"""

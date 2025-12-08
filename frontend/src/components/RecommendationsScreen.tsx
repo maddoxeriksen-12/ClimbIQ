@@ -322,6 +322,109 @@ export function RecommendationsScreen({ preSessionData, sessionType, onContinue 
             </div>
           </div>
         </div>
+
+        {/* Structured warmup + session blocks from model */}
+        {rawResponse?.structured_plan && (
+          <div className="mt-6 space-y-4">
+            {/* Warmup Outline */}
+            {rawResponse.structured_plan.warmup.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">
+                  Warmup Outline
+                </p>
+                <div className="space-y-3">
+                  {rawResponse.structured_plan.warmup.map((block, i) => (
+                    <div key={`wu-${i}`} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                      <p className="text-sm font-medium text-slate-200">
+                        {block.title}{' '}
+                        {block.duration_min ? (
+                          <span className="text-xs text-slate-400">({block.duration_min} min)</span>
+                        ) : null}
+                      </p>
+                      <ul className="mt-2 text-xs text-slate-300 space-y-1 list-disc list-inside">
+                        {block.exercises.map((ex, j) => (
+                          <li key={`wu-ex-${i}-${j}`}>
+                            <span className="font-medium">{ex.name}</span>
+                            {ex.duration && <> — {ex.duration}</>}
+                            {ex.sets && ex.reps && <> — {ex.sets} x {ex.reps}</>}
+                            {ex.rest && <> (rest {ex.rest})</>}
+                            {ex.notes && <>. {ex.notes}</>}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Main Session Outline */}
+            {rawResponse.structured_plan.main.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">
+                  Main Session Structure
+                </p>
+                <div className="space-y-3">
+                  {rawResponse.structured_plan.main.map((block, i) => (
+                    <div key={`main-${i}`} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                      <p className="text-sm font-medium text-slate-200">
+                        {block.title}{' '}
+                        {block.duration_min ? (
+                          <span className="text-xs text-slate-400">({block.duration_min} min)</span>
+                        ) : null}
+                      </p>
+                      {block.focus && (
+                        <p className="mt-1 text-xs text-slate-400">{block.focus}</p>
+                      )}
+                      <ul className="mt-2 text-xs text-slate-300 space-y-1 list-disc list-inside">
+                        {block.exercises.map((ex, j) => (
+                          <li key={`main-ex-${i}-${j}`}>
+                            <span className="font-medium">{ex.name}</span>
+                            {ex.duration && <> — {ex.duration}</>}
+                            {ex.sets && ex.reps && <> — {ex.sets} x {ex.reps}</>}
+                            {ex.rest && <> (rest {ex.rest})</>}
+                            {ex.intensity && <> @ {ex.intensity}</>}
+                            {ex.notes && <>. {ex.notes}</>}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Cooldown Outline */}
+            {rawResponse.structured_plan.cooldown.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">
+                  Cooldown
+                </p>
+                <div className="space-y-3">
+                  {rawResponse.structured_plan.cooldown.map((block, i) => (
+                    <div key={`cd-${i}`} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                      <p className="text-sm font-medium text-slate-200">
+                        {block.title}{' '}
+                        {block.duration_min ? (
+                          <span className="text-xs text-slate-400">({block.duration_min} min)</span>
+                        ) : null}
+                      </p>
+                      <ul className="mt-2 text-xs text-slate-300 space-y-1 list-disc list-inside">
+                        {block.exercises.map((ex, j) => (
+                          <li key={`cd-ex-${i}-${j}`}>
+                            <span className="font-medium">{ex.name}</span>
+                            {ex.duration && <> — {ex.duration}</>}
+                            {ex.notes && <>. {ex.notes}</>}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Recommendations */}

@@ -27,6 +27,53 @@ export interface RecommendationResponse {
   }>
   avoid: string[]
   include: string[]
+  structured_plan?: {
+    warmup: Array<{
+      phase: string
+      title: string
+      duration_min?: number
+      focus?: string
+      exercises: Array<{
+        name: string
+        sets?: number
+        reps?: string
+        duration?: string
+        rest?: string
+        intensity?: string
+        notes?: string
+      }>
+    }>
+    main: Array<{
+      phase: string
+      title: string
+      duration_min?: number
+      focus?: string
+      exercises: Array<{
+        name: string
+        sets?: number
+        reps?: string
+        duration?: string
+        rest?: string
+        intensity?: string
+        notes?: string
+      }>
+    }>
+    cooldown: Array<{
+      phase: string
+      title: string
+      duration_min?: number
+      focus?: string
+      exercises: Array<{
+        name: string
+        sets?: number
+        reps?: string
+        duration?: string
+        rest?: string
+        intensity?: string
+        notes?: string
+      }>
+    }>
+  }
 }
 
 export interface ExplanationFactor {
