@@ -949,7 +949,7 @@ function ScenarioReviewPanel({
         <div className="w-full lg:w-[42%] lg:min-w-[450px] lg:max-w-[650px] border-r border-white/10 overflow-y-auto bg-[#0c1210]">
           {/* Climber Profile Panel */}
           <div className="p-3 sm:p-4 border-b border-white/10">
-            <h3 className="font-semibold mb-2 flex items-center gap-2 text-xs uppercase tracking-wider text-slate-300">
+            <h3 className="font-semibold mb-2 flex items-center gap-2 text-sm uppercase tracking-wider text-slate-300">
               <span className="text-base">👤</span> Climber Profile
             </h3>
             <div className="space-y-1.5">
@@ -969,7 +969,7 @@ function ScenarioReviewPanel({
             
             {/* Psychological Profile */}
             <div className="mt-3 pt-3 border-t border-white/10">
-              <h4 className="text-[10px] text-slate-400 uppercase tracking-wider mb-2 font-medium">Psychological</h4>
+              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-medium">Psychological</h4>
               <div className="space-y-2">
                 <ProfileSlider label="Fear of Falling" value={Number(baseline.fear_of_falling) || 5} max={10} color="amber" />
                 <ProfileSlider label="Performance Anxiety" value={Number(baseline.performance_anxiety_baseline || baseline.performance_anxiety) || 5} max={10} color="red" />
@@ -1009,13 +1009,13 @@ function ScenarioReviewPanel({
 
           {/* Pre-Session State Panel */}
           <div className="p-3 sm:p-4 border-b border-white/10">
-            <h3 className="font-semibold mb-2 flex items-center gap-2 text-xs uppercase tracking-wider text-slate-300">
+            <h3 className="font-semibold mb-2 flex items-center gap-2 text-sm uppercase tracking-wider text-slate-300">
               <span className="text-base">📊</span> Pre-Session State
             </h3>
 
             {/* A. Context & Environment */}
             <div className="mb-3">
-              <h4 className="text-[10px] text-slate-400 uppercase tracking-wider mb-2 font-medium">Context & Environment</h4>
+              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-medium">Context & Environment</h4>
               <div className="space-y-1.5">
                 <ProfileItem label="Environment" value={String(preSession.session_environment || 'N/A').replace(/_/g, ' ')} />
                 <ProfileItem label="Planned Duration" value={preSession.planned_duration ? `${preSession.planned_duration} min` : 'N/A'} />
@@ -1028,7 +1028,7 @@ function ScenarioReviewPanel({
 
             {/* B. Systemic Recovery & Lifestyle */}
             <div className="mb-3 pt-3 border-t border-white/10">
-              <h4 className="text-[10px] text-slate-400 uppercase tracking-wider mb-2 font-medium">Recovery & Lifestyle</h4>
+              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-medium">Recovery & Lifestyle</h4>
               <div className="space-y-2">
                 <ProfileSlider label="Sleep Quality" value={Number(preSession.sleep_quality) || 5} max={10} color="violet" />
                 {typeof preSession.sleep_hours === 'number' && <ProfileItem label="Sleep Hours" value={String(preSession.sleep_hours)} />}
@@ -1045,7 +1045,7 @@ function ScenarioReviewPanel({
 
             {/* C. Intent & Psych */}
             <div className="mb-3 pt-3 border-t border-white/10">
-              <h4 className="text-[10px] text-slate-400 uppercase tracking-wider mb-2 font-medium">Intent & Psychology</h4>
+              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-medium">Intent & Psychology</h4>
               <div className="space-y-2">
                 <ProfileSlider label="Motivation" value={Number(preSession.motivation) || 5} max={10} color="cyan" />
                 <ProfileItem label="Primary Goal" value={String(preSession.primary_goal || 'N/A').replace(/_/g, ' ')} />
@@ -1056,7 +1056,7 @@ function ScenarioReviewPanel({
 
             {/* D. Physical Readiness */}
             <div className="pt-3 border-t border-white/10">
-              <h4 className="text-[10px] text-slate-400 uppercase tracking-wider mb-2 font-medium">Physical Readiness</h4>
+              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-medium">Physical Readiness</h4>
               <div className="space-y-2">
                 <ProfileSlider label="Energy Level" value={Number(preSession.energy_level) || 5} max={10} color="emerald" />
                 <ProfileSlider label="Upper Body Power" value={Number(preSession.upper_body_power) || 5} max={10} color="emerald" />
@@ -1138,7 +1138,7 @@ function ScenarioReviewPanel({
 
         {/* RIGHT PANEL - Expert Input Form */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto p-4 sm:p-8 space-y-6">
+          <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6 md:grid md:grid-cols-3 md:gap-4 md:space-y-0">
             
             {/* PART 1: RECOMMENDATION */}
             <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 overflow-hidden">
@@ -1432,7 +1432,7 @@ function CurrentGoalDisplay({ goal }: { goal: Record<string, unknown> | null }) 
 
 function ProfileItem({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex items-baseline gap-1 py-0.5 text-[11px]">
+    <div className="flex items-baseline gap-1 py-0.5 text-xs">
       <span className="text-slate-500 font-medium">{label}:</span>
       <span className="text-slate-100 font-semibold capitalize break-all">{value}</span>
     </div>
@@ -1446,8 +1446,8 @@ function ProfileSlider({ label, value, max, color, inverted }: { label: string; 
     : (value > 6 ? 'bg-emerald-500' : value > 3 ? 'bg-amber-500' : 'bg-red-500')
   
   return (
-    <div className="text-[11px]">
-      <div className="flex justify-between mb-0.5">
+    <div className="text-xs">
+      <div className="flex justify-between mb-1">
         <span className="text-slate-400">{label}</span>
         <span className={`text-${color}-400 font-semibold`}>{value}/{max}</span>
       </div>
