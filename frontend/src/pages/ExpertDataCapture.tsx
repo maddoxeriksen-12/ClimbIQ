@@ -975,6 +975,36 @@ function ScenarioReviewPanel({
                 <ProfileSlider label="Performance Anxiety" value={Number(baseline.performance_anxiety_baseline || baseline.performance_anxiety) || 5} max={10} color="red" />
               </div>
             </div>
+
+            {/* Compact list of any additional baseline variables not explicitly displayed above */}
+            {extraBaselineEntries.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setShowAllBaselineVars(!showAllBaselineVars)}
+                  className="flex items-center justify-between w-full text-[11px] text-slate-400 hover:text-slate-200"
+                >
+                  <span>All baseline variables ({extraBaselineEntries.length} extra)</span>
+                  <span>{showAllBaselineVars ? '▲' : '▼'}</span>
+                </button>
+                {showAllBaselineVars && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {extraBaselineEntries.map(([key, value]) => (
+                      <span
+                        key={key}
+                        className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] text-slate-200"
+                      >
+                        <span className="uppercase tracking-wider text-slate-500">{key}</span>
+                        <span className="mx-1 text-slate-500">·</span>
+                        <span className="break-all">
+                          {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Pre-Session State Panel */}
