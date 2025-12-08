@@ -388,10 +388,13 @@ class RecommendationEngine:
         """
         Calculate maximum safe intensity (0-10) based on user state.
         Low energy/high soreness = lower max intensity allowed.
+        Training phase affects caps (taper = lower ceiling).
         """
         energy = user_state.get("energy_level", 7)
         soreness = user_state.get("muscle_soreness", 3)
         sleep = user_state.get("sleep_quality", 7)
+        training_phase = user_state.get("training_phase", "")
+        weeks_until_trip = user_state.get("weeks_until_trip")
 
         # Base intensity from energy
         base = min(10, energy + 2)  # energy=5 -> max_intensity=7
@@ -405,6 +408,23 @@ class RecommendationEngine:
         # Reduce for poor sleep
         if sleep <= 4:
             base -= 1
+
+        # === TRAINING PHASE CAPS ===
+        # Taper/deload: cap intensity to preserve freshness
+        is_taper = (
+            training_phase in ("taper", "deload", "pre_competition") or
+            (weeks_until_trip is not None and weeks_until_trip <= 1)
+        )
+        if is_taper:
+            base = min(base, 5)  # Cap at moderate intensity during taper
+
+        # Base building: moderate cap, focus on volume not intensity
+        elif training_phase == "base_building":
+            base = min(base, 7)  # Allow moderate-high but not limit attempts
+
+        # Peak phase: allow maximum intensity
+        elif training_phase == "peak":
+            pass  # No cap - peak phase allows full intensity
 
         return max(3, min(10, base))  # Clamp to 3-10
 
@@ -1071,6 +1091,7 @@ class RecommendationEngine:
         - Conflict group checking (only one component per conflict_group)
         - Resource budgeting (phase time limits based on planned_duration)
         - Intensity constraints (based on user energy/recovery state)
+        - Training phase adjustments (taper = lower intensity, different focus)
         """
         # Add session_type to user_state for component matching
         user_state_with_session = {**user_state, "session_type": session_type}
@@ -1116,12 +1137,106 @@ class RecommendationEngine:
                 result[phase] = self._get_fallback_blocks(phase, session_type)
                 component_sources[phase] = "scaffold"
 
+        # Apply training phase adjustments AFTER building the plan
+        result = self._adjust_plan_for_training_phase(result, user_state, max_intensity)
+
         return {
             "warmup": result.get("warmup", []),
             "main": result.get("main", []),
             "cooldown": result.get("cooldown", []),
             "component_sources": component_sources,
         }
+
+    def _adjust_plan_for_training_phase(
+        self,
+        plan: Dict[str, List[Dict]],
+        user_state: Dict,
+        max_intensity: int
+    ) -> Dict[str, List[Dict]]:
+        """
+        Adjust the structured plan based on training phase.
+
+        - Taper: Lower intensity, focus on movement quality/sharpness
+        - Peak: Allow full intensity, focus on limit climbing
+        - Base building: Moderate intensity, focus on volume
+        """
+        training_phase = user_state.get("training_phase", "")
+        weeks_until_trip = user_state.get("weeks_until_trip")
+
+        is_taper = (
+            training_phase in ("taper", "deload", "pre_competition") or
+            (weeks_until_trip is not None and weeks_until_trip <= 1)
+        )
+
+        if is_taper:
+            # Adjust main block for taper
+            for block in plan.get("main", []):
+                # Cap intensity
+                if block.get("intensity_score", 0) > max_intensity:
+                    block["intensity_score"] = max_intensity
+
+                # Change focus to movement quality
+                block["focus"] = "movement_quality"
+                block["title"] = "Taper: Movement Quality & Sharpness"
+
+                # Reduce duration
+                if block.get("duration_min", 0) > 40:
+                    block["duration_min"] = 35
+
+                # Replace exercises with taper-appropriate ones
+                block["exercises"] = [
+                    {
+                        "name": "Movement rehearsal",
+                        "sets": 3,
+                        "reps": "3-4 problems below limit",
+                        "rest": "2-3 min",
+                        "notes": "Focus on perfect execution, not difficulty",
+                        "intensity": "RPE 6-7"
+                    },
+                    {
+                        "name": "Technique refinement",
+                        "sets": 2,
+                        "reps": "2-3 problems",
+                        "notes": "Work specific weaknesses at moderate grade",
+                    },
+                    {
+                        "name": "Light sends",
+                        "sets": 2,
+                        "reps": "1-2 problems you've done before",
+                        "notes": "Build confidence, stay fresh",
+                    },
+                ]
+
+            # Extend warmup slightly for taper (stay mobile)
+            for block in plan.get("warmup", []):
+                if block.get("duration_min", 0) < 15:
+                    block["duration_min"] = 15
+                block["notes"] = "Extended warmup - stay mobile without loading"
+
+        elif training_phase == "peak":
+            # Peak phase: maximize intensity focus
+            for block in plan.get("main", []):
+                block["focus"] = "power"
+                if "project" not in block.get("title", "").lower():
+                    block["title"] = "Peak Phase: Limit Bouldering"
+
+        elif training_phase == "base_building":
+            # Base building: volume focus
+            for block in plan.get("main", []):
+                # Cap intensity to moderate
+                if block.get("intensity_score", 0) > 6:
+                    block["intensity_score"] = 6
+                block["focus"] = "climbing"
+                if "volume" not in block.get("title", "").lower():
+                    block["title"] = "Base Building: Volume Accumulation"
+
+        # Ensure all blocks respect max_intensity
+        for phase_blocks in plan.values():
+            for block in phase_blocks:
+                if block.get("intensity_score", 0) > max_intensity:
+                    block["intensity_score"] = max_intensity
+
+        return plan
 
     def _get_fallback_blocks(self, phase: str, session_type: str) -> List[Dict]:
         """

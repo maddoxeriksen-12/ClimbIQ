@@ -163,7 +163,7 @@ class SessionSimulator:
             if not hasattr(self, '_engine'):
                 self._engine = RecommendationEngine(self.client)
 
-            recommendation = self._engine.generate_recommendation(pre_session_state)
+            recommendation = self._engine.generate_recommendation(pre_session_state, user_id=self.user_id)
             return recommendation
         except Exception as e:
             print(f"  Recommendation engine error: {e}")
