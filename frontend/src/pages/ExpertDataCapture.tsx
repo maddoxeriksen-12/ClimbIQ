@@ -758,6 +758,21 @@ function ScenarioReviewPanel({
   const [showAllBaselineVars, setShowAllBaselineVars] = useState(false)
   const [showAllPreVars, setShowAllPreVars] = useState(false)
 
+  // Detect compact landscape mode (phones turned sideways)
+  const [isLandscapeCompact, setIsLandscapeCompact] = useState(false)
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window === 'undefined') return
+      const w = window.innerWidth
+      const h = window.innerHeight
+      setIsLandscapeCompact(w > h && h < 700)
+    }
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   const handleSave = async (isComplete: boolean) => {
     setSaving(true)
     
@@ -946,6 +961,7 @@ function ScenarioReviewPanel({
 
         <div className="flex-1 flex flex-col lg:flex-row overflow-x-hidden overflow-y-auto lg:overflow-y-hidden">
         {/* LEFT PANEL - Scenario Info */}
+        {!isLandscapeCompact && (
         <div className="w-full lg:w-[42%] lg:min-w-[450px] lg:max-w-[650px] border-r border-white/10 overflow-y-auto bg-[#0c1210]">
           {/* Climber Profile Panel */}
           <div className="p-3 sm:p-4 border-b border-white/10">
@@ -1135,10 +1151,15 @@ function ScenarioReviewPanel({
             </div>
           )}
         </div>
+        )}
 
         {/* RIGHT PANEL - Expert Input Form */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6 md:grid md:grid-cols-3 md:gap-4 md:space-y-0">
+          <div className={`max-w-5xl mx-auto p-4 sm:p-6 space-y-6 ${
+            isLandscapeCompact
+              ? 'grid grid-cols-3 gap-3 space-y-0'
+              : 'md:grid md:grid-cols-3 md:gap-4 md:space-y-0'
+          }`}>
             
             {/* PART 1: RECOMMENDATION */}
             <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 overflow-hidden">
