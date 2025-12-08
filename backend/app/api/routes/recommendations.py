@@ -164,11 +164,11 @@ async def generate_recommendation(
         if isinstance(fth, (int, float)):
             user_state["injury_severity"] = max(0, 10 - int(fth))
 
-    # 6) Basic warmup completion proxy: if a personalized warmup was generated
-    #    and compliance is "exact", treat warmup as completed.
+    # 6) Basic warmup completion proxy: treat any explicit compliance other than
+    #    "failed" as a completed warmup (even if some parts were skipped).
     if "warmup_completed" not in user_state and "warmup_compliance" in user_state:
         compliance = user_state["warmup_compliance"]
-        if isinstance(compliance, str) and compliance in ("exact", "modified_pain", "own_routine"):
+        if isinstance(compliance, str) and compliance in ("exact", "skipped", "modified_pain", "own_routine"):
             user_state["warmup_completed"] = True
 
     # 7) Skin condition: map string values to numeric scale (1-10)
