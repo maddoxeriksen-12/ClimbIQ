@@ -948,11 +948,11 @@ function ScenarioReviewPanel({
         {/* LEFT PANEL - Scenario Info */}
         <div className="w-full lg:w-[42%] lg:min-w-[450px] lg:max-w-[650px] border-r border-white/10 overflow-y-auto bg-[#0c1210]">
           {/* Climber Profile Panel */}
-          <div className="p-4 sm:p-5 border-b border-white/10">
-            <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider text-slate-300">
+          <div className="p-3 sm:p-4 border-b border-white/10">
+            <h3 className="font-semibold mb-2 flex items-center gap-2 text-xs uppercase tracking-wider text-slate-300">
               <span className="text-base">👤</span> Climber Profile
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <ProfileItem label="Age" value={String(baseline.age || 'N/A')} />
               <ProfileItem label="Years Climbing" value={String(baseline.years_climbing || baseline.climbing_experience_years || 'N/A')} />
               <ProfileItem label="Boulder Grade" value={String(baseline.highest_boulder_grade || 'N/A')} />
@@ -968,9 +968,9 @@ function ScenarioReviewPanel({
             </div>
             
             {/* Psychological Profile */}
-            <div className="mt-4 pt-4 border-t border-white/10">
-              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-medium">Psychological</h4>
-              <div className="space-y-3">
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <h4 className="text-[10px] text-slate-400 uppercase tracking-wider mb-2 font-medium">Psychological</h4>
+              <div className="space-y-2">
                 <ProfileSlider label="Fear of Falling" value={Number(baseline.fear_of_falling) || 5} max={10} color="amber" />
                 <ProfileSlider label="Performance Anxiety" value={Number(baseline.performance_anxiety_baseline || baseline.performance_anxiety) || 5} max={10} color="red" />
               </div>
@@ -978,7 +978,7 @@ function ScenarioReviewPanel({
 
             {/* Compact list of any additional baseline variables not explicitly displayed above */}
             {extraBaselineEntries.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-white/10">
+              <div className="mt-3 pt-2 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => setShowAllBaselineVars(!showAllBaselineVars)}
@@ -1008,15 +1008,15 @@ function ScenarioReviewPanel({
           </div>
 
           {/* Pre-Session State Panel */}
-          <div className="p-4 sm:p-5 border-b border-white/10">
-            <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider text-slate-300">
+          <div className="p-3 sm:p-4 border-b border-white/10">
+            <h3 className="font-semibold mb-2 flex items-center gap-2 text-xs uppercase tracking-wider text-slate-300">
               <span className="text-base">📊</span> Pre-Session State
             </h3>
 
             {/* A. Context & Environment */}
-            <div className="mb-4">
-              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-medium">Context & Environment</h4>
-              <div className="space-y-2">
+            <div className="mb-3">
+              <h4 className="text-[10px] text-slate-400 uppercase tracking-wider mb-2 font-medium">Context & Environment</h4>
+              <div className="space-y-1.5">
                 <ProfileItem label="Environment" value={String(preSession.session_environment || 'N/A').replace(/_/g, ' ')} />
                 <ProfileItem label="Planned Duration" value={preSession.planned_duration ? `${preSession.planned_duration} min` : 'N/A'} />
                 <ProfileItem label="Partner Status" value={String(preSession.partner_status || 'N/A').replace(/_/g, ' ')} />
@@ -1027,9 +1027,9 @@ function ScenarioReviewPanel({
             </div>
 
             {/* B. Systemic Recovery & Lifestyle */}
-            <div className="mb-4 pt-4 border-t border-white/10">
-              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-medium">Recovery & Lifestyle</h4>
-              <div className="space-y-3">
+            <div className="mb-3 pt-3 border-t border-white/10">
+              <h4 className="text-[10px] text-slate-400 uppercase tracking-wider mb-2 font-medium">Recovery & Lifestyle</h4>
+              <div className="space-y-2">
                 <ProfileSlider label="Sleep Quality" value={Number(preSession.sleep_quality) || 5} max={10} color="violet" />
                 {typeof preSession.sleep_hours === 'number' && <ProfileItem label="Sleep Hours" value={String(preSession.sleep_hours)} />}
                 <ProfileSlider label="Mental Calmness" value={Number(preSession.stress_level) || 5} max={10} color="amber" />
@@ -1044,9 +1044,9 @@ function ScenarioReviewPanel({
             </div>
 
             {/* C. Intent & Psych */}
-            <div className="mb-4 pt-4 border-t border-white/10">
-              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-medium">Intent & Psychology</h4>
-              <div className="space-y-3">
+            <div className="mb-3 pt-3 border-t border-white/10">
+              <h4 className="text-[10px] text-slate-400 uppercase tracking-wider mb-2 font-medium">Intent & Psychology</h4>
+              <div className="space-y-2">
                 <ProfileSlider label="Motivation" value={Number(preSession.motivation) || 5} max={10} color="cyan" />
                 <ProfileItem label="Primary Goal" value={String(preSession.primary_goal || 'N/A').replace(/_/g, ' ')} />
                 <ProfileSlider label="Fall Confidence" value={Number(preSession.fear_of_falling) || 5} max={10} color="red" />
@@ -1055,9 +1055,9 @@ function ScenarioReviewPanel({
             </div>
 
             {/* D. Physical Readiness */}
-            <div className="pt-4 border-t border-white/10">
-              <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-medium">Physical Readiness</h4>
-              <div className="space-y-3">
+            <div className="pt-3 border-t border-white/10">
+              <h4 className="text-[10px] text-slate-400 uppercase tracking-wider mb-2 font-medium">Physical Readiness</h4>
+              <div className="space-y-2">
                 <ProfileSlider label="Energy Level" value={Number(preSession.energy_level) || 5} max={10} color="emerald" />
                 <ProfileSlider label="Upper Body Power" value={Number(preSession.upper_body_power) || 5} max={10} color="emerald" />
                 <ProfileSlider label="Shoulder Integrity" value={Number(preSession.shoulder_integrity) || 5} max={10} color="blue" />
@@ -1432,9 +1432,9 @@ function CurrentGoalDisplay({ goal }: { goal: Record<string, unknown> | null }) 
 
 function ProfileItem({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex justify-between items-center py-1">
-      <span className="text-slate-400 text-sm">{label}</span>
-      <span className="text-slate-100 font-medium text-sm capitalize">{value}</span>
+    <div className="flex items-baseline gap-1 py-0.5 text-[11px]">
+      <span className="text-slate-500 font-medium">{label}:</span>
+      <span className="text-slate-100 font-semibold capitalize break-all">{value}</span>
     </div>
   )
 }
@@ -1446,12 +1446,12 @@ function ProfileSlider({ label, value, max, color, inverted }: { label: string; 
     : (value > 6 ? 'bg-emerald-500' : value > 3 ? 'bg-amber-500' : 'bg-red-500')
   
   return (
-    <div>
-      <div className="flex justify-between text-sm mb-1">
+    <div className="text-[11px]">
+      <div className="flex justify-between mb-0.5">
         <span className="text-slate-400">{label}</span>
         <span className={`text-${color}-400 font-semibold`}>{value}/{max}</span>
       </div>
-      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
         <div className={`h-full ${colorClass} rounded-full transition-all`} style={{ width: `${pct}%` }} />
       </div>
     </div>
