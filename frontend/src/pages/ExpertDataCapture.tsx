@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import {
   getScenarios,
+  getScenariosByIds,
   getExpertDataStats,
   getMyResponseForScenario,
+  getExpertResponses,
   upsertExpertResponse,
   updateScenario,
   createScenario,
@@ -45,9 +47,11 @@ export function ExpertDataCapture() {
   const { user, isCoach } = useAuth()
   const [activeTab, setActiveTab] = useState<TabType>('scenarios')
   const [scenarios, setScenarios] = useState<SyntheticScenario[]>([])
+  const [peerReviewScenarios, setPeerReviewScenarios] = useState<SyntheticScenario[]>([])
   const [rules, setRules] = useState<ExpertRule[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [peerLoading, setPeerLoading] = useState(false)
   const [scenarioFilter, setScenarioFilter] = useState<ScenarioFilter>('pending')
   
   // Selected scenario for review
@@ -85,9 +89,54 @@ export function ExpertDataCapture() {
     setLoading(false)
   }, [scenarioFilter])
 
+  const loadPeerReviewScenarios = useCallback(async () => {
+    if (!expertId) {
+      setPeerReviewScenarios([])
+      return
+    }
+
+    setPeerLoading(true)
+    try {
+      const { data: responses } = await getExpertResponses({ is_complete: true })
+      if (!responses || responses.length === 0) {
+        setPeerReviewScenarios([])
+        setPeerLoading(false)
+        return
+      }
+
+      const scenarioToExperts = new Map<string, Set<string>>()
+      for (const r of responses) {
+        const set = scenarioToExperts.get(r.scenario_id) ?? new Set<string>()
+        set.add(r.expert_id)
+        scenarioToExperts.set(r.scenario_id, set)
+      }
+
+      const candidateScenarioIds: string[] = []
+      for (const [scenarioId, experts] of scenarioToExperts.entries()) {
+        if (experts.size === 1 && !experts.has(expertId)) {
+          candidateScenarioIds.push(scenarioId)
+        }
+      }
+
+      if (candidateScenarioIds.length === 0) {
+        setPeerReviewScenarios([])
+        setPeerLoading(false)
+        return
+      }
+
+      const { data: peerScenarios } = await getScenariosByIds(candidateScenarioIds)
+      setPeerReviewScenarios(peerScenarios || [])
+    } catch (err) {
+      console.error('Error loading peer review scenarios:', err)
+      setPeerReviewScenarios([])
+    }
+    setPeerLoading(false)
+  }, [expertId])
+
   useEffect(() => {
     fetchData()
-  }, [fetchData])
+    loadPeerReviewScenarios()
+  }, [fetchData, loadPeerReviewScenarios])
 
   // Check AI status when opening options
   const handleOpenAIOptions = async () => {
@@ -298,7 +347,7 @@ export function ExpertDataCapture() {
               </div>
               
               {/* Filter Pills */}
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2 flex-wrap mb-3">
                 {(['all', 'pending', 'in_review', 'consensus_reached', 'disputed'] as ScenarioFilter[]).map((filter) => (
                   <button
                     key={filter}
@@ -312,6 +361,78 @@ export function ExpertDataCapture() {
                     {filter === 'all' ? 'All' : filter.replace('_', ' ')}
                   </button>
                 ))}
+              </div>
+
+              {/* Peer Review Section */}
+              <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🤝</span>
+                    <div>
+                      <p className="text-xs font-semibold text-amber-200 uppercase tracking-wide">
+                        Needs second coach review
+                      </p>
+                      <p className="text-[11px] text-amber-100/80">
+                        Scenarios already reviewed by one coach but not yet by you.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] text-amber-100/80">
+                    {peerLoading ? 'Loading…' : `${peerReviewScenarios.length} open`}
+                  </span>
+                </div>
+
+                {peerLoading ? (
+                  <div className="py-2 text-xs text-amber-100/80 flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full border border-amber-300 border-t-transparent animate-spin" />
+                    Looking for scenarios that need a second opinion…
+                  </div>
+                ) : peerReviewScenarios.length === 0 ? (
+                  <p className="text-[11px] text-amber-100/70">
+                    No scenarios are currently waiting for a second coach review. New ones will appear here
+                    automatically.
+                  </p>
+                ) : (
+                  <div className="mt-2 max-h-40 overflow-y-auto divide-y divide-amber-500/20 rounded-lg bg-black/10">
+                    {peerReviewScenarios.map((scenario) => (
+                      <button
+                        key={scenario.id}
+                        type="button"
+                        onClick={() => setSelectedScenario(scenario)}
+                        className={`w-full text-left px-3 py-2 text-xs hover:bg-amber-500/10 transition-colors ${
+                          selectedScenario?.id === scenario.id ? 'bg-amber-500/15' : ''
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-amber-50">
+                            {(scenario.scenario_description || 'Scenario').slice(0, 80)}
+                            {scenario.scenario_description && scenario.scenario_description.length > 80 ? '…' : ''}
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/30 text-amber-100/80 border border-amber-500/40">
+                            In review
+                          </span>
+                        </div>
+                        {scenario.edge_case_tags && scenario.edge_case_tags.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {scenario.edge_case_tags.slice(0, 3).map((tag) => (
+                              <span
+                                key={tag}
+                                className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-100/90 border border-amber-500/30"
+                              >
+                                {String(tag).replace(/_/g, ' ')}
+                              </span>
+                            ))}
+                            {scenario.edge_case_tags.length > 3 && (
+                              <span className="text-[10px] text-amber-100/70">
+                                +{scenario.edge_case_tags.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

@@ -308,6 +308,28 @@ export async function getScenarios(filters?: {
   }
 }
 
+export async function getScenariosByIds(
+  ids: string[],
+): Promise<{ data: SyntheticScenario[] | null; error: Error | null }> {
+  try {
+    if (!ids || ids.length === 0) {
+      return { data: [], error: null }
+    }
+
+    const { data, error } = await supabase
+      .from('synthetic_scenarios')
+      .select('*')
+      .in('id', ids)
+      .order('generated_at', { ascending: false })
+
+    if (error) throw error
+    return { data: data as SyntheticScenario[], error: null }
+  } catch (err) {
+    console.error('Error fetching scenarios by IDs:', err)
+    return { data: null, error: err as Error }
+  }
+}
+
 export async function getScenarioById(id: string): Promise<{ data: SyntheticScenario | null; error: Error | null }> {
   try {
     const { data, error } = await supabase
