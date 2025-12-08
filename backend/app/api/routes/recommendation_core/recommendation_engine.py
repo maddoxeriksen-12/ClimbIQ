@@ -389,10 +389,12 @@ class RecommendationEngine:
         Calculate maximum safe intensity (0-10) based on user state.
         Low energy/high soreness = lower max intensity allowed.
         Training phase affects caps (taper = lower ceiling).
+        Finger health is a hard safety cap.
         """
         energy = user_state.get("energy_level", 7)
         soreness = user_state.get("muscle_soreness", 3)
         sleep = user_state.get("sleep_quality", 7)
+        finger_health = user_state.get("finger_tendon_health", 8)
         training_phase = user_state.get("training_phase", "")
         weeks_until_trip = user_state.get("weeks_until_trip")
 
@@ -408,6 +410,15 @@ class RecommendationEngine:
         # Reduce for poor sleep
         if sleep <= 4:
             base -= 1
+
+        # === FINGER HEALTH SAFETY CAP ===
+        # This is non-negotiable - finger injuries are serious
+        if finger_health <= 3:
+            base = min(base, 4)  # Very low finger health = very low intensity
+        elif finger_health <= 5:
+            base = min(base, 6)  # Low finger health = moderate cap
+        elif finger_health <= 6:
+            base = min(base, 7)  # Slightly compromised = slight cap
 
         # === TRAINING PHASE CAPS ===
         # Taper/deload: cap intensity to preserve freshness
@@ -838,6 +849,9 @@ class RecommendationEngine:
         # Calculate confidence
         confidence = self._calculate_confidence(contributions, matched_rules)
         
+        # Calculate max intensity for transparency
+        max_intensity = self._calculate_max_intensity(user_state)
+
         # Build a rough structured session plan (warmup + main + cooldown)
         structured_plan = self._build_structured_plan(session_type, user_state)
 
@@ -884,6 +898,7 @@ class RecommendationEngine:
             "predicted_quality": round(adjusted_quality, 1),
             "base_quality": round(base_quality, 1),
             "session_type": session_type,
+            "max_intensity": max_intensity,
             "confidence": confidence,
             "key_factors": key_factors,
             "warnings": warnings,
