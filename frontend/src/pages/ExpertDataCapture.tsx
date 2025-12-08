@@ -754,6 +754,10 @@ function ScenarioReviewPanel({
   const completedParts = Object.values(partCompletion).filter(Boolean).length
   const requiredComplete = partCompletion.recommendation && partCompletion.analysis && partCompletion.summary
 
+  // Compact toggles for showing all raw snapshot variables
+  const [showAllBaselineVars, setShowAllBaselineVars] = useState(false)
+  const [showAllPreVars, setShowAllPreVars] = useState(false)
+
   const handleSave = async (isComplete: boolean) => {
     setSaving(true)
     
@@ -826,12 +830,64 @@ function ScenarioReviewPanel({
   const baseline = (scenario.baseline_snapshot || {}) as Record<string, unknown>
   const preSession = (scenario.pre_session_snapshot || {}) as Record<string, unknown>
 
+  // Known keys already displayed explicitly in the UI; everything else is shown in a compact "All variables" list.
+  const knownBaselineKeys = [
+    'age',
+    'years_climbing',
+    'climbing_experience_years',
+    'highest_boulder_grade',
+    'highest_sport_grade',
+    'sessions_per_week',
+    'training_focus',
+    'injury_history',
+    'current_goal',
+    'fear_of_falling',
+    'performance_anxiety_baseline',
+    'performance_anxiety',
+  ]
+  const knownPreSessionKeys = [
+    'session_environment',
+    'planned_duration',
+    'partner_status',
+    'crowdedness',
+    'sleep_quality',
+    'sleep_hours',
+    'stress_level',
+    'fueling_status',
+    'hydration_feel',
+    'skin_condition',
+    'finger_tendon_health',
+    'doms_severity',
+    'doms_locations',
+    'muscle_soreness',
+    'days_since_last_session',
+    'days_since_rest_day',
+    'motivation',
+    'primary_goal',
+    'fear_of_falling',
+    'performance_anxiety',
+    'energy_level',
+    'upper_body_power',
+    'shoulder_integrity',
+    'leg_springiness',
+    'finger_strength',
+    'is_outdoor',
+    'caffeine_today',
+    'alcohol_last_24h',
+    'has_pain',
+  ]
+
+  const extraBaselineEntries = (Object.entries(baseline) as [string, unknown][])
+    .filter(([key, value]) => !knownBaselineKeys.includes(key) && value !== undefined && value !== null)
+  const extraPreSessionEntries = (Object.entries(preSession) as [string, unknown][])
+    .filter(([key, value]) => !knownPreSessionKeys.includes(key) && value !== undefined && value !== null)
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-stretch justify-center p-2 sm:p-6 bg-black/70 backdrop-blur-sm">
       {/* Modal Container */}
-      <div className="w-[95%] h-[95%] max-w-[1800px] bg-[#0a0f0d] rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col">
+      <div className="w-full h-full sm:w-[95%] sm:h-[95%] max-w-[1800px] bg-[#0a0f0d] rounded-2xl sm:rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="h-20 px-10 border-b border-white/10 flex items-center justify-between bg-[#0f1312] shrink-0">
+        <div className="h-16 sm:h-20 px-4 sm:px-10 border-b border-white/10 flex items-center justify-between bg-[#0f1312] shrink-0">
           <div className="flex items-center gap-6">
             <button onClick={onClose} className="w-12 h-12 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white text-2xl transition-all">←</button>
             <div>
@@ -888,11 +944,11 @@ function ScenarioReviewPanel({
           </div>
         </div>
 
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* LEFT PANEL - Scenario Info */}
-        <div className="w-[42%] min-w-[450px] max-w-[650px] border-r border-white/10 overflow-y-auto bg-[#0c1210]">
+        <div className="w-full lg:w-[42%] lg:min-w-[450px] lg:max-w-[650px] border-r border-white/10 overflow-y-auto bg-[#0c1210]">
           {/* Climber Profile Panel */}
-          <div className="p-5 border-b border-white/10">
+          <div className="p-4 sm:p-5 border-b border-white/10">
             <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider text-slate-300">
               <span className="text-base">👤</span> Climber Profile
             </h3>
@@ -922,7 +978,7 @@ function ScenarioReviewPanel({
           </div>
 
           {/* Pre-Session State Panel */}
-          <div className="p-5 border-b border-white/10">
+          <div className="p-4 sm:p-5 border-b border-white/10">
             <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider text-slate-300">
               <span className="text-base">📊</span> Pre-Session State
             </h3>
@@ -985,11 +1041,41 @@ function ScenarioReviewPanel({
                 {Boolean(preSession.has_pain) && <span className="px-2 py-1 rounded-lg bg-red-500/20 text-red-300 text-xs font-medium">Pain</span>}
               </div>
             </div>
+
+            {/* Compact list of any additional pre-session variables not explicitly displayed above */}
+            {extraPreSessionEntries.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setShowAllPreVars(!showAllPreVars)}
+                  className="flex items-center justify-between w-full text-[11px] text-slate-400 hover:text-slate-200"
+                >
+                  <span>All pre-session variables ({extraPreSessionEntries.length} extra)</span>
+                  <span>{showAllPreVars ? '▲' : '▼'}</span>
+                </button>
+                {showAllPreVars && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {extraPreSessionEntries.map(([key, value]) => (
+                      <span
+                        key={key}
+                        className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] text-slate-200"
+                      >
+                        <span className="uppercase tracking-wider text-slate-500">{key}</span>
+                        <span className="mx-1 text-slate-500">·</span>
+                        <span className="break-all">
+                          {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* AI Suggestion Panel */}
           {scenario.ai_recommendation && (
-            <div className="p-5">
+            <div className="p-4 sm:p-5">
               <button
                 onClick={() => setShowAiSuggestion(!showAiSuggestion)}
                 className="w-full flex items-center justify-between p-3 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/15 transition-colors"
@@ -1022,7 +1108,7 @@ function ScenarioReviewPanel({
 
         {/* RIGHT PANEL - Expert Input Form */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto p-8 space-y-6">
+          <div className="max-w-4xl mx-auto p-4 sm:p-8 space-y-6">
             
             {/* PART 1: RECOMMENDATION */}
             <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 overflow-hidden">
