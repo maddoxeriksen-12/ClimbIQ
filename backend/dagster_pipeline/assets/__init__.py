@@ -5,6 +5,7 @@ from .expert_capture import (
     expert_derived_priors,
     blended_population_priors,
     updated_population_priors_table,
+    rag_knowledge_embeddings_backfill,
 )
 
 from .model_training import (
@@ -27,6 +28,7 @@ __all__ = [
     "expert_derived_priors",
     "blended_population_priors",
     "updated_population_priors_table",
+    "rag_knowledge_embeddings_backfill",
     # Model training assets
     "training_data",
     "trained_model",
