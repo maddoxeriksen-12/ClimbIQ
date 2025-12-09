@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 
 from app.core.config import settings
 from app.core.supabase import get_supabase_client
+from app.services.rag_service import get_rag_service
 
 
 GROK_API_URL = "https://api.x.ai/v1/chat/completions"
@@ -125,10 +126,20 @@ class ExplanationService:
                 **cached["explanation"]
             }
 
-        # Fall back to LLM (Ollama preferred for privacy, Grok as fallback)
+        # Build retrieval-augmented context from priors, rules, templates
+        rag = get_rag_service()
+        key_vars = [f.get("variable") for f in key_factors if f.get("variable")]
+        rag_context = rag.get_explanation_context(recommendation_type, key_vars)
+
+        # Fall back to LLM (Ollama preferred for privacy, Grok as fallback),
+        # now conditioning on retrieved context.
         llm_explanation = await self._generate_with_llm(
-            recommendation_type, target_element, recommendation_message,
-            user_state, key_factors
+            recommendation_type,
+            target_element,
+            recommendation_message,
+            user_state,
+            key_factors,
+            rag_context=rag_context,
         )
 
         if llm_explanation.get("success"):
@@ -393,7 +404,8 @@ class ExplanationService:
         target_element: Optional[str],
         recommendation_message: str,
         user_state: Dict[str, Any],
-        key_factors: List[Dict[str, Any]]
+        key_factors: List[Dict[str, Any]],
+        rag_context: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Route LLM generation to configured backend.
@@ -410,8 +422,12 @@ class ExplanationService:
         if backend == "ollama":
             # Try Ollama first
             result = await self._generate_with_ollama(
-                recommendation_type, target_element, recommendation_message,
-                safe_state, key_factors
+                recommendation_type,
+                target_element,
+                recommendation_message,
+                safe_state,
+                key_factors,
+                rag_context=rag_context,
             )
             if result.get("success"):
                 result["backend"] = "ollama"
@@ -421,8 +437,12 @@ class ExplanationService:
             if settings.GROK_API_KEY:
                 print("[ExplanationService] Ollama failed, falling back to Grok")
                 result = await self._generate_with_grok(
-                    recommendation_type, target_element, recommendation_message,
-                    safe_state, key_factors
+                    recommendation_type,
+                    target_element,
+                    recommendation_message,
+                    safe_state,
+                    key_factors,
+                    rag_context=rag_context,
                 )
                 if result.get("success"):
                     result["backend"] = "grok"
@@ -435,8 +455,12 @@ class ExplanationService:
                 return {"success": False, "error": "GROK_API_KEY not configured"}
 
             result = await self._generate_with_grok(
-                recommendation_type, target_element, recommendation_message,
-                safe_state, key_factors
+                recommendation_type,
+                target_element,
+                recommendation_message,
+                safe_state,
+                key_factors,
+                rag_context=rag_context,
             )
             if result.get("success"):
                 result["backend"] = "grok"
@@ -451,7 +475,8 @@ class ExplanationService:
         target_element: Optional[str],
         recommendation_message: str,
         user_state: Dict[str, Any],
-        key_factors: List[Dict[str, Any]]
+        key_factors: List[Dict[str, Any]],
+        rag_context: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate an explanation using self-hosted Ollama."""
         ollama_url = settings.OLLAMA_URL.rstrip("/")
@@ -468,13 +493,17 @@ class ExplanationService:
             for f in key_factors
         ]) or "No specific key factors identified."
 
-        prompt = EXPLANATION_PROMPT.format(
+        base_prompt = EXPLANATION_PROMPT.format(
             recommendation_type=recommendation_type,
             target_element=target_element or "general",
             recommendation_message=recommendation_message,
             user_state_formatted=user_state_formatted,
             key_factors_formatted=key_factors_formatted,
         )
+        if rag_context:
+            prompt = f"{base_prompt}\n\n[Retrieved Context]\n{rag_context}"
+        else:
+            prompt = base_prompt
 
         try:
             async with httpx.AsyncClient(timeout=45.0) as client:
@@ -530,7 +559,8 @@ class ExplanationService:
         target_element: Optional[str],
         recommendation_message: str,
         user_state: Dict[str, Any],
-        key_factors: List[Dict[str, Any]]
+        key_factors: List[Dict[str, Any]],
+        rag_context: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate an explanation using Grok LLM."""
         if not settings.GROK_API_KEY:
@@ -548,13 +578,17 @@ class ExplanationService:
             for f in key_factors
         ]) or "No specific key factors identified."
 
-        prompt = EXPLANATION_PROMPT.format(
+        base_prompt = EXPLANATION_PROMPT.format(
             recommendation_type=recommendation_type,
             target_element=target_element or "general",
             recommendation_message=recommendation_message,
             user_state_formatted=user_state_formatted,
             key_factors_formatted=key_factors_formatted,
         )
+        if rag_context:
+            prompt = f"{base_prompt}\n\n[Retrieved Context]\n{rag_context}"
+        else:
+            prompt = base_prompt
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:

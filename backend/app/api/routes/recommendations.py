@@ -10,6 +10,7 @@ from app.core.supabase import get_supabase_client
 from app.core.config import settings
 from app.services.recommendation_service import RecommendationService
 from app.services.explanation_service import get_explanation_service
+from app.services.rag_service import get_rag_service
 from app.api.routes.recommendation_core.recommendation_engine import RecommendationEngine
 
 
@@ -73,6 +74,14 @@ async def _generate_block_reasoning(
     block_content += f"Duration: {block_data.get('duration_min', '?')} min\n"
     block_content += f"Exercises: {exercise_summary}"
 
+    # Retrieve relevant priors/rules/templates as context for this block
+    rag = get_rag_service()
+    key_vars = list(user_state.keys())
+    rag_context = rag.get_explanation_context(
+        recommendation_type="session_structure",
+        key_variables=key_vars,
+    )
+
     prompt = BLOCK_REASONING_PROMPT.format(
         block_type=block_type,
         block_title=block_title,
@@ -80,6 +89,8 @@ async def _generate_block_reasoning(
         user_state_formatted=user_state_formatted,
         block_content=block_content,
     )
+    if rag_context:
+        prompt = f"{prompt}\n\n[Retrieved Context]\n{rag_context}"
 
     # Try Ollama first (self-hosted for privacy)
     if settings.LLM_BACKEND.lower() == "ollama" or not settings.GROK_API_KEY:

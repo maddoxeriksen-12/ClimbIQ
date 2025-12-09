@@ -12,6 +12,7 @@ from datetime import datetime
 import uuid
 
 from app.core.config import settings
+from app.services.rag_service import get_rag_service
 
 
 GROK_API_URL = "https://api.x.ai/v1/chat/completions"
@@ -108,9 +109,23 @@ async def generate_scenarios_with_grok(
     if not settings.GROK_API_KEY:
         return {"error": "GROK_API_KEY not configured", "scenarios": []}
     
-    # Build the prompt
+    # Build the base prompt
     prompt = SCENARIO_GENERATION_PROMPT.format(count=count)
-    
+    # Augment with retrieved context from existing scenarios/rules/priors
+    try:
+        rag = get_rag_service()
+        # For generation we don't know the exact variables yet, so focus on edge_case_focus tags
+        variables_of_interest = edge_case_focus or []
+        rag_context = rag.get_expert_capture_context(
+            variables_of_interest=variables_of_interest,
+            difficulty_level=difficulty_bias,
+        )
+        if rag_context:
+            prompt += f"\n\nHere is relevant context from existing expert data and priors. Ground your scenarios in these patterns and edge cases:\n{rag_context}\n"
+    except Exception:
+        # RAG is best-effort; generation should still work without it
+        pass
+
     if edge_case_focus:
         prompt += f"\n\nFocus on these edge case types: {', '.join(edge_case_focus)}"
     
