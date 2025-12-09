@@ -588,12 +588,14 @@ def population_statistics(
         if col in training_data.columns:
             values = training_data[col].dropna()
             if len(values) > 0:
+                # All values must be floats to satisfy Dagster type Dict[str, Dict[str, float]]
                 stats[col] = {
                     'mean': float(values.mean()),
                     'std': float(values.std()) if len(values) > 1 else 0.1,
                     'min': float(values.min()),
                     'max': float(values.max()),
-                    'n': int(len(values))
+                    # Cast count to float to pass type check (semantic int but represented as float)
+                    'n': float(len(values)),
                 }
     
     # Save to database (could be a separate table, using population_priors metadata for now)
