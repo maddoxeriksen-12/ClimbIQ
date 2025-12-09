@@ -77,10 +77,32 @@ async def _generate_block_reasoning(
     # Retrieve relevant priors/rules/templates as context for this block
     rag = get_rag_service()
     key_vars = list(user_state.keys())
-    rag_context = rag.get_explanation_context(
+
+    # Classic structured context (priors + rules + templates)
+    structured_context = rag.get_explanation_context(
         recommendation_type="session_structure",
         key_variables=key_vars,
     )
+
+    # Vector-based RAG context grounded in this specific block and user goal.
+    rag_vector_context = ""
+    try:
+        query_text = (
+            f"session_structure block_type={block_type}, title={block_title}, "
+            f"goal={user_goal or 'general improvement'}, "
+            f"user_state: {user_state_formatted}, "
+            f"block: {block_content}"
+        )
+        rag_vector_context = await rag.get_vector_context(
+            query_text=query_text,
+            object_types=["prior", "rule", "template", "scenario"],
+            limit=8,
+        )
+    except Exception:
+        rag_vector_context = ""
+
+    rag_context_parts = [p for p in [structured_context, rag_vector_context] if p]
+    rag_context = "\n\n".join(rag_context_parts).strip()
 
     prompt = BLOCK_REASONING_PROMPT.format(
         block_type=block_type,

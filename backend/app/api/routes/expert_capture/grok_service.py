@@ -111,17 +111,46 @@ async def generate_scenarios_with_grok(
     
     # Build the base prompt
     prompt = SCENARIO_GENERATION_PROMPT.format(count=count)
+
     # Augment with retrieved context from existing scenarios/rules/priors
     try:
         rag = get_rag_service()
+
         # For generation we don't know the exact variables yet, so focus on edge_case_focus tags
         variables_of_interest = edge_case_focus or []
-        rag_context = rag.get_expert_capture_context(
+
+        # 1) Structured expert-capture context
+        structured_context = rag.get_expert_capture_context(
             variables_of_interest=variables_of_interest,
             difficulty_level=difficulty_bias,
         )
-        if rag_context:
-            prompt += f"\n\nHere is relevant context from existing expert data and priors. Ground your scenarios in these patterns and edge cases:\n{rag_context}\n"
+
+        # 2) Vector-based RAG context over prior/rule/template/scenario embeddings
+        vector_context = ""
+        try:
+            query_parts = []
+            if edge_case_focus:
+                query_parts.append("edge_case_focus=" + ", ".join(edge_case_focus))
+            if difficulty_bias:
+                query_parts.append(f"difficulty_bias={difficulty_bias}")
+            query_text = " | ".join(query_parts) or "expert_capture scenario generation"
+
+            vector_context = await rag.get_vector_context(
+                query_text=query_text,
+                object_types=["prior", "rule", "template", "scenario"],
+                limit=8,
+            )
+        except Exception:
+            vector_context = ""
+
+        ctx_parts = [c for c in [structured_context, vector_context] if c]
+        if ctx_parts:
+            prompt += (
+                "\n\nHere is relevant context from existing expert data and priors. "
+                "Ground your scenarios in these patterns and edge cases:\n"
+                + "\n\n".join(ctx_parts)
+                + "\n"
+            )
     except Exception:
         # RAG is best-effort; generation should still work without it
         pass

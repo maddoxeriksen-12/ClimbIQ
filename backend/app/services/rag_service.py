@@ -17,6 +17,12 @@ class RAGService:
     def __init__(self, supabase=None):
         self.supabase = supabase or get_supabase_client()
 
+        # Embedding service configuration (shared with Dagster asset)
+        # Example: http://embedding-service:8000
+        self._embedding_base_url = os.getenv("EMBEDDING_API_BASE", "").rstrip("/")
+        self._embedding_path = os.getenv("EMBEDDING_API_PATH", "/v1/embeddings")
+        self._embedding_model = os.getenv("RAG_EMBEDDING_MODEL", "mxbai-embed-large")
+
     # ------------------------------------------------------------------
     # Public entrypoints
     # ------------------------------------------------------------------
@@ -106,6 +112,36 @@ class RAGService:
     # ------------------------------------------------------------------
     # Vector / semantic search (via Supabase RPC)
     # ------------------------------------------------------------------
+    def _embed_text(self, text: str) -> Optional[List[float]]:
+        """
+        Compute an embedding for the given text using the local embedding-service.
+
+        Returns None if the embedding service is not configured or fails.
+        """
+        if not self._embedding_base_url:
+            # Embedding service not configured for this backend instance
+            return None
+
+        text = (text or "").strip()
+        if not text:
+            return None
+
+        url = f"{self._embedding_base_url}{self._embedding_path}"
+        try:
+            resp = httpx.post(
+                url,
+                json={"input": text, "model": self._embedding_model},
+                timeout=10.0,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            vec = data["data"][0]["embedding"]
+            # We intentionally don't enforce dimensionality here; the pgvector
+            # table and migration handle that constraint.
+            return list(vec)
+        except Exception:
+            return None
+
     def semantic_search(
         self,
         query_embedding: Sequence[float],
@@ -132,6 +168,53 @@ class RAGService:
             return result.data or []
         except Exception:
             return []
+
+    async def get_vector_context(
+        self,
+        query_text: str,
+        object_types: Optional[Sequence[str]] = None,
+        limit: int = 8,
+    ) -> str:
+        """
+        High-level helper for "standard RAG":
+          1. Embed the query with mxbai-embed-large via embedding-service
+          2. Retrieve similar knowledge rows via Supabase RPC
+          3. Re-rank with cross-encoder (bge-reranker) if configured
+          4. Format top-k results into a text block for LLM conditioning
+        """
+        # Step 1: Embed
+        embedding = self._embed_text(query_text)
+        if not embedding:
+            return ""
+
+        # Step 2: Vector search
+        candidates = self.semantic_search(
+            query_embedding=embedding,
+            object_types=object_types,
+            limit=limit,
+        )
+        if not candidates:
+            return ""
+
+        # Step 3: Optional re-ranking
+        ranked = await self.rerank(query_text, candidates)
+        if not ranked:
+            return ""
+
+        top = ranked[:limit]
+
+        # Step 4: Format for prompt
+        lines: List[str] = ["[RAG Knowledge]"]
+        for c in top:
+            obj_type = c.get("object_type", "unknown")
+            obj_id = c.get("object_id", "")
+            sim = c.get("similarity", 0.0)
+            content = c.get("content", "")
+            lines.append(
+                f"- ({obj_type} {obj_id}, similarity={sim:.3f}) {content}"
+            )
+
+        return "\n".join(lines)
 
     # ------------------------------------------------------------------
     # Cross-encoder re-ranking

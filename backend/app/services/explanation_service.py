@@ -126,10 +126,39 @@ class ExplanationService:
                 **cached["explanation"]
             }
 
-        # Build retrieval-augmented context from priors, rules, templates
+        # Build retrieval-augmented context from priors, rules, templates, and
+        # vector-search over rag_knowledge_embeddings.
         rag = get_rag_service()
         key_vars = [f.get("variable") for f in key_factors if f.get("variable")]
-        rag_context = rag.get_explanation_context(recommendation_type, key_vars)
+
+        # "Classic" structured context (priors + rules + templates)
+        structured_context = rag.get_explanation_context(recommendation_type, key_vars)
+
+        # Vector-based RAG context (priors/rules/templates/scenarios) using
+        # mxbai-embed-large + bge-reranker, when configured.
+        rag_vector_context = ""
+        try:
+            query_text = self._build_explanation_query(
+                recommendation_type,
+                target_element,
+                recommendation_message,
+                user_state,
+                key_factors,
+            )
+            rag_vector_context = await rag.get_vector_context(
+                query_text=query_text,
+                object_types=["prior", "rule", "template", "scenario"],
+                limit=8,
+            )
+        except Exception:
+            # Vector RAG is best-effort; explanation generation should still work
+            # with just structured_context.
+            rag_vector_context = ""
+
+        rag_context_parts = [
+            part for part in [structured_context, rag_vector_context] if part
+        ]
+        rag_context = "\n\n".join(rag_context_parts).strip()
 
         # Fall back to LLM (Ollama preferred for privacy, Grok as fallback),
         # now conditioning on retrieved context.
@@ -159,6 +188,50 @@ class ExplanationService:
         return self._generate_fallback_explanation(
             recommendation_type, recommendation_message, key_factors
         )
+
+    def _build_explanation_query(
+        self,
+        recommendation_type: str,
+        target_element: Optional[str],
+        recommendation_message: str,
+        user_state: Dict[str, Any],
+        key_factors: List[Dict[str, Any]],
+    ) -> str:
+        """
+        Build a natural language query string for RAG retrieval.
+
+        This is intentionally verbose – it gives the embedding model enough
+        signal about the recommendation, user state, and key factors.
+        """
+        parts: List[str] = []
+        parts.append(f"recommendation_type: {recommendation_type}")
+        if target_element:
+            parts.append(f"target_element: {target_element}")
+        if recommendation_message:
+            parts.append(f"recommendation_message: {recommendation_message}")
+
+        # Compact user state (excluding obviously sensitive fields – those are
+        # already stripped before LLM calls, but we keep the same habit here).
+        redacted_keys = {"user_id", "session_id", "email", "name", "phone"}
+        if user_state:
+            state_items = [
+                f"{k}={v}"
+                for k, v in user_state.items()
+                if k not in redacted_keys and v is not None
+            ]
+            if state_items:
+                parts.append("user_state: " + ", ".join(state_items))
+
+        if key_factors:
+            factors_str = "; ".join(
+                f"{f.get('variable')}={f.get('value')} (impact={f.get('impact')})"
+                for f in key_factors
+                if f.get("variable")
+            )
+            if factors_str:
+                parts.append("key_factors: " + factors_str)
+
+        return " | ".join(parts)
 
     async def _load_templates(self) -> List[Dict]:
         """Load active explanation templates from database with caching."""
