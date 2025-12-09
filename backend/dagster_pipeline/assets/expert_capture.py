@@ -297,25 +297,21 @@ def rag_knowledge_embeddings_backfill(
     """
     Build text descriptions for key expert-knowledge objects and store embeddings
     in the rag_knowledge_embeddings table for semantic search.
-
+ 
     NOTE:
-      - This asset assumes an embedding model like OpenAI's text-embedding-3-large.
-      - You must configure OPENAI_API_KEY (and optionally RAG_EMBEDDING_MODEL).
+      - This asset assumes an embedding model like `mxbai-embed-large` exposed via
+        a local HTTP service (deployed on Railway or similar).
+      - Configure:
+          EMBEDDING_API_BASE  - base URL, e.g. http://embedding-service:8000
+          RAG_EMBEDDING_MODEL - model name, default 'mxbai-embed-large'
       - It can be run periodically (e.g. nightly) to refresh embeddings.
     """
     client = supabase.client
 
-    api_key = os.getenv("OPENAI_API_KEY")
-    # Default to the recommended high-quality model; you can override via env.
-    # NOTE: Ensure its output dimensionality matches the VECTOR dimension
-    # configured in the rag_knowledge_embeddings migration.
+    # Local embedding service configuration
+    base_url = os.getenv("EMBEDDING_API_BASE", "http://embedding-service:8000")
     model = os.getenv("RAG_EMBEDDING_MODEL", "mxbai-embed-large")
-
-    if not api_key:
-        raise RuntimeError(
-            "OPENAI_API_KEY must be set to run rag_knowledge_embeddings_backfill. "
-            "Set it in the Dagster environment or resource configuration."
-        )
+    embedding_path = os.getenv("EMBEDDING_API_PATH", "/v1/embeddings")
 
     def embed(text: str) -> list[float]:
         """Call the embedding API and return a 1536-dim vector."""
@@ -325,8 +321,7 @@ def rag_knowledge_embeddings_backfill(
             text = "empty"
 
         resp = httpx.post(
-            "https://api.openai.com/v1/embeddings",
-            headers={"Authorization": f"Bearer {api_key}"},
+            f"{base_url.rstrip('/')}{embedding_path}",
             json={"input": text, "model": model},
             timeout=30.0,
         )
