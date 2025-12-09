@@ -10,6 +10,8 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Any, Optional
 from datetime import datetime
+import os
+import httpx
 
 from ..resources import SupabaseResource, LiteraturePriorsResource
 
@@ -280,6 +282,179 @@ def blended_population_priors(
             "literature_only_count": source_counts.get('literature_only', 0),
             "blended_count": source_counts.get('blended', 0),
         }
+    )
+
+
+@asset(
+    group_name="expert_capture",
+    description="Backfill semantic RAG embeddings from priors, rules, templates, and scenarios into rag_knowledge_embeddings",
+    compute_kind="python",
+)
+def rag_knowledge_embeddings_backfill(
+    context: AssetExecutionContext,
+    supabase: SupabaseResource,
+) -> Output[int]:
+    """
+    Build text descriptions for key expert-knowledge objects and store embeddings
+    in the rag_knowledge_embeddings table for semantic search.
+
+    NOTE:
+      - This asset assumes an embedding model like OpenAI's text-embedding-3-large.
+      - You must configure OPENAI_API_KEY (and optionally RAG_EMBEDDING_MODEL).
+      - It can be run periodically (e.g. nightly) to refresh embeddings.
+    """
+    client = supabase.client
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    model = os.getenv("RAG_EMBEDDING_MODEL", "text-embedding-3-large")
+
+    if not api_key:
+        raise RuntimeError(
+            "OPENAI_API_KEY must be set to run rag_knowledge_embeddings_backfill. "
+            "Set it in the Dagster environment or resource configuration."
+        )
+
+    def embed(text: str) -> list[float]:
+        """Call the embedding API and return a 1536-dim vector."""
+        # Truncate overly long inputs for safety
+        text = text.strip()
+        if not text:
+            text = "empty"
+
+        resp = httpx.post(
+            "https://api.openai.com/v1/embeddings",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={"input": text, "model": model},
+            timeout=30.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        vec = data["data"][0]["embedding"]
+        if len(vec) != 1536:
+            # The migration assumes 1536 dimensions; if the model changes,
+            # adjust the VECTOR dimension in the migration accordingly.
+            raise ValueError(f"Expected 1536-dim embedding, got {len(vec)}")
+        return vec
+
+    def replace_embedding(object_type: str, object_table: str, object_id: str, content: str) -> None:
+        """Delete any existing embedding for this object and insert a new one."""
+        # Best-effort delete; ignore errors
+        try:
+            client.table("rag_knowledge_embeddings") \
+                .delete() \
+                .eq("object_type", object_type) \
+                .eq("object_table", object_table) \
+                .eq("object_id", object_id) \
+                .execute()
+        except Exception:
+            pass
+
+        vec = embed(content)
+        client.table("rag_knowledge_embeddings").insert({
+            "object_type": object_type,
+            "object_table": object_table,
+            "object_id": object_id,
+            "content": content,
+            "embedding": vec,
+        }).execute()
+
+    total = 0
+
+    # -------- Priors --------
+    try:
+        priors_res = client.table("population_priors").select("*").execute()
+        for row in priors_res.data or []:
+            vid = row.get("variable_name") or row.get("id")
+            if not vid:
+                continue
+            desc = row.get("description") or ""
+            content = (
+                f"Population prior for {row.get('variable_name')}: "
+                f"mean={row.get('population_mean')}, std={row.get('population_std')}, "
+                f"category={row.get('variable_category')}, source={row.get('source')}, "
+                f"confidence={row.get('confidence')}. {desc}"
+            )
+            replace_embedding("prior", "population_priors", str(vid), content)
+            total += 1
+    except Exception as e:
+        context.log.warning(f"Failed to backfill priors embeddings: {e}")
+
+    # -------- Rules --------
+    try:
+        rules_res = client.table("expert_rules").select(
+            "id, name, description, rule_category, priority, confidence, condition_fields"
+        ).eq("is_active", True).execute()
+        for row in rules_res.data or []:
+            rid = row.get("id")
+            if not rid:
+                continue
+            vars_str = ", ".join(row.get("condition_fields") or [])
+            content = (
+                f"Expert rule {row.get('name')}: category={row.get('rule_category')}, "
+                f"priority={row.get('priority')}, confidence={row.get('confidence')}, "
+                f"variables=[{vars_str}]. Description: {row.get('description') or ''}"
+            )
+            replace_embedding("rule", "expert_rules", str(rid), content)
+            total += 1
+    except Exception as e:
+        context.log.warning(f"Failed to backfill rules embeddings: {e}")
+
+    # -------- Explanation templates --------
+    try:
+        tmpl_res = client.table("recommendation_explanations").select(
+            "id, recommendation_type, target_element, short_explanation, "
+            "mechanism, literature_reference, confidence"
+        ).eq("is_active", True).execute()
+        for row in tmpl_res.data or []:
+            tid = row.get("id")
+            if not tid:
+                continue
+            content = (
+                f"Explanation template for {row.get('recommendation_type')} "
+                f"target={row.get('target_element')}: "
+                f"short='{row.get('short_explanation') or ''}'. "
+                f"Mechanism: {row.get('mechanism') or 'n/a'}. "
+                f"Literature: {row.get('literature_reference') or 'n/a'}. "
+                f"Confidence: {row.get('confidence') or 'medium'}."
+            )
+            replace_embedding("template", "recommendation_explanations", str(tid), content)
+            total += 1
+    except Exception as e:
+        context.log.warning(f"Failed to backfill explanation template embeddings: {e}")
+
+    # -------- Scenarios --------
+    try:
+        scen_res = client.table("synthetic_scenarios").select(
+            "id, scenario_description, edge_case_tags, difficulty_level, "
+            "baseline_snapshot, pre_session_snapshot"
+        ).execute()
+        for row in scen_res.data or []:
+            sid = row.get("id")
+            if not sid:
+                continue
+            baseline = row.get("baseline_snapshot") or {}
+            pre = row.get("pre_session_snapshot") or {}
+            tags = ", ".join(row.get("edge_case_tags") or [])
+
+            # Lightweight textual summary
+            content = (
+                f"Synthetic scenario {sid}: diff={row.get('difficulty_level')}, tags=[{tags}]. "
+                f"Description: {row.get('scenario_description') or ''}. "
+                f"Baseline: {baseline}. Pre-session: {pre}."
+            )
+            replace_embedding("scenario", "synthetic_scenarios", str(sid), content)
+            total += 1
+    except Exception as e:
+        context.log.warning(f"Failed to backfill scenario embeddings: {e}")
+
+    context.log.info(f"Backfilled embeddings for {total} knowledge objects into rag_knowledge_embeddings.")
+
+    return Output(
+        total,
+        metadata={
+            "total_embeddings_written": total,
+            "embedding_model": model,
+        },
     )
 
 
@@ -606,3 +781,5 @@ def updated_explanation_templates(
             "templates_skipped": templates_skipped,
         }
     )
+
+
