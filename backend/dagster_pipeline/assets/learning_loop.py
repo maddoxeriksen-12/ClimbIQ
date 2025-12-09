@@ -442,7 +442,7 @@ def user_fatigue_tracking(
     cutoff_28d = (datetime.utcnow() - timedelta(days=28)).isoformat()
 
     result = client.table('climbing_sessions') \
-        .select('id, user_id, started_at, actual_intensity, actual_duration, post_session_data') \
+        .select('id, user_id, started_at, actual_intensity, actual_duration_minutes, actual_duration_min, post_session_data') \
         .gte('started_at', cutoff_28d) \
         .eq('status', 'completed') \
         .order('started_at', desc=False) \
@@ -475,9 +475,14 @@ def user_fatigue_tracking(
         fatigue_deltas = []
 
         for i, session in enumerate(user_data):
-            # Calculate session load: intensity * duration
+            # Calculate session load: intensity * duration (in minutes)
             intensity = session.get('actual_intensity') or 7
-            duration = session.get('actual_duration') or 60
+            # Support both legacy actual_duration_min and newer actual_duration_minutes
+            duration = (
+                session.get('actual_duration_minutes')
+                or session.get('actual_duration_min')
+                or 60
+            )
             load = intensity * duration
 
             session_date = datetime.fromisoformat(session['started_at'].replace('Z', '+00:00'))
