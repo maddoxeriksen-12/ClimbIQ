@@ -306,7 +306,10 @@ def rag_knowledge_embeddings_backfill(
     client = supabase.client
 
     api_key = os.getenv("OPENAI_API_KEY")
-    model = os.getenv("RAG_EMBEDDING_MODEL", "text-embedding-3-large")
+    # Default to the recommended high-quality model; you can override via env.
+    # NOTE: Ensure its output dimensionality matches the VECTOR dimension
+    # configured in the rag_knowledge_embeddings migration.
+    model = os.getenv("RAG_EMBEDDING_MODEL", "mxbai-embed-large")
 
     if not api_key:
         raise RuntimeError(

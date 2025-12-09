@@ -1,4 +1,6 @@
 from typing import Any, Dict, List, Optional, Sequence, Set
+import os
+import httpx
 
 from app.core.supabase import get_supabase_client
 
@@ -130,6 +132,53 @@ class RAGService:
             return result.data or []
         except Exception:
             return []
+
+    # ------------------------------------------------------------------
+    # Cross-encoder re-ranking
+    # ------------------------------------------------------------------
+    async def rerank(
+        self,
+        query_text: str,
+        candidates: List[Dict[str, Any]],
+        text_key: str = "content",
+    ) -> List[Dict[str, Any]]:
+        """
+        Re-rank candidates using an external cross-encoder service.
+
+        The service should expose POST /rerank with JSON:
+        { "query": "...", "documents": ["doc1", "doc2", ...] }
+        and return: { "scores": [float, ...] }
+
+        Configured via env:
+          - RERANKER_URL (e.g. https://<railway-app>.up.railway.app/rerank)
+        """
+        if not candidates:
+            return []
+
+        reranker_url = os.getenv("RERANKER_URL")
+        if not reranker_url:
+            # Reranking not configured; return as-is.
+            return candidates
+
+        docs = [str(c.get(text_key, "")) for c in candidates]
+        payload = {"query": query_text, "documents": docs}
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(reranker_url, json=payload)
+                resp.raise_for_status()
+                data = resp.json()
+                scores = data.get("scores") or []
+                if len(scores) != len(candidates):
+                    return candidates
+        except Exception as e:
+            print(f"[RAGService] rerank failed: {e}")
+            return candidates
+
+        for c, s in zip(candidates, scores):
+            c["_rerank_score"] = float(s)
+
+        return sorted(candidates, key=lambda x: x.get("_rerank_score", 0.0), reverse=True)
 
     def _get_rules_for_variables(self, variables: Sequence[str]) -> List[Dict[str, Any]]:
         if not variables:
