@@ -166,3 +166,39 @@ export async function submitExplanationFeedback(
   })
   return response.data
 }
+
+// =============================================================================
+// Warmup Cards API
+// =============================================================================
+
+export interface WarmupCard {
+  id: string
+  title: string
+  icon: 'running' | 'rotate' | 'hand' | 'climber' | 'stretch' | 'shoulder'
+  category: 'activation' | 'climbing_specific'
+  duration_min: number
+  description: string
+  priority: 'high' | 'normal' | 'optional'
+}
+
+export interface WarmupCardsResponse {
+  cards: WarmupCard[]
+  total_duration_min: number
+  session_goal: string
+  component_count: number
+}
+
+export async function getWarmupCards(
+  userState: Record<string, unknown>,
+  primaryGoal?: string,
+  sessionEnvironment?: string,
+  plannedDuration?: number
+): Promise<WarmupCardsResponse> {
+  const response = await api.post('/api/v1/recommendations/warmup-cards', {
+    user_state: userState,
+    primary_goal: primaryGoal,
+    session_environment: sessionEnvironment,
+    planned_duration: plannedDuration,
+  })
+  return response.data
+}

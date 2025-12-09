@@ -695,3 +695,307 @@ async def get_explanation_templates(
         "templates": result.data or [],
         "count": len(result.data or []),
     }
+
+
+# =============================================================================
+# Warmup Cards - Personalized warmup components with RAG-generated descriptions
+# =============================================================================
+
+# Warmup component categories with their metadata
+WARMUP_COMPONENTS = [
+    {
+        "id": "cardio",
+        "title": "Cardio",
+        "icon": "running",
+        "category": "activation",
+        "base_duration_min": 3,
+        "description": "Light cardiovascular activity to raise heart rate and body temperature.",
+    },
+    {
+        "id": "joint_circles",
+        "title": "Joint Circles",
+        "icon": "rotate",
+        "category": "activation",
+        "base_duration_min": 3,
+        "description": "Controlled rotational movements to lubricate joints and increase range of motion.",
+    },
+    {
+        "id": "finger_exercises",
+        "title": "Finger Exercises",
+        "icon": "hand",
+        "category": "climbing_specific",
+        "base_duration_min": 3,
+        "description": "Progressive finger and forearm activation to prepare tendons for climbing loads.",
+    },
+    {
+        "id": "easy_climbing",
+        "title": "Easy Climbing",
+        "icon": "climber",
+        "category": "climbing_specific",
+        "base_duration_min": 10,
+        "description": "Climbing easy routes to build proprioceptive awareness and muscle coordination.",
+    },
+    {
+        "id": "dynamic_stretching",
+        "title": "Dynamic Stretching",
+        "icon": "stretch",
+        "category": "activation",
+        "base_duration_min": 3,
+        "description": "Active stretches that mimic climbing movements to prepare muscles for action.",
+    },
+    {
+        "id": "shoulder_activation",
+        "title": "Shoulder Activation",
+        "icon": "shoulder",
+        "category": "climbing_specific",
+        "base_duration_min": 3,
+        "description": "Targeted exercises to engage and stabilize the shoulder complex.",
+    },
+]
+
+
+WARMUP_CARD_PROMPT = """You are an expert climbing coach explaining why a specific warm-up component is recommended.
+
+**Component:** {component_title}
+**Component Description:** {component_base_description}
+**User's Session Goal:** {user_goal}
+**User's Current State:**
+{user_state_formatted}
+
+Generate a personalized, concise (1-2 sentence) explanation for WHY this warm-up component is particularly important for THIS climber TODAY, given their current state and goals.
+
+Focus on:
+- How their specific state (sleep, stress, soreness, etc.) makes this component important
+- How it prepares them for their specific goal (limit bouldering, volume, technique, etc.)
+- Any cautions or adjustments based on their condition
+
+Return valid JSON:
+{{"description": "Your personalized 1-2 sentence explanation", "duration_adjustment": 0, "priority": "normal"}}
+
+The duration_adjustment is in minutes (+/- from base duration).
+Priority is "high", "normal", or "optional" based on user state."""
+
+
+async def _generate_warmup_card_description(
+    component: Dict[str, Any],
+    user_state: Dict[str, Any],
+    user_goal: str,
+) -> Dict[str, Any]:
+    """
+    Generate a personalized description for a warmup card using RAG + LLM.
+    """
+    # Format user state
+    sensitive_fields = {"user_id", "session_id", "email", "name", "phone"}
+    user_state_formatted = "\n".join([
+        f"- {k}: {v}" for k, v in user_state.items()
+        if k not in sensitive_fields and v is not None
+    ])
+
+    # Get RAG context for this warmup component
+    rag = get_rag_service()
+
+    # Build query for vector search
+    query_text = (
+        f"warmup component {component['id']} {component['title']} "
+        f"for {user_goal or 'general climbing'}, "
+        f"user state: {user_state_formatted[:500]}"
+    )
+
+    # Get vector context (priors, rules, templates)
+    rag_context = ""
+    try:
+        rag_context = await rag.get_vector_context(
+            query_text=query_text,
+            object_types=["prior", "rule", "template"],
+            limit=5,
+        )
+    except Exception:
+        pass
+
+    # Get structured context for warmup-related variables
+    key_vars = [k for k in user_state.keys() if k in [
+        "sleep_quality", "stress_level", "finger_tendon_health", "motivation",
+        "doms_severity", "upper_body_power", "energy_level", "injury_severity"
+    ]]
+    structured_context = rag.get_explanation_context(
+        recommendation_type="warmup",
+        key_variables=key_vars,
+    )
+
+    # Combine contexts
+    full_context = "\n\n".join([c for c in [structured_context, rag_context] if c]).strip()
+
+    prompt = WARMUP_CARD_PROMPT.format(
+        component_title=component["title"],
+        component_base_description=component["description"],
+        user_goal=user_goal or "general climbing improvement",
+        user_state_formatted=user_state_formatted or "No specific state data provided",
+    )
+
+    if full_context:
+        prompt = f"{prompt}\n\n[Retrieved Context]\n{full_context}"
+
+    # Default response if LLM fails
+    default_response = {
+        "description": component["description"],
+        "duration_adjustment": 0,
+        "priority": "normal",
+    }
+
+    # Try Ollama first
+    if settings.LLM_BACKEND.lower() == "ollama" or not settings.GROK_API_KEY:
+        try:
+            ollama_url = settings.OLLAMA_URL.rstrip("/")
+            async with httpx.AsyncClient(timeout=12.0) as client:
+                response = await client.post(
+                    f"{ollama_url}/api/generate",
+                    json={
+                        "model": settings.OLLAMA_MODEL,
+                        "prompt": f"Respond with valid JSON only.\n\n{prompt}",
+                        "stream": False,
+                        "format": "json",
+                        "options": {"temperature": 0.4, "num_predict": 200}
+                    }
+                )
+                if response.status_code == 200:
+                    result = response.json()
+                    content = result.get("response", "")
+                    parsed = json.loads(content.strip())
+                    return {
+                        "description": parsed.get("description", component["description"]),
+                        "duration_adjustment": parsed.get("duration_adjustment", 0),
+                        "priority": parsed.get("priority", "normal"),
+                    }
+        except Exception:
+            pass
+
+    # Fallback to Grok
+    if settings.GROK_API_KEY:
+        try:
+            async with httpx.AsyncClient(timeout=12.0) as client:
+                response = await client.post(
+                    "https://api.x.ai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {settings.GROK_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": "grok-4-1-fast-reasoning",
+                        "messages": [
+                            {"role": "system", "content": "Respond with valid JSON only."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.4,
+                        "max_tokens": 200,
+                    }
+                )
+                if response.status_code == 200:
+                    result = response.json()
+                    content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    if "```json" in content:
+                        content = content.split("```json")[1].split("```")[0]
+                    elif "```" in content:
+                        content = content.split("```")[1].split("```")[0]
+                    parsed = json.loads(content.strip())
+                    return {
+                        "description": parsed.get("description", component["description"]),
+                        "duration_adjustment": parsed.get("duration_adjustment", 0),
+                        "priority": parsed.get("priority", "normal"),
+                    }
+        except Exception:
+            pass
+
+    return default_response
+
+
+class WarmupCardsRequest(BaseModel):
+    """Request for personalized warmup cards."""
+    user_state: Dict[str, Any]
+    primary_goal: Optional[str] = None
+    session_environment: Optional[str] = None
+    planned_duration: Optional[int] = None
+
+
+@router.post("/recommendations/warmup-cards")
+async def generate_warmup_cards(
+    request: WarmupCardsRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Generate personalized warmup cards with RAG-powered descriptions.
+
+    Returns a list of warmup components tailored to the user's current state,
+    each with an icon, title, and personalized description explaining why
+    that component is recommended for them today.
+    """
+    import asyncio
+
+    user_state = request.user_state or {}
+    user_goal = request.primary_goal or user_state.get("primary_goal", "general climbing")
+    session_env = request.session_environment or user_state.get("session_environment", "indoor_bouldering")
+
+    # Filter components based on session type
+    is_bouldering = "bouldering" in session_env
+    is_rope = "rope" in session_env
+    is_training = "training" in session_env
+
+    # Select relevant warmup components
+    selected_components = []
+    for comp in WARMUP_COMPONENTS:
+        # Always include activation exercises
+        if comp["category"] == "activation":
+            selected_components.append(comp)
+        # Include climbing-specific based on session type
+        elif comp["category"] == "climbing_specific":
+            if comp["id"] == "easy_climbing" and not is_training:
+                selected_components.append(comp)
+            elif comp["id"] == "finger_exercises":
+                selected_components.append(comp)
+            elif comp["id"] == "shoulder_activation" and (is_rope or user_state.get("shoulder_integrity", 10) < 7):
+                selected_components.append(comp)
+
+    # Add extra components based on user state
+    finger_health = user_state.get("finger_tendon_health", 10)
+    if finger_health < 6:
+        # Ensure finger exercises are prioritized
+        for comp in selected_components:
+            if comp["id"] == "finger_exercises":
+                comp["_priority_boost"] = True
+
+    # Generate descriptions in parallel
+    async def process_component(comp: Dict[str, Any]) -> Dict[str, Any]:
+        result = await _generate_warmup_card_description(
+            component=comp,
+            user_state=user_state,
+            user_goal=user_goal,
+        )
+        return {
+            "id": comp["id"],
+            "title": comp["title"],
+            "icon": comp["icon"],
+            "category": comp["category"],
+            "duration_min": max(1, comp["base_duration_min"] + result.get("duration_adjustment", 0)),
+            "description": result["description"],
+            "priority": result.get("priority", "normal"),
+        }
+
+    # Run all component generations in parallel
+    tasks = [process_component(comp) for comp in selected_components]
+    cards = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Filter out any exceptions
+    valid_cards = [c for c in cards if isinstance(c, dict)]
+
+    # Sort by priority (high > normal > optional)
+    priority_order = {"high": 0, "normal": 1, "optional": 2}
+    valid_cards.sort(key=lambda x: priority_order.get(x.get("priority", "normal"), 1))
+
+    # Calculate total warmup time
+    total_duration = sum(c.get("duration_min", 0) for c in valid_cards)
+
+    return {
+        "cards": valid_cards,
+        "total_duration_min": total_duration,
+        "session_goal": user_goal,
+        "component_count": len(valid_cards),
+    }
