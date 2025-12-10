@@ -187,6 +187,13 @@ async def create_session(
             # Log but don't fail - the session was created successfully
             print(f"Warning: Failed to insert pre_session_data: {e}")
 
+    # Trigger async embedding generation for pre-session data
+    try:
+        from workers.tasks.ml_tasks import generate_session_embedding
+        generate_session_embedding.delay(session_id, "pre")
+    except Exception as e:
+        print(f"Warning: Failed to trigger pre-session embedding task: {e}")
+
     return new_session
 
 
@@ -286,6 +293,13 @@ async def complete_session(
         update_user_model.delay(user_id)
     except Exception as e:
         print(f"Warning: Failed to trigger ML task: {e}")
+
+    # Trigger async embedding generation for post-session data
+    try:
+        from workers.tasks.ml_tasks import generate_session_embedding
+        generate_session_embedding.delay(session_id, "post")
+    except Exception as e:
+        print(f"Warning: Failed to trigger post-session embedding task: {e}")
 
     return result.data[0]
 
