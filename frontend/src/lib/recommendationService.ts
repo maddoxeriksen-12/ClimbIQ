@@ -178,6 +178,8 @@ export interface WarmupCard {
   category: 'activation' | 'climbing_specific'
   duration_min: number
   description: string
+  reasoning?: string // Why this was recommended
+  focus_area?: string[] // Tags like "Shoulders", "Fingers"
   priority: 'high' | 'normal' | 'optional'
 }
 

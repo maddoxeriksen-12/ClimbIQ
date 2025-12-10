@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getWarmupCards, type WarmupCard, type WarmupCardsResponse } from '../lib/recommendationService'
+import { getWarmupCards, getRecommendationExplanation, type WarmupCard, type WarmupCardsResponse } from '../lib/recommendationService'
+import { Sparkles } from 'lucide-react'
 
 // SVG icons for warmup components - clean line art style matching the mockup
 const WarmupIcons: Record<string, React.FC<{ className?: string }>> = {
@@ -114,6 +115,8 @@ export function WarmupRecommendationCards({
   onCardClick,
 }: WarmupRecommendationCardsProps) {
   const [loading, setLoading] = useState(true)
+  const [isRefetching, setIsRefetching] = useState(false)
+  const [explainingId, setExplainingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [warmupData, setWarmupData] = useState<WarmupCardsResponse | null>(null)
   const [selectedCard, setSelectedCard] = useState<WarmupCard | null>(null)
@@ -121,7 +124,13 @@ export function WarmupRecommendationCards({
 
   useEffect(() => {
     async function fetchWarmupCards() {
-      setLoading(true)
+      // Only set full loading if we don't have data yet
+      if (!warmupData) {
+        setLoading(true)
+      } else {
+        setIsRefetching(true)
+      }
+
       setError(null)
       try {
         const data = await getWarmupCards(
@@ -180,6 +189,7 @@ export function WarmupRecommendationCards({
         })
       } finally {
         setLoading(false)
+        setIsRefetching(false)
       }
     }
 
@@ -198,6 +208,38 @@ export function WarmupRecommendationCards({
       return next
     })
     setSelectedCard(null)
+  }
+
+  const handleExplain = async (e: React.MouseEvent, card: WarmupCard) => {
+    e.stopPropagation()
+    setExplainingId(card.id)
+    try {
+      const response = await getRecommendationExplanation(
+        'warmup_card',
+        `Why should I do ${card.title} for ${card.duration_min} mins?`,
+        userState,
+        [{ variable: 'focus_area', description: card.focus_area?.join(', ') }]
+      )
+
+      if (response && response.explanation) {
+        // Update the local card data with the new reasoning
+        setWarmupData(prev => {
+          if (!prev) return null
+          return {
+            ...prev,
+            cards: prev.cards.map(c =>
+              c.id === card.id
+                ? { ...c, reasoning: response.explanation.summary }
+                : c
+            )
+          }
+        })
+      }
+    } catch (err) {
+      console.error('Failed to get explanation:', err)
+    } finally {
+      setExplainingId(null)
+    }
   }
 
   const allCompleted = warmupData && completedCards.size >= warmupData.cards.length
@@ -229,12 +271,26 @@ export function WarmupRecommendationCards({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="text-center">
+      <div className="text-center relative">
         <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Climbing Recommendation</p>
-        <h2 className="text-2xl font-bold text-white">Warm-Up</h2>
+        <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
+          Warm-Up
+          {isRefetching && (
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+            </span>
+          )}
+        </h2>
         <p className="text-xs text-slate-400 mt-1">
           {warmupData.total_duration_min} min total
         </p>
+        {isRefetching && (
+          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="w-3 h-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+            <span className="text-xs font-medium text-amber-300">Adjusting warmup based on your inputs...</span>
+          </div>
+        )}
       </div>
 
       {/* Cards Grid */}
@@ -251,21 +307,20 @@ export function WarmupRecommendationCards({
               <button
                 type="button"
                 onClick={() => handleCardClick(card)}
-                className={`w-full rounded-2xl border transition-all duration-200 ${
-                  isCompleted
+                className={`w-full rounded-2xl border transition-all duration-200 ${isRefetching ? 'animate-pulse' : ''
+                  } ${isCompleted
                     ? 'border-emerald-500/30 bg-emerald-500/10 opacity-60'
                     : isSelected
-                    ? 'border-amber-500/50 bg-amber-500/10 scale-[1.02]'
-                    : isPriority
-                    ? 'border-amber-500/30 bg-white/5 hover:bg-white/10 hover:border-amber-500/50'
-                    : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20'
-                }`}
+                      ? 'border-amber-500/50 bg-amber-500/10 scale-[1.02]'
+                      : isPriority
+                        ? 'border-amber-500/30 bg-white/5 hover:bg-white/10 hover:border-amber-500/50'
+                        : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20'
+                  }`}
               >
                 <div className="flex items-center gap-4 p-4">
                   {/* Icon */}
-                  <div className={`w-16 h-16 flex-shrink-0 flex items-center justify-center rounded-xl ${
-                    isCompleted ? 'text-emerald-400' : 'text-slate-300'
-                  }`}>
+                  <div className={`w-16 h-16 flex-shrink-0 flex items-center justify-center rounded-xl ${isCompleted ? 'text-emerald-400' : 'text-slate-300'
+                    }`}>
                     <Icon className="w-12 h-12" />
                   </div>
 
@@ -298,18 +353,72 @@ export function WarmupRecommendationCards({
 
               {/* Expanded Description */}
               {isSelected && !isCompleted && (
-                <div className="mt-2 rounded-2xl border border-white/10 bg-white/5 p-5 animate-in slide-in-from-top-2 duration-200">
-                  <h4 className="text-base font-semibold text-white mb-2">{card.title}</h4>
-                  <p className="text-sm text-slate-300 leading-relaxed mb-4">
-                    {card.description}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => handleCardComplete(card.id)}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-sm hover:shadow-lg hover:shadow-amber-500/25 transition-all"
-                  >
-                    Mark Complete
-                  </button>
+                <div className="overflow-hidden transition-all duration-200 animate-in slide-in-from-top-2">
+                  <div className="mt-2 rounded-2xl border border-white/10 bg-white/5 p-5 animate-in slide-in-from-top-2 duration-200">
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                      <div>
+                        <h4 className="text-base font-semibold text-white">{card.title}</h4>
+                        {card.focus_area && card.focus_area.length > 0 && (
+                          <div className="flex gap-1 mt-1">
+                            {card.focus_area.map((tag) => (
+                              <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded border border-white/10 text-slate-400">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 mb-6">
+                      <div>
+                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Instructions</h5>
+                        <p className="text-sm text-slate-300 leading-relaxed">
+                          {card.description}
+                        </p>
+                      </div>
+
+                      {/* Rich "Why" Section */}
+                      {card.reasoning ? (
+                        <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+                          <h5 className="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-1 flex items-center gap-1">
+                            <span className="text-lg">💡</span> Why this?
+                          </h5>
+                          <p className="text-sm text-indigo-100/90 leading-relaxed italic">
+                            "{card.reasoning}"
+                          </p>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => handleExplain(e, card)}
+                          disabled={explainingId === card.id}
+                          className="w-full py-2 px-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-medium flex items-center justify-center gap-2 hover:bg-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {explainingId === card.id ? (
+                            <>
+                              <div className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                              Asking Coach...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3 h-3" />
+                              Ask Coach: Why this?
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleCardComplete(card.id)}
+                        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-sm hover:shadow-lg hover:shadow-amber-500/25 transition-all"
+                      >
+                        Mark Complete
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -322,11 +431,10 @@ export function WarmupRecommendationCards({
         {warmupData.cards.map((card) => (
           <div
             key={card.id}
-            className={`w-2 h-2 rounded-full transition-all ${
-              completedCards.has(card.id)
-                ? 'bg-emerald-500'
-                : 'bg-white/20'
-            }`}
+            className={`w-2 h-2 rounded-full transition-all ${completedCards.has(card.id)
+              ? 'bg-emerald-500'
+              : 'bg-white/20'
+              }`}
           />
         ))}
       </div>
@@ -336,19 +444,18 @@ export function WarmupRecommendationCards({
         type="button"
         onClick={onComplete}
         disabled={!allCompleted && completedCards.size < 2}
-        className={`w-full py-4 rounded-2xl font-bold text-base transition-all ${
-          allCompleted
-            ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.01]'
-            : completedCards.size >= 2
+        className={`w-full py-4 rounded-2xl font-bold text-base transition-all ${allCompleted
+          ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.01]'
+          : completedCards.size >= 2
             ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:scale-[1.01]'
             : 'bg-white/10 text-slate-500 cursor-not-allowed'
-        }`}
+          }`}
       >
         {allCompleted
           ? "I'm Warmed Up - Rate Readiness"
           : completedCards.size >= 2
-          ? `Skip Remaining (${warmupData.cards.length - completedCards.size} left)`
-          : `Complete at least 2 exercises (${completedCards.size}/${warmupData.cards.length})`}
+            ? `Skip Remaining (${warmupData.cards.length - completedCards.size} left)`
+            : `Complete at least 2 exercises (${completedCards.size}/${warmupData.cards.length})`}
       </button>
 
       {error && (
