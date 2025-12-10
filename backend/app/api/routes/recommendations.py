@@ -114,11 +114,21 @@ async def _generate_block_reasoning(
     if rag_context:
         prompt = f"{prompt}\n\n[Retrieved Context]\n{rag_context}"
 
-    # Try Ollama first (self-hosted for privacy)
-    if settings.LLM_BACKEND.lower() == "ollama" or not settings.GROK_API_KEY:
+    # Short timeout for block reasoning - should be fast
+    BLOCK_LLM_TIMEOUT = 5.0
+
+    # Try Ollama first (but skip if localhost - won't work in production)
+    ollama_url = settings.OLLAMA_URL.rstrip("/")
+    ollama_reachable = (
+        settings.LLM_BACKEND.lower() == "ollama"
+        and ollama_url
+        and "localhost" not in ollama_url
+        and "127.0.0.1" not in ollama_url
+    )
+
+    if ollama_reachable:
         try:
-            ollama_url = settings.OLLAMA_URL.rstrip("/")
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=BLOCK_LLM_TIMEOUT) as client:
                 response = await client.post(
                     f"{ollama_url}/api/generate",
                     json={
@@ -137,10 +147,10 @@ async def _generate_block_reasoning(
         except Exception:
             pass  # Fall through to Grok
 
-    # Try Grok as fallback
+    # Fallback to Grok (primary LLM for production)
     if settings.GROK_API_KEY:
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=BLOCK_LLM_TIMEOUT) as client:
                 response = await client.post(
                     "https://api.x.ai/v1/chat/completions",
                     headers={
@@ -148,7 +158,7 @@ async def _generate_block_reasoning(
                         "Content-Type": "application/json",
                     },
                     json={
-                        "model": "grok-4-1-fast-reasoning",
+                        "model": "grok-3-fast",
                         "messages": [
                             {"role": "system", "content": "Respond with valid JSON only."},
                             {"role": "user", "content": prompt}
@@ -842,11 +852,21 @@ async def _generate_warmup_card_description(
         "priority": "normal",
     }
 
-    # Try Ollama first
-    if settings.LLM_BACKEND.lower() == "ollama" or not settings.GROK_API_KEY:
+    # Short timeout for warmup cards - they must be fast
+    WARMUP_LLM_TIMEOUT = 5.0
+
+    # Try Ollama first (but skip if localhost - won't work in production)
+    ollama_url = settings.OLLAMA_URL.rstrip("/")
+    ollama_reachable = (
+        settings.LLM_BACKEND.lower() == "ollama"
+        and ollama_url
+        and "localhost" not in ollama_url
+        and "127.0.0.1" not in ollama_url
+    )
+
+    if ollama_reachable:
         try:
-            ollama_url = settings.OLLAMA_URL.rstrip("/")
-            async with httpx.AsyncClient(timeout=12.0) as client:
+            async with httpx.AsyncClient(timeout=WARMUP_LLM_TIMEOUT) as client:
                 response = await client.post(
                     f"{ollama_url}/api/generate",
                     json={
@@ -869,10 +889,10 @@ async def _generate_warmup_card_description(
         except Exception:
             pass
 
-    # Fallback to Grok
+    # Fallback to Grok (primary LLM for production)
     if settings.GROK_API_KEY:
         try:
-            async with httpx.AsyncClient(timeout=12.0) as client:
+            async with httpx.AsyncClient(timeout=WARMUP_LLM_TIMEOUT) as client:
                 response = await client.post(
                     "https://api.x.ai/v1/chat/completions",
                     headers={
@@ -880,7 +900,7 @@ async def _generate_warmup_card_description(
                         "Content-Type": "application/json",
                     },
                     json={
-                        "model": "grok-4-1-fast-reasoning",
+                        "model": "grok-3-fast",
                         "messages": [
                             {"role": "system", "content": "Respond with valid JSON only."},
                             {"role": "user", "content": prompt}
