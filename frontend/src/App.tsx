@@ -22,6 +22,7 @@ import { Stats } from './pages/Stats'
 import { Goals } from './pages/Goals'
 import { NewGoal } from './pages/NewGoal'
 import { ExpertDataCapture } from './pages/ExpertDataCapture'
+import { AnimatedCardDemo } from './components/AnimatedCardDemo'
 
 const queryClient = new QueryClient()
 
@@ -126,7 +127,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return <Navigate to="/login" />
-  
+
   // Redirect to onboarding if not completed
   if (needsOnboarding()) return <Navigate to="/onboarding" />
 
@@ -160,133 +161,141 @@ export default function App() {
         <AppBackground />
         <BrowserRouter>
           <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/accept-invitation/:invitationId" element={<AcceptInvitation />} />
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/accept-invitation/:invitationId" element={<AcceptInvitation />} />
 
-          {/* Protected routes - Smart routing based on role */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <SmartDashboard />
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Athlete routes */}
-          <Route
-            path="/session/new"
-            element={
-              <ProtectedRoute>
-                <NewSession />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/session/complete"
-            element={
-              <ProtectedRoute>
-                <CompleteSession />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/session/review"
-            element={
-              <ProtectedRoute>
-                <SessionReview />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/sessions"
-            element={
-              <ProtectedRoute>
-                <SessionHistory />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/stats"
-            element={
-              <ProtectedRoute>
-                <Stats />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/expert-data"
-            element={
-              <ProtectedRoute>
-                <ExpertDataCapture />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/sessions/:sessionId"
-            element={
-              <ProtectedRoute>
-                <SessionDetail />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/sessions/:sessionId/edit"
-            element={
-              <ProtectedRoute>
-                <EditSession />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/history"
-            element={<Navigate to="/sessions" replace />}
-          />
-          <Route
-            path="/recommendations"
-            element={
-              <ProtectedRoute>
-                <Recommendations />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/goals"
-            element={
-              <ProtectedRoute>
-                <Goals />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/goals/new"
-            element={
-              <ProtectedRoute>
-                <NewGoal />
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected routes - Smart routing based on role */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <SmartDashboard />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Coach-only routes */}
-          <Route
-            path="/athlete/:athleteId"
-            element={
-              <CoachRoute>
-                <AthleteDetail />
-              </CoachRoute>
-            }
-          />
+            {/* Athlete routes */}
+            <Route
+              path="/session/new"
+              element={
+                <ProtectedRoute>
+                  <NewSession />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/session/complete"
+              element={
+                <ProtectedRoute>
+                  <CompleteSession />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/session/review"
+              element={
+                <ProtectedRoute>
+                  <SessionReview />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/sessions"
+              element={
+                <ProtectedRoute>
+                  <SessionHistory />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/stats"
+              element={
+                <ProtectedRoute>
+                  <Stats />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/expert-data"
+              element={
+                <ProtectedRoute>
+                  <ExpertDataCapture />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/sessions/:sessionId"
+              element={
+                <ProtectedRoute>
+                  <SessionDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/sessions/:sessionId/edit"
+              element={
+                <ProtectedRoute>
+                  <EditSession />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/history"
+              element={<Navigate to="/sessions" replace />}
+            />
+            <Route
+              path="/recommendations"
+              element={
+                <ProtectedRoute>
+                  <Recommendations />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/goals"
+              element={
+                <ProtectedRoute>
+                  <Goals />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/goals/new"
+              element={
+                <ProtectedRoute>
+                  <NewGoal />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/demo"
+              element={
+                <div className="min-h-screen p-8 bg-background text-foreground flex items-center justify-center">
+                  <AnimatedCardDemo />
+                </div>
+              }
+            />
+
+            {/* Coach-only routes */}
+            <Route
+              path="/athlete/:athleteId"
+              element={
+                <CoachRoute>
+                  <AthleteDetail />
+                </CoachRoute>
+              }
+            />
           </Routes>
         </BrowserRouter>
       </ThemeProvider>

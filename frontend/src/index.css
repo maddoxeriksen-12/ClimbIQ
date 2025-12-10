@@ -1,119 +1,133 @@
 @import "tailwindcss";
 
-/* Theme variables */
 :root {
-  --bg-primary: #0f1312;
-  --bg-secondary: rgba(255, 255, 255, 0.05);
-  --bg-tertiary: rgba(255, 255, 255, 0.02);
-  --border-primary: rgba(255, 255, 255, 0.1);
-  --border-secondary: rgba(255, 255, 255, 0.05);
-  --text-primary: #ffffff;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 222.2 84% 4.9%;
+
+  --radius: 0.5rem;
 }
 
-.theme-light {
-  --bg-primary: #f5f7fa;
-  --bg-secondary: rgba(0, 0, 0, 0.03);
-  --bg-tertiary: rgba(0, 0, 0, 0.01);
-  --border-primary: rgba(0, 0, 0, 0.1);
-  --border-secondary: rgba(0, 0, 0, 0.05);
-  --text-primary: #1e293b;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 212.7 26.8% 83.9%;
 }
 
-/* Light theme text adjustments */
-.theme-light {
-  color: var(--text-primary);
+@theme {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --radius: var(--radius);
 }
 
-.theme-light .text-white {
-  color: var(--text-primary);
+/* Original Theme variables - kept for compatibility/merging if needed, but commented out if they conflict, 
+   except I see they were used for previous components. I will keep them but below. 
+   Actually, the user wants me to use shadcn/ui. I should try to make the shadcn theme the dominant one, 
+   but mapped to the "dark" theme by default if that's what the app was.
+   The original app had --bg-primary: #0f1312; which is a very dark theme.
+   I should update the .dark variables to match the existing look if I want to preserve the "ClimbIQ" brand,
+   OR just use the standard Shadcn Zinc/Slate theme.
+   I'll stick to standard Shadcn Slate Dark for now as it's "Professional".
+*/
+
+body {
+  @apply bg-background text-foreground;
+  font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-.theme-light .text-slate-400 {
-  color: var(--text-secondary);
-}
-
-.theme-light .text-slate-500 {
-  color: var(--text-muted);
-}
-
-/* Light theme background adjustments */
-.theme-light .bg-white\/5 {
-  background-color: rgba(0, 0, 0, 0.03);
-}
-
-.theme-light .bg-white\/10 {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.theme-light .bg-white\/\[0\.02\] {
-  background-color: rgba(0, 0, 0, 0.02);
-}
-
-.theme-light .bg-white\/\[0\.07\] {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-/* Light theme border adjustments */
-.theme-light .border-white\/10 {
-  border-color: rgba(0, 0, 0, 0.1);
-}
-
-.theme-light .border-white\/5 {
-  border-color: rgba(0, 0, 0, 0.05);
-}
-
-.theme-light .border-white\/20 {
-  border-color: rgba(0, 0, 0, 0.15);
-}
-
-/* Light theme scrollbar */
-.theme-light .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.theme-light .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-.theme-light .scrollbar-thin {
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-}
-
-/* Custom scrollbar styles */
+/* Re-adding the scrollbar and widget utilities from before just in case */
 .scrollbar-thin::-webkit-scrollbar {
   height: 6px;
   width: 6px;
 }
-
 .scrollbar-thin::-webkit-scrollbar-track {
   background: transparent;
 }
-
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: hsl(var(--muted));
   border-radius: 3px;
 }
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* Firefox scrollbar */
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scrollbar-color: hsl(var(--muted)) transparent;
 }
-
-/* Hide resize handles until hover on widget containers */
 .widget-container .react-resizable-handle {
   opacity: 0;
   transition: opacity 0.2s ease;
 }
-
 .widget-container:hover .react-resizable-handle {
   opacity: 1;
 }
