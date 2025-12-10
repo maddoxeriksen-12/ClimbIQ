@@ -218,3 +218,169 @@ def update_user_model(user_id: str) -> None:
         .execute()
 
     print(f"[update_user_model] Updated model for user {user_id}: phase={phase}, sessions={n_sessions}")
+
+
+@shared_task
+def process_embedding_jobs(batch_size: int = 10) -> dict:
+    """
+    Poll the embedding_jobs table for pending jobs and process them.
+    This should be run periodically (e.g., every 30 seconds) by Celery Beat.
+    """
+    import asyncio
+    
+    supabase = get_supabase_client()
+    
+    # Fetch pending jobs
+    jobs_result = (
+        supabase.table("embedding_jobs")
+        .select("*")
+        .eq("status", "pending")
+        .order("created_at", desc=False)
+        .limit(batch_size)
+        .execute()
+    )
+    
+    jobs = jobs_result.data or []
+    
+    if not jobs:
+        return {"processed": 0, "succeeded": 0, "failed": 0}
+    
+    succeeded = 0
+    failed = 0
+    
+    for job in jobs:
+        job_id = job["id"]
+        session_id = job["session_id"]
+        user_id = job["user_id"]
+        stage = job["stage"]
+        
+        # Mark as processing
+        supabase.table("embedding_jobs") \
+            .update({"status": "processing"}) \
+            .eq("id", job_id) \
+            .execute()
+        
+        try:
+            # Load session
+            ses_res = (
+                supabase.table("climbing_sessions")
+                .select("*")
+                .eq("id", session_id)
+                .single()
+                .execute()
+            )
+            session = ses_res.data
+            
+            if not session:
+                raise ValueError(f"Session {session_id} not found")
+            
+            # Load pre-session data
+            pre_res = (
+                supabase.table("pre_session_data")
+                .select("*")
+                .eq("session_id", session_id)
+                .single()
+                .execute()
+            )
+            pre = pre_res.data
+            
+            # Load post-session data (only for post stage)
+            post = None
+            if stage == "post":
+                post_res = (
+                    supabase.table("post_session_data")
+                    .select("*")
+                    .eq("session_id", session_id)
+                    .single()
+                    .execute()
+                )
+                post = post_res.data
+            
+            # Build text representation
+            text = _build_session_text(session, pre, post, stage)
+            
+            if not text:
+                raise ValueError("Could not build session text")
+            
+            # Get embedding
+            embedding = asyncio.run(_fetch_embedding_async(text))
+            
+            # Outcome quality for post-stage
+            outcome_quality = session.get("session_quality") if stage == "post" else None
+            
+            # Upsert into user_session_embeddings
+            payload = {
+                "session_id": session_id,
+                "user_id": user_id,
+                "session_embedding": embedding,
+                "embedding_stage": stage,
+                "outcome_quality": outcome_quality,
+            }
+            
+            supabase.table("user_session_embeddings") \
+                .upsert(payload, on_conflict="user_id,session_id,embedding_stage") \
+                .execute()
+            
+            # Mark as completed
+            supabase.table("embedding_jobs") \
+                .update({
+                    "status": "completed",
+                    "processed_at": datetime.utcnow().isoformat()
+                }) \
+                .eq("id", job_id) \
+                .execute()
+            
+            succeeded += 1
+            print(f"[process_embedding_jobs] Completed job {job_id} for session {session_id} ({stage})")
+            
+        except Exception as e:
+            # Mark as failed
+            supabase.table("embedding_jobs") \
+                .update({
+                    "status": "failed",
+                    "processed_at": datetime.utcnow().isoformat(),
+                    "error_message": str(e)[:500]
+                }) \
+                .eq("id", job_id) \
+                .execute()
+            
+            failed += 1
+            print(f"[process_embedding_jobs] Failed job {job_id}: {e}")
+    
+    result = {"processed": len(jobs), "succeeded": succeeded, "failed": failed}
+    print(f"[process_embedding_jobs] Batch complete: {result}")
+    return result
+
+
+@shared_task
+def retry_failed_embedding_jobs(max_retries: int = 3) -> dict:
+    """
+    Retry failed embedding jobs. Clears error and sets back to pending.
+    """
+    supabase = get_supabase_client()
+    
+    # Get failed jobs
+    failed_jobs = (
+        supabase.table("embedding_jobs")
+        .select("id")
+        .eq("status", "failed")
+        .limit(50)
+        .execute()
+    ).data or []
+    
+    if not failed_jobs:
+        return {"retried": 0}
+    
+    job_ids = [j["id"] for j in failed_jobs]
+    
+    # Reset to pending
+    supabase.table("embedding_jobs") \
+        .update({
+            "status": "pending",
+            "error_message": None
+        }) \
+        .in_("id", job_ids) \
+        .execute()
+    
+    print(f"[retry_failed_embedding_jobs] Reset {len(job_ids)} failed jobs to pending")
+    return {"retried": len(job_ids)}
