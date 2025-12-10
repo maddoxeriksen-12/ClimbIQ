@@ -1,5 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import { ClimbingSession } from '../lib/sessionService'
+import type { ClimbingSession } from '../lib/sessionService'
 
 interface GradeProgressionChartProps {
     sessions: ClimbingSession[]
@@ -50,7 +50,7 @@ export function GradeProgressionChart({ sessions }: GradeProgressionChartProps) 
                     />
                     <Tooltip
                         contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }}
-                        formatter={(value: number, name: string, props: any) => [props.payload.grade, 'Grade']}
+                        formatter={(_value: number, _name: string, props: any) => [props.payload.grade, 'Grade']}
                         labelStyle={{ color: '#94a3b8' }}
                     />
                     <Line
