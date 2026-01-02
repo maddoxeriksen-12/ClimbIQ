@@ -76,3 +76,15 @@ population_stats_job = define_asset_job(
     },
 )
 
+
+# Job to run BetaLab expert priors + expert-case indexing
+betalab_priors_job = define_asset_job(
+    name="betalab_priors_job",
+    description="Index curated expert cases and update expert priors (batch, conservative)",
+    selection=AssetSelection.groups("betalab"),
+    tags={
+        "pipeline": "betalab",
+        "schedule": "weekly",
+    },
+)
+

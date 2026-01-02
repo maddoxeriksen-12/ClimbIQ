@@ -127,4 +127,31 @@ if SESSION_EXECUTION_AVAILABLE and session_execution_router:
 else:
     logger.warning("⚠️ Session execution router not available")
 
+# BetaLab (Expert Game + Library)
+try:
+    from app.api.routes.betalab.expert_game import router as betalab_game_router
+    from app.api.routes.betalab.expert_library import router as betalab_library_router
+    BETALAB_AVAILABLE = True
+    logger.info("✅ Successfully imported BetaLab routers")
+except Exception as e:
+    BETALAB_AVAILABLE = False
+    betalab_game_router = None
+    betalab_library_router = None
+    logger.error(f"❌ Failed to import BetaLab routers: {e}")
+
+if BETALAB_AVAILABLE and betalab_game_router and betalab_library_router:
+    app.include_router(
+        betalab_game_router,
+        prefix=settings.API_V1_PREFIX,
+        tags=["BetaLab"],
+    )
+    app.include_router(
+        betalab_library_router,
+        prefix=settings.API_V1_PREFIX,
+        tags=["BetaLab"],
+    )
+    logger.info("✅ BetaLab routers registered")
+else:
+    logger.warning("⚠️ BetaLab routers not available")
+
 

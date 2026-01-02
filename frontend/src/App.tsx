@@ -23,6 +23,9 @@ import { Goals } from './pages/Goals'
 import { NewGoal } from './pages/NewGoal'
 import { ExpertDataCapture } from './pages/ExpertDataCapture'
 import { AnimatedCardDemo } from './components/AnimatedCardDemo'
+import { BetaLabGame } from './pages/betalab/BetaLabGame'
+import { BetaLabReview } from './pages/betalab/BetaLabReview'
+import { BetaLabLibrary } from './pages/betalab/BetaLabLibrary'
 
 const queryClient = new QueryClient()
 
@@ -293,6 +296,30 @@ export default function App() {
               element={
                 <CoachRoute>
                   <AthleteDetail />
+                </CoachRoute>
+              }
+            />
+            <Route
+              path="/coach/game"
+              element={
+                <CoachRoute>
+                  <BetaLabGame />
+                </CoachRoute>
+              }
+            />
+            <Route
+              path="/coach/review"
+              element={
+                <CoachRoute>
+                  <BetaLabReview />
+                </CoachRoute>
+              }
+            />
+            <Route
+              path="/coach/library"
+              element={
+                <CoachRoute>
+                  <BetaLabLibrary />
                 </CoachRoute>
               }
             />

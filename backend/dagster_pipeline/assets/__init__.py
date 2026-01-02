@@ -22,6 +22,11 @@ from .learning_loop import (
     prediction_stats,
 )
 
+from .betalab import (
+    expert_case_embeddings_backfill,
+    expert_priors_batch_update,
+)
+
 __all__ = [
     # Expert capture assets
     "extracted_coefficient_signals",
@@ -39,5 +44,8 @@ __all__ = [
     "acwr_refresh",
     "user_fatigue_tracking",
     "prediction_stats",
+    # BetaLab
+    "expert_case_embeddings_backfill",
+    "expert_priors_batch_update",
 ]
 

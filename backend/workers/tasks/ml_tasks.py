@@ -10,6 +10,7 @@ EMBEDDING_BASE_URL = os.getenv("EMBEDDING_API_BASE", "").rstrip("/")
 EMBEDDING_PATH = os.getenv("EMBEDDING_API_PATH", "/v1/embeddings")
 EMBEDDING_MODEL = os.getenv("RAG_EMBEDDING_MODEL", "mxbai-embed-large")
 
+
 def _build_session_text(session: dict, pre: dict | None, post: dict | None, stage: str) -> str:
     parts: list[str] = []
 
@@ -42,6 +43,7 @@ def _build_session_text(session: dict, pre: dict | None, post: dict | None, stag
 
     return " | ".join(str(p) for p in parts if p is not None)
 
+
 async def _fetch_embedding_async(text: str) -> list[float]:
     if not EMBEDDING_BASE_URL:
         raise RuntimeError("EMBEDDING_API_BASE not configured")
@@ -55,12 +57,35 @@ async def _fetch_embedding_async(text: str) -> list[float]:
         data = resp.json()
         return data["data"][0]["embedding"]
 
+
+def _build_expert_case_text(case: dict) -> str:
+    planned = case.get("planned_workout") or {}
+    dose = case.get("planned_dose_features") or {}
+    rationale = case.get("rationale_tags") or {}
+    predicted = case.get("predicted_outcomes") or {}
+
+    session_type = planned.get("session_type")
+    time_cap = planned.get("time_cap_min")
+    hi_attempts = (dose.get("totals") or {}).get("hi_attempts")
+    tut = (dose.get("totals") or {}).get("tut_minutes")
+    vol = (dose.get("summary") or {}).get("volume_score")
+    fat = (dose.get("summary") or {}).get("fatigue_cost")
+
+    return (
+        f"expert_case action_id={case.get('action_id')} "
+        f"session_type={session_type} time_cap_min={time_cap} "
+        f"hi_attempts={hi_attempts} tut_minutes={tut} volume_score={vol} fatigue_cost={fat} "
+        f"rationale={rationale} predicted={predicted} planned_workout={planned}"
+    )
+
+
 @shared_task
 def generate_session_embedding(session_id: str, stage: str = "post") -> None:
     """
     Asynchronously generate an embedding for a session and store it in user_session_embeddings.
     stage: 'pre' -> pre-session only; 'post' -> combined pre+post.
     """
+
     import asyncio
 
     supabase = get_supabase_client()
@@ -121,9 +146,11 @@ def generate_session_embedding(session_id: str, stage: str = "post") -> None:
         "outcome_quality": outcome_quality,
     }
 
-    supabase.table("user_session_embeddings") \
-        .upsert(payload, on_conflict="user_id,session_id,embedding_stage") \
+    (
+        supabase.table("user_session_embeddings")
+        .upsert(payload, on_conflict="user_id,session_id,embedding_stage")
         .execute()
+    )
 
 
 @shared_task
@@ -132,6 +159,7 @@ def update_user_model(user_id: str) -> None:
     Update user's personalized model based on their session history.
     This task recalculates deviations from population priors and updates model_outputs.
     """
+
     supabase = get_supabase_client()
 
     # Count user's completed sessions
@@ -160,22 +188,22 @@ def update_user_model(user_id: str) -> None:
 
     # Calculate simple variable deviations from session data
     variable_deviations = {}
-    
+
     if n_sessions > 0:
         # Calculate mean quality and how it relates to inputs
         qualities = [s.get("session_quality", 5) for s in sessions if s.get("session_quality")]
         sleep_scores = [s.get("sleep_quality", 5) for s in sessions if s.get("sleep_quality")]
         energy_scores = [s.get("energy_level", 5) for s in sessions if s.get("energy_level")]
-        
+
         if qualities:
             avg_quality = sum(qualities) / len(qualities)
             variable_deviations["avg_session_quality"] = avg_quality
-        
+
         if sleep_scores and qualities and len(sleep_scores) == len(qualities):
             # Simple correlation proxy: does low sleep correlate with low quality for this user?
             low_sleep_sessions = [(s, q) for s, q in zip(sleep_scores, qualities) if s <= 5]
             high_sleep_sessions = [(s, q) for s, q in zip(sleep_scores, qualities) if s > 5]
-            
+
             if low_sleep_sessions and high_sleep_sessions:
                 avg_low_sleep_quality = sum(q for _, q in low_sleep_sessions) / len(low_sleep_sessions)
                 avg_high_sleep_quality = sum(q for _, q in high_sleep_sessions) / len(high_sleep_sessions)
@@ -213,9 +241,7 @@ def update_user_model(user_id: str) -> None:
         "variable_deviations": variable_deviations,
     }
 
-    supabase.table("model_outputs") \
-        .upsert(model_data, on_conflict="user_id") \
-        .execute()
+    supabase.table("model_outputs").upsert(model_data, on_conflict="user_id").execute()
 
     print(f"[update_user_model] Updated model for user {user_id}: phase={phase}, sessions={n_sessions}")
 
@@ -226,10 +252,11 @@ def process_embedding_jobs(batch_size: int = 10) -> dict:
     Poll the embedding_jobs table for pending jobs and process them.
     This should be run periodically (e.g., every 30 seconds) by Celery Beat.
     """
+
     import asyncio
-    
+
     supabase = get_supabase_client()
-    
+
     # Fetch pending jobs
     jobs_result = (
         supabase.table("embedding_jobs")
@@ -239,27 +266,24 @@ def process_embedding_jobs(batch_size: int = 10) -> dict:
         .limit(batch_size)
         .execute()
     )
-    
+
     jobs = jobs_result.data or []
-    
+
     if not jobs:
         return {"processed": 0, "succeeded": 0, "failed": 0}
-    
+
     succeeded = 0
     failed = 0
-    
+
     for job in jobs:
         job_id = job["id"]
         session_id = job["session_id"]
         user_id = job["user_id"]
         stage = job["stage"]
-        
+
         # Mark as processing
-        supabase.table("embedding_jobs") \
-            .update({"status": "processing"}) \
-            .eq("id", job_id) \
-            .execute()
-        
+        supabase.table("embedding_jobs").update({"status": "processing"}).eq("id", job_id).execute()
+
         try:
             # Load session
             ses_res = (
@@ -270,10 +294,10 @@ def process_embedding_jobs(batch_size: int = 10) -> dict:
                 .execute()
             )
             session = ses_res.data
-            
+
             if not session:
                 raise ValueError(f"Session {session_id} not found")
-            
+
             # Load pre-session data
             pre_res = (
                 supabase.table("pre_session_data")
@@ -283,7 +307,7 @@ def process_embedding_jobs(batch_size: int = 10) -> dict:
                 .execute()
             )
             pre = pre_res.data
-            
+
             # Load post-session data (only for post stage)
             post = None
             if stage == "post":
@@ -295,19 +319,19 @@ def process_embedding_jobs(batch_size: int = 10) -> dict:
                     .execute()
                 )
                 post = post_res.data
-            
+
             # Build text representation
             text = _build_session_text(session, pre, post, stage)
-            
+
             if not text:
                 raise ValueError("Could not build session text")
-            
+
             # Get embedding
             embedding = asyncio.run(_fetch_embedding_async(text))
-            
+
             # Outcome quality for post-stage
             outcome_quality = session.get("session_quality") if stage == "post" else None
-            
+
             # Upsert into user_session_embeddings
             payload = {
                 "session_id": session_id,
@@ -316,40 +340,101 @@ def process_embedding_jobs(batch_size: int = 10) -> dict:
                 "embedding_stage": stage,
                 "outcome_quality": outcome_quality,
             }
-            
-            supabase.table("user_session_embeddings") \
-                .upsert(payload, on_conflict="user_id,session_id,embedding_stage") \
+
+            (
+                supabase.table("user_session_embeddings")
+                .upsert(payload, on_conflict="user_id,session_id,embedding_stage")
                 .execute()
-            
+            )
+
             # Mark as completed
-            supabase.table("embedding_jobs") \
-                .update({
-                    "status": "completed",
-                    "processed_at": datetime.utcnow().isoformat()
-                }) \
-                .eq("id", job_id) \
+            (
+                supabase.table("embedding_jobs")
+                .update({"status": "completed", "processed_at": datetime.utcnow().isoformat()})
+                .eq("id", job_id)
                 .execute()
-            
+            )
+
             succeeded += 1
             print(f"[process_embedding_jobs] Completed job {job_id} for session {session_id} ({stage})")
-            
+
         except Exception as e:
             # Mark as failed
-            supabase.table("embedding_jobs") \
-                .update({
-                    "status": "failed",
-                    "processed_at": datetime.utcnow().isoformat(),
-                    "error_message": str(e)[:500]
-                }) \
-                .eq("id", job_id) \
+            (
+                supabase.table("embedding_jobs")
+                .update(
+                    {
+                        "status": "failed",
+                        "processed_at": datetime.utcnow().isoformat(),
+                        "error_message": str(e)[:500],
+                    }
+                )
+                .eq("id", job_id)
                 .execute()
-            
+            )
+
             failed += 1
             print(f"[process_embedding_jobs] Failed job {job_id}: {e}")
-    
+
     result = {"processed": len(jobs), "succeeded": succeeded, "failed": failed}
     print(f"[process_embedding_jobs] Batch complete: {result}")
     return result
+
+
+@shared_task
+def index_curated_expert_case_embedding(curated_case_id: str) -> dict:
+    """Generate/replace embedding for a curated expert case.
+
+    Writes to rag_knowledge_embeddings with object_type='expert_case'.
+    """
+
+    import asyncio
+
+    supabase = get_supabase_client()
+
+    case = (
+        supabase.table("expert_library_curated")
+        .select(
+            "curated_case_id,action_id,planned_workout,planned_dose_features,rationale_tags,predicted_outcomes"
+        )
+        .eq("curated_case_id", curated_case_id)
+        .single()
+        .execute()
+        .data
+    )
+    if not case:
+        return {"status": "not_found", "curated_case_id": curated_case_id}
+
+    try:
+        content = _build_expert_case_text(case)
+        embedding = asyncio.run(_fetch_embedding_async(content))
+
+        # Best-effort delete existing
+        try:
+            (
+                supabase.table("rag_knowledge_embeddings")
+                .delete()
+                .eq("object_type", "expert_case")
+                .eq("object_table", "expert_library_curated")
+                .eq("object_id", curated_case_id)
+                .execute()
+            )
+        except Exception:
+            pass
+
+        supabase.table("rag_knowledge_embeddings").insert(
+            {
+                "object_type": "expert_case",
+                "object_table": "expert_library_curated",
+                "object_id": curated_case_id,
+                "content": content,
+                "embedding": embedding,
+            }
+        ).execute()
+
+        return {"status": "ok", "curated_case_id": curated_case_id}
+    except Exception as e:
+        return {"status": "error", "curated_case_id": curated_case_id, "error": str(e)}
 
 
 @shared_task
@@ -357,8 +442,9 @@ def retry_failed_embedding_jobs(max_retries: int = 3) -> dict:
     """
     Retry failed embedding jobs. Clears error and sets back to pending.
     """
+
     supabase = get_supabase_client()
-    
+
     # Get failed jobs
     failed_jobs = (
         supabase.table("embedding_jobs")
@@ -367,20 +453,19 @@ def retry_failed_embedding_jobs(max_retries: int = 3) -> dict:
         .limit(50)
         .execute()
     ).data or []
-    
+
     if not failed_jobs:
         return {"retried": 0}
-    
+
     job_ids = [j["id"] for j in failed_jobs]
-    
+
     # Reset to pending
-    supabase.table("embedding_jobs") \
-        .update({
-            "status": "pending",
-            "error_message": None
-        }) \
-        .in_("id", job_ids) \
+    (
+        supabase.table("embedding_jobs")
+        .update({"status": "pending", "error_message": None})
+        .in_("id", job_ids)
         .execute()
-    
+    )
+
     print(f"[retry_failed_embedding_jobs] Reset {len(job_ids)} failed jobs to pending")
     return {"retried": len(job_ids)}

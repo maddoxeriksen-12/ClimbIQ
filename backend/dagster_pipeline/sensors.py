@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from typing import Iterator, Union
 
 from .resources import SupabaseResource
-from .jobs import nightly_training_job
+from .jobs import nightly_training_job, betalab_priors_job
 
 
 @sensor(
@@ -321,5 +321,73 @@ def session_completion_sensor(
             
     except Exception as e:
         context.log.error(f"Error checking session completions: {e}")
+        yield SkipReason(f"Error: {e}")
+
+
+@sensor(
+    job=betalab_priors_job,
+    minimum_interval_seconds=86400,  # check daily, run weekly when stale
+    default_status=DefaultSensorStatus.RUNNING,
+    description="Triggers BetaLab expert priors update weekly when new curated cases exist",
+)
+def weekly_betalab_priors_sensor(
+    context: SensorEvaluationContext,
+) -> Iterator[Union[RunRequest, SkipReason]]:
+    import os
+    from supabase import create_client
+
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_SERVICE_KEY")
+
+    if not url or not key:
+        yield SkipReason("Supabase credentials not configured")
+        return
+
+    try:
+        client = create_client(url, key)
+
+        # Last priors update
+        last = (
+            client.table("expert_priors_versions")
+            .select("created_at,n_curated_cases")
+            .eq("is_current", True)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        ).data
+
+        last_dt = None
+        if last and last[0].get("created_at"):
+            last_dt = datetime.fromisoformat(last[0]["created_at"].replace("Z", "+00:00"))
+
+        # Consider stale after 7 days
+        stale_days = 7
+        if last_dt and (datetime.utcnow().replace(tzinfo=last_dt.tzinfo) - last_dt) < timedelta(days=stale_days):
+            yield SkipReason(f"Expert priors updated recently ({last_dt})")
+            return
+
+        # Check for curated cases
+        cur_count = (
+            client.table("expert_library_curated")
+            .select("curated_case_id", count="exact")
+            .execute()
+        ).count or 0
+
+        if cur_count < 20:
+            yield SkipReason(f"Only {cur_count} curated cases; waiting for 20 to update priors")
+            return
+
+        run_key = f"betalab_priors_{datetime.utcnow().strftime('%Y%m%d')}"
+        yield RunRequest(
+            run_key=run_key,
+            tags={
+                "triggered_by": "weekly_betalab_priors_sensor",
+                "curated_cases": str(cur_count),
+                "stale_days": str(stale_days),
+            },
+        )
+
+    except Exception as e:
+        context.log.error(f"Error checking BetaLab priors: {e}")
         yield SkipReason(f"Error: {e}")
 

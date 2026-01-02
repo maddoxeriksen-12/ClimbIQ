@@ -12,6 +12,13 @@ from app.services.recommendation_service import RecommendationService
 from app.services.explanation_service import get_explanation_service
 from app.services.rag_service import get_rag_service
 from app.api.routes.recommendation_core.recommendation_engine import RecommendationEngine
+from app.services.action_id import compute_action_id
+from app.services.dose_features import compute_planned_dose_features
+from app.services.planned_workout_adapter import planned_workout_from_recommendation
+from app.services.candidate_plan_service import CandidatePlanService
+from app.services.reranker_service import RerankerService
+from app.services.recommendation_run_store import RecommendationRunStore
+from app.services.workout_schemas import validate_planned_workout
 
 
 router = APIRouter()
@@ -423,14 +430,63 @@ async def generate_recommendation(
             # Invert: frontend high (calm) -> backend low (calm)
             user_state["stress_level"] = max(1, 11 - int(stress))
 
-    # Generate recommendation (pass user_id so ACWR and personalization layers can be used)
+    # ------------------------------------------------------------------
+    # Top-K candidate generation + reranking
+    # ------------------------------------------------------------------
+    candidate_service = CandidatePlanService(engine)
+    candidates = candidate_service.generate_candidates(
+        user_state=user_state,
+        user_id=current_user["id"],
+        k=5,
+    )
+
+    # Fetch recent action_ids for novelty scoring (best-effort)
+    recent_action_ids: List[str] = []
+    try:
+        supabase = get_supabase_client()
+        recent = (
+            supabase.table("session_recommendation_runs")
+            .select("final_action_id")
+            .eq("user_id", current_user["id"])
+            .not_.is_("final_action_id", "null")
+            .order("created_at", desc=True)
+            .limit(25)
+            .execute()
+        ).data or []
+        recent_action_ids = [r.get("final_action_id") for r in recent if r.get("final_action_id")]
+    except Exception:
+        recent_action_ids = []
+
+    reranker = RerankerService()
+    reranked, rerank_meta = reranker.rerank(
+        user_state=user_state,
+        candidates=candidates,
+        recent_action_ids=recent_action_ids,
+    )
+
+    if not reranked:
+        raise HTTPException(status_code=500, detail="Failed to generate candidates")
+
+    final = reranked[0]
+    candidate_by_action_id = {c.action_id: c for c in candidates}
+    final_structured_plan = (
+        candidate_by_action_id.get(final.action_id).structured_plan
+        if candidate_by_action_id.get(final.action_id)
+        else engine._build_structured_plan(final.session_type, user_state)
+    )
+
+    # Build the outward response using engine's original recommendation shape
+    # (we preserve as much compatibility as possible).
     recommendation = engine.generate_recommendation(
         user_state,
         user_id=current_user["id"],
     )
+    recommendation["session_type"] = final.session_type
+    recommendation["predicted_quality"] = round(float(final.predicted_outcomes.get("predicted_quality", recommendation.get("predicted_quality", 5))), 1)
+    recommendation["confidence"] = rerank_meta.get("confidence", recommendation.get("confidence"))
+    recommendation["structured_plan"] = final_structured_plan
 
-    # Add personalized reasoning to structured_plan blocks using LLM
-    # This runs in parallel for warmup/main/cooldown to minimize latency
+    # Add personalized reasoning to structured_plan blocks using LLM (final only)
     recommendation = await _add_reasoning_to_structured_plan(recommendation, user_state)
 
     # Post-process avoid list for obvious safe cases based on current state.
@@ -443,6 +499,87 @@ async def generate_recommendation(
     
     # Add user context
     recommendation["user_id"] = current_user["id"]
+
+    # Canonical action_id + PlannedWorkout for FINAL
+    planned_workout = final.planned_workout
+    validate_planned_workout(planned_workout)
+    action_id = final.action_id
+    planned_dose_features = final.planned_dose_features
+
+    recommendation["planned_workout"] = planned_workout
+    recommendation["planned_dose_features"] = planned_dose_features
+    recommendation["action_id"] = action_id
+
+    # Attach Top-K alternatives (without LLM reasoning)
+    recommendation["top_k"] = []
+    for idx, rr in enumerate(reranked[:5], start=1):
+        recommendation["top_k"].append(
+            {
+                "rank": idx,
+                "action_id": rr.action_id,
+                "session_type": rr.session_type,
+                "planned_workout": rr.planned_workout,
+                "planned_dose_features": rr.planned_dose_features,
+                "predicted_outcomes": rr.predicted_outcomes,
+                "score_total": rr.score_total,
+                "score_components": rr.score_components,
+            }
+        )
+
+    # Persist full run + candidates to normalized tables
+    try:
+        supabase = get_supabase_client()
+        store = RecommendationRunStore(supabase)
+
+        run_id = store.insert_run(
+            user_id=current_user["id"],
+            user_state=user_state,
+            goal_context={"primary_goal": user_state.get("primary_goal")},
+            model_versions={
+                "engine": recommendation.get("model_version"),
+                "llm_backend": settings.LLM_BACKEND,
+                "reranker": "heuristic_v1",
+            },
+            action_id=action_id,
+            planned_workout_json=planned_workout,
+            planned_dose_features_json=planned_dose_features,
+        )
+
+        # Store artifacts for each candidate and insert candidate rows.
+        rows = []
+        stored_refs = []
+        for rank, rr in enumerate(reranked[:5], start=1):
+            refs = store.store_candidate_artifacts(
+                action_id=rr.action_id,
+                planned_workout=rr.planned_workout,
+                planned_dose_features=rr.planned_dose_features,
+                rationale=rr.rationale,
+                predicted_outcomes=rr.predicted_outcomes,
+            )
+            stored_refs.append((rr, refs))
+            rows.append(
+                {
+                    "rank": rank,
+                    "action_id": rr.action_id,
+                    "planned_workout_id": refs.planned_workout_id,
+                    "dose_features_id": refs.dose_features_id,
+                    "predicted_outcomes_id": refs.predicted_outcomes_id,
+                    "rationale_id": refs.rationale_id,
+                    "score_total": rr.score_total,
+                    "score_components": rr.score_components,
+                }
+            )
+
+        store.insert_candidates(run_id=run_id, candidates=rows)
+
+        # Final selection refs are those for the top candidate
+        final_refs = stored_refs[0][1]
+        store.update_final_selection(run_id=run_id, final_action_id=action_id, refs=final_refs)
+
+        recommendation["recommendation_run_id"] = run_id
+    except Exception:
+        # Don't fail recommendation serving due to logging.
+        pass
     
     return recommendation
 

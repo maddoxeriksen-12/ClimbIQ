@@ -15,6 +15,7 @@ from .jobs import (
     nightly_training_job,
     user_model_training_job,
     population_stats_job,
+    betalab_priors_job,
 )
 from .sensors import (
     new_consensus_sensor,
@@ -22,6 +23,7 @@ from .sensors import (
     urgent_consensus_sensor,
     nightly_training_sensor,
     session_completion_sensor,
+    weekly_betalab_priors_sensor,
 )
 
 
@@ -50,6 +52,7 @@ defs = Definitions(
         nightly_training_job,
         user_model_training_job,
         population_stats_job,
+        betalab_priors_job,
     ],
     sensors=[
         # Expert capture sensors
@@ -59,6 +62,7 @@ defs = Definitions(
         # Model training sensors
         nightly_training_sensor,
         session_completion_sensor,
+        weekly_betalab_priors_sensor,
     ],
     resources=resources,
 )

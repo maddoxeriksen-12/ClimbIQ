@@ -30,11 +30,17 @@ export function CoachLayout({ children }: CoachLayoutProps) {
 
   const navItems = [
     { path: '/', label: 'Team Dashboard', icon: '👥' },
+    { path: '/coach/game', label: 'BetaLab: Game', icon: '🧪' },
+    { path: '/coach/review', label: 'BetaLab: Review', icon: '🧾' },
+    { path: '/coach/library', label: 'BetaLab: Library', icon: '📚' },
     { path: '/recommendations', label: 'Team Insights', icon: '💡' },
     { path: '/settings', label: 'Settings', icon: '⚙️' },
   ]
 
-  const isActive = (path: string) => location.pathname === path
+  const isActive = (path: string) => {
+    if (path === '/') return location.pathname === '/'
+    return location.pathname.startsWith(path)
+  }
 
   // Scroll to top function
   const scrollToTop = () => {
